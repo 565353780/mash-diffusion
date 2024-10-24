@@ -1,4 +1,5 @@
 import sys
+from typing import Union
 
 sys.path.append("../ma-sh/")
 
@@ -10,7 +11,7 @@ from math import sqrt, ceil
 from conditional_flow_matching.Module.sampler import Sampler
 
 
-def demo():
+def demo(save_folder_path: Union[str, None] = None):
     output_folder_path = './output/'
     model_folder_name_list = os.listdir(output_folder_path)
 
@@ -50,7 +51,8 @@ def demo():
         if j != sampled_array.shape[0] -  1:
             continue
 
-        save_folder_path = './output/sample/save_itr_' + str(j) + '/'
+        if save_folder_path is None:
+            save_folder_path = './output/sample/save_itr_' + str(j) + '/'
         os.makedirs(save_folder_path, exist_ok=True)
 
         for i in tqdm(range(sample_num)):
