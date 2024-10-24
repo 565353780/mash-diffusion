@@ -6,7 +6,7 @@ from conditional_flow_matching.Module.trainer import Trainer
 
 def demo():
     dataset_root_folder_path = "/home/chli/Dataset/"
-    batch_size = 48
+    batch_size = 24
     accum_iter = 1
     num_workers = 16
     model_file_path = "./output/ptv3-v3-1/model_last.pth"
