@@ -4,6 +4,8 @@ from typing import Union
 sys.path.append("../ma-sh/")
 
 import os
+import gc
+import torch
 import open3d as o3d
 from tqdm import tqdm
 from math import sqrt, ceil
@@ -87,4 +89,10 @@ def demo(save_folder_path: Union[str, None] = None):
                 mash_pcd,
                 write_ascii=True,
             )
+
+    del sampler
+    del sampled_array
+    del mash_model
+    gc.collect()
+    torch.cuda.empty_cache()
     return True
