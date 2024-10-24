@@ -27,6 +27,9 @@ class MashUNet(nn.Module):
         else:
             condition = self.emb_category(condition)
 
+        if len(t.shape) == 0:
+            t = t.unsqueeze(0)
+
         if condition_drop_prob > 0:
             # dropout context with some probability
             context_mask = torch.bernoulli(torch.ones_like(condition)-condition_drop_prob).to(mash_params.device)

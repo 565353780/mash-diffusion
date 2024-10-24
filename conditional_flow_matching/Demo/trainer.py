@@ -16,7 +16,7 @@ def demo():
     warm_epoch_step_num = 40
     warm_epoch_num = 0 # 40
     finetune_step_num = 100000000
-    lr = 1e-5
+    lr = 2e-4
     weight_decay = 1e-10
     factor = 0.9
     patience = 10000
