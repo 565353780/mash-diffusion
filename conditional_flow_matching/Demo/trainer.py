@@ -6,7 +6,7 @@ from conditional_flow_matching.Module.trainer import Trainer
 
 def demo():
     dataset_root_folder_path = "/home/chli/Dataset/"
-    batch_size = 256
+    batch_size = 48
     accum_iter = 1
     num_workers = 16
     model_file_path = "./output/ptv3-v3-1/model_last.pth"
@@ -16,7 +16,7 @@ def demo():
     warm_epoch_step_num = 40
     warm_epoch_num = 0 # 40
     finetune_step_num = 100000000
-    lr = 1e-4
+    lr = 1e-5
     weight_decay = 1e-10
     factor = 0.9
     patience = 10000
@@ -27,8 +27,8 @@ def demo():
     save_result_folder_path = "auto"
     save_log_folder_path = "auto"
 
-    train_scale = 0.95
-    val_scale = 0.05
+    train_scale = 1.0
+    val_scale = 0.0
 
     convertor = Convertor(dataset_root_folder_path)
     convertor.convertToSplitFiles(train_scale, val_scale)

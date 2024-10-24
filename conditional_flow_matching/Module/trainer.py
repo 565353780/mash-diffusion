@@ -21,6 +21,8 @@ from torch.optim.lr_scheduler import (
 from torchcfm.conditional_flow_matching import *
 
 from conditional_flow_matching.Dataset.mash import MashDataset
+from conditional_flow_matching.Model.unet2d import MashUNet
+from conditional_flow_matching.Model.mash_net import MashNet
 from conditional_flow_matching.Method.time import getCurrentTime
 from conditional_flow_matching.Method.path import createFileFolder
 from conditional_flow_matching.Module.logger import Logger
@@ -91,14 +93,14 @@ class Trainer(object):
             num_workers=num_workers,
         )
 
-        model_id = 1
+        model_id = 2
         if model_id == 1:
-            sigma = 0.0
-            self.model = UNetModel(
-                dim=(1, 400, 25), num_channels=32, num_res_blocks=1, num_classes=55, class_cond=True
-            ).to(device)
-            self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=sigma)
-            self.node = NeuralODE(self.model, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
+            self.model = MashUNet(768).to(device)
+        elif model_id == 2:
+            self.model = MashNet().to(device)
+
+        self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
+        self.node = NeuralODE(self.model, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
 
         self.loss_fn = nn.MSELoss()
 
@@ -168,7 +170,7 @@ class Trainer(object):
 
         t, xt, ut, _, y1 = self.FM.guided_sample_location_and_conditional_flow(cfm_mash_params_noise, cfm_mash_params, y1=category_id)
 
-        vt = self.model(t, xt, y1)
+        vt = self.model(xt, y1, t)
 
         loss = self.loss_fn(vt, ut)
 

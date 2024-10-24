@@ -7,3 +7,5 @@ pip install -U torch torchvision torchaudio
 
 pip install -r requirements.txt
 pip install -e .
+
+pip install -U timm einops
