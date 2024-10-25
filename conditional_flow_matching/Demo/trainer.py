@@ -21,9 +21,6 @@ def demo():
     factor = 0.9
     patience = 10000
     min_lr = 1e-6
-    drop_prob = 0.0
-    deterministic = False
-    kl_weight = 1.0
     save_result_folder_path = "auto"
     save_log_folder_path = "auto"
 
@@ -49,9 +46,6 @@ def demo():
         factor,
         patience,
         min_lr,
-        drop_prob,
-        deterministic,
-        kl_weight,
         save_result_folder_path,
         save_log_folder_path,
     )

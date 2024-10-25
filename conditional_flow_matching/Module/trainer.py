@@ -40,20 +40,9 @@ class Trainer(object):
         factor: float = 0.9,
         patience: int = 1,
         min_lr: float = 1e-4,
-        drop_prob: float = 0.75,
-        deterministic: bool = False,
-        kl_weight: float = 1.0,
         save_result_folder_path: Union[str, None] = None,
         save_log_folder_path: Union[str, None] = None,
     ) -> None:
-        self.deterministic = deterministic
-        self.loss_kl_weight = kl_weight
-
-        self.loss_ortho_poses_weight = 1.0
-        self.loss_positions_weight = 1.0
-        self.loss_mask_params_weight = 1.0
-        self.loss_sh_params_weight = 1.0
-
         self.accum_iter = accum_iter
         self.dtype = dtype
         self.device = device
@@ -73,7 +62,6 @@ class Trainer(object):
         self.factor = factor
         self.patience = patience
         self.min_lr = min_lr
-        self.drop_prob = drop_prob
 
         self.save_result_folder_path = save_result_folder_path
         self.save_log_folder_path = save_log_folder_path
