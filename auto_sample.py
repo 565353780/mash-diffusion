@@ -12,11 +12,16 @@ def waitTime(wait_second: int) -> bool:
 
 if __name__ == "__main__":
     model_file_path = "./output/20241025_00:13:48/model_last.pth"
+    start_epoch_idx = 201
+    sample_now = False
 
     new_time = os.path.getmtime(model_file_path)
-    last_time = new_time
+    if sample_now:
+        last_time = 0.0
+    else:
+        last_time = new_time
 
-    current_epoch = 7
+    current_epoch = start_epoch_idx
 
     while True:
         new_time = os.path.getmtime(model_file_path)

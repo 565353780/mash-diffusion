@@ -147,15 +147,9 @@ def demo(save_folder_path: Union[str, None] = None):
     device = 'cuda:0'
 
     categoty_id = 18
-    image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/03001627/46bd3baefe788d166c05d60b45815/y_0_x_1.png'
-
     # demoCondition(categoty_id, sample_num, device, save_folder_path, 'category')
 
-    if not os.path.exists(image_file_path):
-        print('[ERROR][sampler::demo]')
-        print('\t image file not exist!')
-        return False
-
+    image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/03001627/46bd3baefe788d166c05d60b45815/y_3_x_2.png'
     demoCondition(image_file_path, sample_num, device, save_folder_path, 'image')
 
     return True

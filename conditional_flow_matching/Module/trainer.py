@@ -293,6 +293,8 @@ class Trainer(object):
 
                 self.autoSaveModel(train_loss_dict['Loss'], data_name)
 
+                self.autoSaveModel(train_loss_dict['Loss'], "total")
+
                 if need_stop:
                     break
 
