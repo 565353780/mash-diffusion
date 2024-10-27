@@ -5,15 +5,56 @@ sys.path.append("../ma-sh/")
 
 import os
 import gc
+import clip
 import torch
 import open3d as o3d
+from PIL import Image
 from tqdm import tqdm
 from math import sqrt, ceil
+from shutil import copyfile
 
 from conditional_flow_matching.Module.sampler import Sampler
 
 
-def demo(save_folder_path: Union[str, None] = None):
+clip_model_id: str = "ViT-L/14"
+device = 'cuda:0'
+
+model, preprocess = clip.load(clip_model_id, device=device)
+model.eval()
+
+def demoCondition(
+    condition_value: Union[int, str] = 18,
+    sample_num: int = 9,
+    device: str = 'cuda:0',
+    save_folder_path: Union[str, None] = None,
+    condition_type: str = 'categoty'):
+    assert condition_type in ['category', 'image']
+
+    if condition_type == 'category':
+        assert isinstance(condition_value, int)
+
+        condition = condition_value
+    elif condition_type == 'image':
+        assert isinstance(condition_value, str)
+
+        image_file_path = condition_value
+        if not os.path.exists(image_file_path):
+            print('[ERROR][sampler::demoCondition]')
+            print('\t condition image file not exist!')
+            return False
+
+        image = Image.open(image_file_path)
+        image = preprocess(image).unsqueeze(0).to(device)
+
+        with torch.no_grad():
+            condition = (
+                model.encode_image(image).detach().clone().cpu().numpy()
+            )
+    else:
+        print('[ERROR][sampler::demoCondition]')
+        print('\t condition type not valid!')
+        return False
+
     output_folder_path = './output/'
     model_folder_name_list = os.listdir(output_folder_path)
 
@@ -30,18 +71,18 @@ def demo(save_folder_path: Union[str, None] = None):
     valid_model_folder_name_list.sort()
     model_folder_path = valid_model_folder_name_list[-1]
     #model_folder_path = 'pretrain-single-v1'
-    model_file_path = output_folder_path + model_folder_path + "/model_last.pth"
+    model_file_path = output_folder_path + model_folder_path + "/image_embedding_model_last.pth"
 
-    device = "cuda:0"
+    # category_id = 18
+    # sample_num = 9
 
-    sample_num = 9
-    category_id = 18
+    # device = "cuda:0"
 
     print(model_file_path)
     sampler = Sampler(model_file_path, device)
 
     print("start diffuse", sample_num, "mashs....")
-    sampled_array = sampler.sample(sample_num, category_id)
+    sampled_array = sampler.sample(sample_num, condition)
 
     object_dist = [2, 2, 2]
 
@@ -55,7 +96,11 @@ def demo(save_folder_path: Union[str, None] = None):
 
         if save_folder_path is None:
             save_folder_path = './output/sample/save_itr_' + str(j) + '/'
+        save_folder_path += condition_type + '/'
         os.makedirs(save_folder_path, exist_ok=True)
+
+        if condition_type == 'image':
+            copyfile(image_file_path, save_folder_path + 'condition_image.png')
 
         for i in tqdm(range(sample_num)):
 
@@ -95,4 +140,22 @@ def demo(save_folder_path: Union[str, None] = None):
     del mash_model
     gc.collect()
     torch.cuda.empty_cache()
+    return True
+
+def demo(save_folder_path: Union[str, None] = None):
+    sample_num = 9
+    device = 'cuda:0'
+
+    categoty_id = 18
+    image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/03001627/46bd3baefe788d166c05d60b45815/y_0_x_1.png'
+
+    # demoCondition(categoty_id, sample_num, device, save_folder_path, 'category')
+
+    if not os.path.exists(image_file_path):
+        print('[ERROR][sampler::demo]')
+        print('\t image file not exist!')
+        return False
+
+    demoCondition(image_file_path, sample_num, device, save_folder_path, 'image')
+
     return True

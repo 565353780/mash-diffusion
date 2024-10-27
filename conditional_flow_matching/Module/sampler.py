@@ -76,15 +76,23 @@ class Sampler(object):
     def sample(
         self,
         sample_num: int,
-        category_id: int = 0,
+        condition: Union[int, np.ndarray] = 0,
         ) -> np.ndarray: 
         self.model.eval()
 
-        condition = torch.ones([sample_num]).long().to(self.device) * category_id
+        if isinstance(condition, int):
+            condition_tensor = torch.ones([sample_num]).long().to(self.device) * condition
+        elif isinstance(condition, np.ndarray):
+            # condition dim: 1x768
+            condition_tensor = torch.from_numpy(condition).type(torch.float32).to(self.device).repeat(sample_num, 1)
+        else:
+            print('[ERROR][Sampler::sample]')
+            print('\t condition type not valid!')
+            return np.ndarray()
 
         traj = torchdiffeq.odeint(
-            lambda t, x: self.model.forward(x, condition, t),
-            torch.randn(condition.shape[0], 400, 25, device=self.device),
+            lambda t, x: self.model.forward(x, condition_tensor, t),
+            torch.randn(condition_tensor.shape[0], 400, 25, device=self.device),
             torch.linspace(0, 1, 10, device=self.device),
             atol=1e-4,
             rtol=1e-4,

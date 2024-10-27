@@ -9,3 +9,5 @@ pip install -r requirements.txt
 pip install -e .
 
 pip install -U timm einops
+
+pip install git+https://github.com/openai/CLIP.git
