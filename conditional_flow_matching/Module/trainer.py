@@ -1,5 +1,6 @@
 import os
 import torch
+import numpy as np
 from torch import nn
 from tqdm import tqdm
 from typing import Union
@@ -15,10 +16,11 @@ from torch.optim.lr_scheduler import (
 from torchcfm.conditional_flow_matching import *
 
 from conditional_flow_matching.Dataset.mash import MashDataset
+from conditional_flow_matching.Dataset.image_embedding import ImageEmbeddingDataset
 from conditional_flow_matching.Model.unet2d import MashUNet
 from conditional_flow_matching.Model.mash_net import MashNet
 from conditional_flow_matching.Method.time import getCurrentTime
-from conditional_flow_matching.Method.path import createFileFolder
+from conditional_flow_matching.Method.path import createFileFolder, removeFile, renameFile
 from conditional_flow_matching.Module.logger import Logger
 
 
@@ -68,12 +70,27 @@ class Trainer(object):
         self.save_file_idx = 0
         self.logger = Logger()
 
-        self.train_loader = DataLoader(
-            MashDataset(dataset_root_folder_path, 'train'),
+        mash_dataset = MashDataset(dataset_root_folder_path, 'train')
+        image_embedding_dataset = ImageEmbeddingDataset(dataset_root_folder_path, 'train')
+
+        mash_dataloader = DataLoader(
+            mash_dataset,
             shuffle=True,
             batch_size=batch_size,
             num_workers=num_workers,
         )
+
+        image_embedding_dataloader = DataLoader(
+            image_embedding_dataset,
+            shuffle=True,
+            batch_size=batch_size,
+            num_workers=num_workers,
+        )
+
+        self.dataloader_dict = {
+            'mash': mash_dataloader,
+            'image_embedding': image_embedding_dataloader,
+        }
 
         model_id = 2
         if model_id == 1:
@@ -146,11 +163,11 @@ class Trainer(object):
         optimizer: Optimizer,
     ) -> dict:
         cfm_mash_params = data['cfm_mash_params'].to(self.device)
-        category_id = data['category_id'].to(self.device)
+        condition = data['condition'].to(self.device)
 
         cfm_mash_params_noise = torch.randn_like(cfm_mash_params)
 
-        t, xt, ut, _, y1 = self.FM.guided_sample_location_and_conditional_flow(cfm_mash_params_noise, cfm_mash_params, y1=category_id)
+        t, xt, ut, _, y1 = self.FM.guided_sample_location_and_conditional_flow(cfm_mash_params_noise, cfm_mash_params, y1=condition)
 
         vt = self.model(xt, y1, t)
 
@@ -185,6 +202,22 @@ class Trainer(object):
 
         return current_warm_epoch >= self.warm_epoch_num
 
+    def toCondition(self, data: dict) -> Union[torch.Tensor, None]:
+        if 'category_id' in data.keys():
+            return data['category_id']
+
+        if 'image_embedding' in data.keys():
+            image_embedding = data["image_embedding"]
+            key_idx = np.random.choice(len(image_embedding.keys()))
+            key = list(image_embedding.keys())[key_idx]
+            condition = image_embedding[key]
+
+            return condition
+
+        print('[ERROR][Trainer::toCondition]')
+        print('\t valid condition type not found!')
+        return None
+
     def train(
         self,
         optimizer: Optimizer,
@@ -193,6 +226,8 @@ class Trainer(object):
         train_step_num = self.toTrainStepNum(scheduler)
         final_step = self.step + train_step_num
 
+        need_stop = False
+
         print("[INFO][Trainer::train]")
         print("\t start training ...")
 
@@ -200,45 +235,69 @@ class Trainer(object):
         while self.step < final_step:
             self.model.train()
 
-            pbar = tqdm(total=len(self.train_loader))
-            for data in self.train_loader:
-                train_loss_dict = self.trainStep(data, optimizer)
+            for data_name, dataloader in self.dataloader_dict.items():
+                print('[INFO][Trainer::train]')
+                print('\t start training on dataset [', data_name, ']...')
 
-                loss_dict_list.append(train_loss_dict)
+                pbar = tqdm(total=len(dataloader))
 
-                lr = self.getLr(optimizer)
+                for data in dataloader:
+                    condition = self.toCondition(data)
+                    if condition is None:
+                        print('[ERROR][Trainer::train]')
+                        print('\t toCondition failed!')
+                        continue
 
-                if (self.step + 1) % self.accum_iter == 0:
-                    for key in train_loss_dict.keys():
-                        value = 0
-                        for i in range(len(loss_dict_list)):
-                            value += loss_dict_list[i][key]
-                        value /= len(loss_dict_list)
-                        self.logger.addScalar("Train/" + key, value, self.step)
-                    self.logger.addScalar("Train/Lr", lr, self.step)
+                    conditional_data = {
+                        'cfm_mash_params': data['cfm_mash_params'],
+                        'condition': condition,
+                    }
 
-                    loss_dict_list = []
+                    train_loss_dict = self.trainStep(conditional_data, optimizer)
 
-                pbar.set_description(
-                    "LOSS %.6f LR %.4f"
-                    % (
-                        train_loss_dict["Loss"],
-                        self.getLr(optimizer) / self.lr,
+                    loss_dict_list.append(train_loss_dict)
+
+                    lr = self.getLr(optimizer)
+
+                    if (self.step + 1) % self.accum_iter == 0:
+                        for key in train_loss_dict.keys():
+                            value = 0
+                            for i in range(len(loss_dict_list)):
+                                value += loss_dict_list[i][key]
+                            value /= len(loss_dict_list)
+                            self.logger.addScalar("Train/" + key, value, self.step)
+                        self.logger.addScalar("Train/Lr", lr, self.step)
+
+                        loss_dict_list = []
+
+                    pbar.set_description(
+                        "LOSS %.6f LR %.4f"
+                        % (
+                            train_loss_dict["Loss"],
+                            self.getLr(optimizer) / self.lr,
+                        )
                     )
-                )
 
-                self.step += 1
-                pbar.update(1)
+                    self.step += 1
+                    pbar.update(1)
 
-                if self.checkStop(optimizer, scheduler, train_loss_dict):
+                    if self.checkStop(optimizer, scheduler, train_loss_dict):
+                        need_stop = True
+                        break
+
+                    if self.step >= final_step:
+                        need_stop = True
+                        break
+
+                pbar.close()
+
+                self.autoSaveModel(train_loss_dict['Loss'], data_name)
+
+                if need_stop:
                     break
 
-                if self.step >= final_step:
-                    break
-
-            pbar.close()
-
-            self.autoSaveModel(train_loss_dict['Loss'])
+            if need_stop:
+                break
 
         return True
 
@@ -281,13 +340,21 @@ class Trainer(object):
 
         return True
 
-    def autoSaveModel(self, value: float, check_lower: bool = True) -> bool:
+    def autoSaveModel(self, value: float, name: str, check_lower: bool = True) -> bool:
         if self.save_result_folder_path is None:
             return False
 
-        save_last_model_file_path = self.save_result_folder_path + "model_last.pth"
+        save_last_model_file_path = self.save_result_folder_path + name + "_model_last.pth"
 
-        self.saveModel(save_last_model_file_path)
+        tmp_save_last_model_file_path = save_last_model_file_path[:-4] + "_tmp.pth"
+
+        self.saveModel(tmp_save_last_model_file_path)
+
+        removeFile(save_last_model_file_path)
+        renameFile(tmp_save_last_model_file_path, save_last_model_file_path)
+
+        #FIXME: ignore best loss since diffusion loss is kind of randomly
+        return True
 
         if self.loss_min == float("inf"):
             if not check_lower:
@@ -302,8 +369,13 @@ class Trainer(object):
 
         self.loss_min = value
 
-        save_best_model_file_path = self.save_result_folder_path + "model_best.pth"
+        save_best_model_file_path = self.save_result_folder_path + name + "_model_best.pth"
 
-        self.saveModel(save_best_model_file_path)
+        tmp_save_best_model_file_path = save_best_model_file_path[:-4] + "_tmp.pth"
+
+        self.saveModel(tmp_save_best_model_file_path)
+
+        removeFile(save_best_model_file_path)
+        renameFile(tmp_save_best_model_file_path, save_best_model_file_path)
 
         return True
