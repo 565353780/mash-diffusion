@@ -28,7 +28,15 @@ class Sampler(object):
         if model_id == 1:
             self.model = MashUNet(self.context_dim).to(self.device)
         elif model_id == 2:
-            self.model = MashNet(n_latents=self.mash_channel, mask_degree=self.mask_degree, sh_degree=self.sh_degree, context_dim=self.context_dim,n_heads=self.n_heads, d_head=self.d_head,depth=self.depth).to(self.device)
+            self.model = MashNet(
+                n_latents=self.mash_channel,
+                mask_degree=self.mask_degree,
+                sh_degree=self.sh_degree,
+                context_dim=self.context_dim,
+                n_heads=self.n_heads,
+                d_head=self.d_head,
+                depth=self.depth
+            ).to(self.device)
 
         if model_file_path is not None:
             self.loadModel(model_file_path)
@@ -50,26 +58,20 @@ class Sampler(object):
         )
         return mash_model
 
-    def loadModel(self, model_file_path, resume_model_only=True):
+    def loadModel(self, model_file_path):
         if not os.path.exists(model_file_path):
             print("[ERROR][MashSampler::loadModel]")
             print("\t model_file not exist!")
+            print("\t model_file_path:", model_file_path)
             return False
 
         model_dict = torch.load(model_file_path, map_location=torch.device(self.device))
 
-        self.model.load_state_dict(model_dict["model"])
-
-        if not resume_model_only:
-            # self.optimizer.load_state_dict(model_dict["optimizer"])
-            self.step = model_dict["step"]
-            self.eval_step = model_dict["eval_step"]
-            self.loss_min = model_dict["loss_min"]
-            self.eval_loss_min = model_dict["eval_loss_min"]
-            self.log_folder_name = model_dict["log_folder_name"]
+        self.model.load_state_dict(model_dict["ema_model"])
 
         print("[INFO][MashSampler::loadModel]")
         print("\t load model success!")
+        print("\t model_file_path:", model_file_path)
         return True
 
     @torch.no_grad()
