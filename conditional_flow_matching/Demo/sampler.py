@@ -15,6 +15,10 @@ from shutil import copyfile
 from conditional_flow_matching.Method.time import getCurrentTime
 from conditional_flow_matching.Module.sampler import Sampler
 
+global current_time
+
+current_time = None
+
 
 def demoCondition(
     use_ema: bool = True,
@@ -84,12 +88,15 @@ def demoCondition(
 
     mash_model = sampler.toInitialMashModel('cpu')
 
+    global current_time
+
     for j in range(sampled_array.shape[0]):
         if j != sampled_array.shape[0] -  1:
             continue
 
         if save_folder_path is None:
-            current_time = getCurrentTime()
+            if current_time is None:
+                current_time = getCurrentTime()
             save_folder_path = './output/sample/' + current_time + '/iter-' + str(j) + '/'
 
         if use_ema:
@@ -130,7 +137,7 @@ def demoCondition(
                 mash_pcd.translate(translate)
 
             o3d.io.write_point_cloud(
-                save_folder_path + 'sample_' + str(i) + '.ply',
+                save_folder_path + 'sample_' + str(i+1) + '.ply',
                 mash_pcd,
                 write_ascii=True,
             )
