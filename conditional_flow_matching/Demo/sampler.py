@@ -1,7 +1,4 @@
 import sys
-from threading import current_thread
-from typing import Union
-
 sys.path.append("../ma-sh/")
 
 import os
@@ -11,6 +8,7 @@ import torch
 import open3d as o3d
 from PIL import Image
 from tqdm import tqdm
+from typing import Union
 from math import sqrt, ceil
 from shutil import copyfile
 
