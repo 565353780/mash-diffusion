@@ -1,17 +1,11 @@
 import os
 import torch
-import numpy as np
-from torch import nn
 from tqdm import tqdm
+from copy import deepcopy
 from typing import Union
-from torchdyn.core import NeuralODE
+from torch.optim import Adam
 from torch.utils.data import DataLoader
-from torch.optim import Optimizer, AdamW
-from torch.optim.lr_scheduler import (
-    LRScheduler,
-    CosineAnnealingWarmRestarts,
-    ReduceLROnPlateau,
-)
+from torch.optim.lr_scheduler import LambdaLR
 
 from torchcfm.conditional_flow_matching import *
 
@@ -28,46 +22,30 @@ class Trainer(object):
     def __init__(
         self,
         dataset_root_folder_path: str,
-        batch_size: int = 400,
+        batch_size: int = 48,
         accum_iter: int = 1,
-        num_workers: int = 4,
+        num_workers: int = 16,
         model_file_path: Union[str, None] = None,
-        dtype=torch.float32,
-        device: str = "cpu",
-        warm_epoch_step_num: int = 20,
-        warm_epoch_num: int = 10,
-        finetune_step_num: int = 400,
-        lr: float = 1e-2,
-        weight_decay: float = 1e-4,
-        factor: float = 0.9,
-        patience: int = 1,
-        min_lr: float = 1e-4,
+        device: str = "cuda:0",
+        warm_step_num: int = 5000,
+        finetune_step_num: int = -1,
+        lr: float = 1e-4,
+        ema_decay: float = 0.9999,
         save_result_folder_path: Union[str, None] = None,
         save_log_folder_path: Union[str, None] = None,
     ) -> None:
         self.accum_iter = accum_iter
-        self.dtype = dtype
         self.device = device
-
-        self.warm_epoch_step_num = warm_epoch_step_num
-        self.warm_epoch_num = warm_epoch_num
-
+        self.warm_step_num = warm_step_num
         self.finetune_step_num = finetune_step_num
-
-        self.step = 0
-        self.loss_min = float("inf")
-
-        self.best_params_dict = {}
-
         self.lr = lr
-        self.weight_decay = weight_decay
-        self.factor = factor
-        self.patience = patience
-        self.min_lr = min_lr
+        self.ema_decay = ema_decay
 
         self.save_result_folder_path = save_result_folder_path
         self.save_log_folder_path = save_log_folder_path
-        self.save_file_idx = 0
+
+        self.step = 0
+
         self.logger = Logger()
 
         mash_dataset = MashDataset(dataset_root_folder_path, 'train')
@@ -98,22 +76,20 @@ class Trainer(object):
         elif model_id == 2:
             self.model = MashNet().to(device)
 
-        self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
-        self.node = NeuralODE(self.model, solver="dopri5", sensitivity="adjoint", atol=1e-4, rtol=1e-4)
+        self.ema_model = deepcopy(self.model)
 
-        self.loss_fn = nn.MSELoss()
+        self.optim = Adam(self.model.parameters(), lr=lr)
+        self.sched = LambdaLR(self.optim, lr_lambda=self.warmup_lr)
+
+        self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
 
         self.initRecords()
 
         if model_file_path is not None:
             self.loadModel(model_file_path)
-
-        self.min_lr_reach_time = 0
         return
 
     def initRecords(self) -> bool:
-        self.save_file_idx = 0
-
         current_time = getCurrentTime()
 
         if self.save_result_folder_path == "auto":
@@ -137,30 +113,27 @@ class Trainer(object):
 
         model_state_dict = torch.load(model_file_path)
         self.model.load_state_dict(model_state_dict["model"])
+        self.ema_model.load_state_dict(model_state_dict["ema_model"])
         return True
 
-    def getLr(self, optimizer) -> float:
-        return optimizer.state_dict()["param_groups"][0]["lr"]
+    def getLr(self) -> float:
+        return self.optim.state_dict()["param_groups"][0]["lr"]
 
-    def toTrainStepNum(self, scheduler: LRScheduler) -> int:
-        if not isinstance(scheduler, CosineAnnealingWarmRestarts):
-            return self.finetune_step_num
+    def warmup_lr(self, step: int) -> float:
+        return min(step, self.warm_step_num) / self.warm_step_num
 
-        if scheduler.T_mult == 1:
-            warm_epoch_num = scheduler.T_0 * self.warm_epoch_num
-        else:
-            warm_epoch_num = int(
-                scheduler.T_mult
-                * (1.0 - pow(scheduler.T_mult, self.warm_epoch_num))
-                / (1.0 - scheduler.T_mult)
+    def ema(self) -> bool:
+        source_dict = self.model.state_dict()
+        target_dict = self.ema_model.state_dict()
+        for key in source_dict.keys():
+            target_dict[key].data.copy_(
+                target_dict[key].data * self.ema_decay + source_dict[key].data * (1 - self.ema_decay)
             )
-
-        return self.warm_epoch_step_num * warm_epoch_num
+        return True
 
     def trainStep(
         self,
         data: dict,
-        optimizer: Optimizer,
     ) -> dict:
         cfm_mash_params = data['cfm_mash_params'].to(self.device)
         condition = data['condition'].to(self.device)
@@ -171,14 +144,17 @@ class Trainer(object):
 
         vt = self.model(xt, y1, t)
 
-        loss = self.loss_fn(vt, ut)
+        loss = torch.mean((vt - ut) ** 2)
 
         accum_loss = loss / self.accum_iter
         accum_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
 
         if (self.step + 1) % self.accum_iter == 0:
-            optimizer.step()
-            optimizer.zero_grad()
+            self.optim.step()
+            self.sched.step()
+            self.ema()
+            self.optim.zero_grad()
 
         loss_dict = {
             "Loss": loss.item(),
@@ -186,31 +162,15 @@ class Trainer(object):
 
         return loss_dict
 
-    def checkStop(
-        self, optimizer: Optimizer, scheduler: LRScheduler, loss_dict: dict
-    ) -> bool:
-        if not isinstance(scheduler, CosineAnnealingWarmRestarts):
-            scheduler.step(loss_dict["Loss"])
-
-            if self.getLr(optimizer) == self.min_lr:
-                self.min_lr_reach_time += 1
-
-            return self.min_lr_reach_time > self.patience
-
-        current_warm_epoch = self.step / self.warm_epoch_step_num
-        scheduler.step(current_warm_epoch)
-
-        return current_warm_epoch >= self.warm_epoch_num
-
     def toCondition(self, data: dict) -> Union[torch.Tensor, None]:
         if 'category_id' in data.keys():
             return data['category_id']
 
         if 'image_embedding' in data.keys():
             image_embedding = data["image_embedding"]
-            key_idx = np.random.choice(len(image_embedding.keys()))
-            key = list(image_embedding.keys())[key_idx]
-            condition = image_embedding[key]
+            # key_idx = np.random.choice(len(image_embedding.keys()))
+            # key = list(image_embedding.keys())[key_idx]
+            condition = image_embedding['y_5_x_3.png']
 
             return condition
 
@@ -218,21 +178,16 @@ class Trainer(object):
         print('\t valid condition type not found!')
         return None
 
-    def train(
-        self,
-        optimizer: Optimizer,
-        scheduler: LRScheduler,
-    ) -> bool:
-        train_step_num = self.toTrainStepNum(scheduler)
-        final_step = self.step + train_step_num
-
-        need_stop = False
+    def train(self) -> bool:
+        final_step = self.step + self.finetune_step_num
 
         print("[INFO][Trainer::train]")
         print("\t start training ...")
 
         loss_dict_list = []
-        while self.step < final_step:
+
+        epoch_idx = 1
+        while self.step < final_step or self.finetune_step_num < 0:
             self.model.train()
 
             for data_name, dataloader in self.dataloader_dict.items():
@@ -253,11 +208,11 @@ class Trainer(object):
                         'condition': condition,
                     }
 
-                    train_loss_dict = self.trainStep(conditional_data, optimizer)
+                    train_loss_dict = self.trainStep(conditional_data)
 
                     loss_dict_list.append(train_loss_dict)
 
-                    lr = self.getLr(optimizer)
+                    lr = self.getLr()
 
                     if (self.step + 1) % self.accum_iter == 0:
                         for key in train_loss_dict.keys():
@@ -271,62 +226,24 @@ class Trainer(object):
                         loss_dict_list = []
 
                     pbar.set_description(
-                        "LOSS %.6f LR %.4f"
+                        "EPOCH %d LOSS %.6f LR %.4f"
                         % (
+                            epoch_idx,
                             train_loss_dict["Loss"],
-                            self.getLr(optimizer) / self.lr,
+                            self.getLr() / self.lr,
                         )
                     )
 
                     self.step += 1
                     pbar.update(1)
 
-                    if self.checkStop(optimizer, scheduler, train_loss_dict):
-                        need_stop = True
-                        break
-
-                    if self.step >= final_step:
-                        need_stop = True
-                        break
-
                 pbar.close()
 
-                self.autoSaveModel(train_loss_dict['Loss'], data_name)
+                self.autoSaveModel(data_name)
 
-                self.autoSaveModel(train_loss_dict['Loss'], "total")
+                self.autoSaveModel("total")
 
-                if need_stop:
-                    break
-
-            if need_stop:
-                break
-
-        return True
-
-    def autoTrain(
-        self,
-    ) -> bool:
-        print("[INFO][Trainer::autoTrain]")
-        print("\t start auto train mash occ decoder...")
-
-        optimizer = AdamW(
-            self.model.parameters(),
-            lr=self.lr,
-            weight_decay=self.weight_decay,
-        )
-        warm_scheduler = CosineAnnealingWarmRestarts(optimizer, T_0=1, T_mult=1)
-        finetune_scheduler = ReduceLROnPlateau(
-            optimizer,
-            mode="min",
-            factor=self.factor,
-            patience=self.patience,
-            min_lr=self.min_lr,
-        )
-
-        self.train(optimizer, warm_scheduler)
-        for param_group in optimizer.param_groups:
-            param_group["lr"] = self.lr
-        self.train(optimizer, finetune_scheduler)
+                epoch_idx += 1
 
         return True
 
@@ -335,14 +252,14 @@ class Trainer(object):
 
         model_state_dict = {
             "model": self.model.state_dict(),
-            "loss_min": self.loss_min,
+            "ema_model": self.ema_model.state_dict(),
         }
 
         torch.save(model_state_dict, save_model_file_path)
 
         return True
 
-    def autoSaveModel(self, value: float, name: str, check_lower: bool = True) -> bool:
+    def autoSaveModel(self, name: str) -> bool:
         if self.save_result_folder_path is None:
             return False
 
@@ -354,30 +271,5 @@ class Trainer(object):
 
         removeFile(save_last_model_file_path)
         renameFile(tmp_save_last_model_file_path, save_last_model_file_path)
-
-        #FIXME: ignore best loss since diffusion loss is kind of randomly
-        return True
-
-        if self.loss_min == float("inf"):
-            if not check_lower:
-                self.loss_min = -float("inf")
-
-        if check_lower:
-            if value > self.loss_min:
-                return False
-        else:
-            if value < self.loss_min:
-                return False
-
-        self.loss_min = value
-
-        save_best_model_file_path = self.save_result_folder_path + name + "_model_best.pth"
-
-        tmp_save_best_model_file_path = save_best_model_file_path[:-4] + "_tmp.pth"
-
-        self.saveModel(tmp_save_best_model_file_path)
-
-        removeFile(save_best_model_file_path)
-        renameFile(tmp_save_best_model_file_path, save_best_model_file_path)
 
         return True

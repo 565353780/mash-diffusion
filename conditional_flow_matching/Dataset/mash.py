@@ -1,6 +1,3 @@
-import sys
-sys.path.append('../ma-sh/')
-
 import os
 import torch
 import numpy as np
@@ -24,71 +21,42 @@ class MashDataset(Dataset):
         self.preload_data = preload_data
 
         self.mash_folder_path = self.dataset_root_folder_path + "MashV4/"
-        self.split_folder_path = self.dataset_root_folder_path + "SplitMashCFM/"
         assert os.path.exists(self.mash_folder_path)
-        assert os.path.exists(self.split_folder_path)
 
         self.paths_list = []
 
-        dataset_name_list = os.listdir(self.split_folder_path)
+        dataset_name_list = os.listdir(self.mash_folder_path)
 
         for dataset_name in dataset_name_list:
-            mash_split_folder_path = self.split_folder_path + dataset_name + "/"
+            dataset_folder_path = self.mash_folder_path + dataset_name + "/"
 
-            categories = os.listdir(mash_split_folder_path)
+            categories = os.listdir(dataset_folder_path)
             # FIXME: for detect test only
             if self.split == "test":
                 # categories = ["02691156"]
                 categories = ["03001627"]
 
-            for j, category in enumerate(categories):
-                modelid_list_file_path = (
-                    mash_split_folder_path + category + "/" + self.split + ".txt"
-                )
-                if not os.path.exists(modelid_list_file_path):
-                    continue
+            print("[INFO][MashDataset::__init__]")
+            print("\t start load dataset [" + dataset_name + "]...")
+            for category in tqdm(categories):
+                category_id = CATEGORY_IDS[category]
 
-                with open(modelid_list_file_path, "r") as f:
-                    modelid_list = f.read().split()
+                class_folder_path = dataset_folder_path + category + "/"
 
-                print("[INFO][MashDataset::__init__]")
-                print(
-                    "\t start load dataset: "
-                    + dataset_name
-                    + "["
-                    + category
-                    + "], "
-                    + str(j + 1)
-                    + "/"
-                    + str(len(categories))
-                    + "..."
-                )
-                for modelid in tqdm(modelid_list):
-                    mash_file_path = (
-                        self.mash_folder_path
-                        + dataset_name
-                        + "/"
-                        + category
-                        + "/"
-                        + modelid
-                        + ".npy"
-                    )
+                mash_filename_list = os.listdir(class_folder_path)
 
-                    category_id = CATEGORY_IDS[category]
+                for mash_filename in mash_filename_list:
+                    mash_file_path = class_folder_path + mash_filename
 
                     if self.preload_data:
                         mash_params = np.load(mash_file_path, allow_pickle=True).item()
                         self.paths_list.append([mash_params, category_id])
                     else:
                         self.paths_list.append([mash_file_path, category_id])
-
         return
 
     def __len__(self):
-        if self.split == "train":
-            return len(self.paths_list)
-        else:
-            return len(self.paths_list)
+        return len(self.paths_list)
 
     def __getitem__(self, index: int):
         index = index % len(self.paths_list)

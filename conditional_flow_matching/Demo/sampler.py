@@ -16,12 +16,6 @@ from shutil import copyfile
 from conditional_flow_matching.Module.sampler import Sampler
 
 
-clip_model_id: str = "ViT-L/14"
-device = 'cuda:0'
-
-model, preprocess = clip.load(clip_model_id, device=device)
-model.eval()
-
 def demoCondition(
     condition_value: Union[int, str] = 18,
     sample_num: int = 9,
@@ -42,6 +36,10 @@ def demoCondition(
             print('[ERROR][sampler::demoCondition]')
             print('\t condition image file not exist!')
             return False
+
+        clip_model_id: str = "ViT-L/14"
+        model, preprocess = clip.load(clip_model_id, device=device)
+        model.eval()
 
         image = Image.open(image_file_path)
         image = preprocess(image).unsqueeze(0).to(device)
@@ -71,12 +69,7 @@ def demoCondition(
     valid_model_folder_name_list.sort()
     model_folder_path = valid_model_folder_name_list[-1]
     #model_folder_path = 'pretrain-single-v1'
-    model_file_path = output_folder_path + model_folder_path + "/image_embedding_model_last.pth"
-
-    # category_id = 18
-    # sample_num = 9
-
-    # device = "cuda:0"
+    model_file_path = output_folder_path + model_folder_path + "/total_model_last.pth"
 
     print(model_file_path)
     sampler = Sampler(model_file_path, device)
@@ -147,9 +140,9 @@ def demo(save_folder_path: Union[str, None] = None):
     device = 'cuda:0'
 
     categoty_id = 18
-    # demoCondition(categoty_id, sample_num, device, save_folder_path, 'category')
+    demoCondition(categoty_id, sample_num, device, save_folder_path, 'category')
 
-    image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/03001627/46bd3baefe788d166c05d60b45815/y_3_x_2.png'
+    image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/03001627/1a74a83fa6d24b3cacd67ce2c72c02e/y_5_x_3.png'
     demoCondition(image_file_path, sample_num, device, save_folder_path, 'image')
 
     return True

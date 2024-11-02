@@ -13,7 +13,7 @@ class MashNet(torch.nn.Module):
         context_dim=768,
         n_heads=8,
         d_head=64,
-        depth=24,
+        depth=12,
         sigma_min=0,
         sigma_max=float("inf"),
         sigma_data=1,

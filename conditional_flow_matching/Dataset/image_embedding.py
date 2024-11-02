@@ -1,9 +1,7 @@
-import sys
-sys.path.append('../ma-sh/')
-
 import os
 import torch
 import numpy as np
+from tqdm import tqdm
 from torch.utils.data import Dataset
 
 from ma_sh.Model.mash import Mash
@@ -39,23 +37,13 @@ class ImageEmbeddingDataset(Dataset):
                 # categories = ["02691156"]
                 categories = ["03001627"]
 
-            for i, category in enumerate(categories):
+            print("[INFO][ImageEmbeddingDataset::__init__]")
+            print("\t start load dataset [" + dataset_name + "]...")
+            for category in tqdm(categories):
                 class_folder_path = dataset_folder_path + category + "/"
 
                 mash_filename_list = os.listdir(class_folder_path)
 
-                print("[INFO][ImageEmbeddingDataset::__init__]")
-                print(
-                    "\t start load dataset: "
-                    + dataset_name
-                    + "["
-                    + category
-                    + "], "
-                    + str(i + 1)
-                    + "/"
-                    + str(len(categories))
-                    + "..."
-                )
                 for mash_filename in mash_filename_list:
                     path_dict = {}
                     mash_file_path = class_folder_path + mash_filename
