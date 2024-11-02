@@ -1,4 +1,5 @@
 import sys
+from threading import current_thread
 from typing import Union
 
 sys.path.append("../ma-sh/")
@@ -13,10 +14,12 @@ from tqdm import tqdm
 from math import sqrt, ceil
 from shutil import copyfile
 
+from conditional_flow_matching.Method.time import getCurrentTime
 from conditional_flow_matching.Module.sampler import Sampler
 
 
 def demoCondition(
+    use_ema: bool = True,
     condition_value: Union[int, str] = 18,
     sample_num: int = 9,
     device: str = 'cuda:0',
@@ -72,7 +75,7 @@ def demoCondition(
     model_file_path = output_folder_path + model_folder_path + "/total_model_last.pth"
 
     print(model_file_path)
-    sampler = Sampler(model_file_path, device)
+    sampler = Sampler(model_file_path, use_ema, device)
 
     print("start diffuse", sample_num, "mashs....")
     sampled_array = sampler.sample(sample_num, condition)
@@ -88,8 +91,14 @@ def demoCondition(
             continue
 
         if save_folder_path is None:
-            save_folder_path = './output/sample/save_itr_' + str(j) + '/'
-        save_folder_path += condition_type + '/'
+            current_time = getCurrentTime()
+            save_folder_path = './output/sample/' + current_time + '/iter-' + str(j) + '/'
+
+        if use_ema:
+            ema_state = 'ema'
+        else:
+            ema_state = 'normal'
+        save_folder_path += ema_state + '/' + condition_type + '/'
         os.makedirs(save_folder_path, exist_ok=True)
 
         if condition_type == 'image':
@@ -140,9 +149,11 @@ def demo(save_folder_path: Union[str, None] = None):
     device = 'cuda:0'
 
     categoty_id = 18
-    demoCondition(categoty_id, sample_num, device, save_folder_path, 'category')
+    demoCondition(True, categoty_id, sample_num, device, save_folder_path, 'category')
+    demoCondition(False, categoty_id, sample_num, device, save_folder_path, 'category')
 
     image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/03001627/1a74a83fa6d24b3cacd67ce2c72c02e/y_5_x_3.png'
-    demoCondition(image_file_path, sample_num, device, save_folder_path, 'image')
+    demoCondition(True, image_file_path, sample_num, device, save_folder_path, 'image')
+    demoCondition(False, image_file_path, sample_num, device, save_folder_path, 'image')
 
     return True

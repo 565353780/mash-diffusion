@@ -12,7 +12,10 @@ from conditional_flow_matching.Model.mash_net import MashNet
 
 class Sampler(object):
     def __init__(
-        self, model_file_path: Union[str, None] = None, device: str = "cpu"
+        self,
+        model_file_path: Union[str, None] = None,
+        use_ema: bool = True,
+        device: str = "cpu"
     ) -> None:
         self.mash_channel = 400
         self.encoded_mash_channel = 25
@@ -22,6 +25,8 @@ class Sampler(object):
         self.n_heads = 8
         self.d_head = 64
         self.depth = 12
+
+        self.use_ema = use_ema
         self.device = device
 
         model_id = 2
@@ -67,7 +72,10 @@ class Sampler(object):
 
         model_dict = torch.load(model_file_path, map_location=torch.device(self.device))
 
-        self.model.load_state_dict(model_dict["ema_model"])
+        if self.use_ema:
+            self.model.load_state_dict(model_dict["ema_model"])
+        else:
+            self.model.load_state_dict(model_dict["model"])
 
         print("[INFO][MashSampler::loadModel]")
         print("\t load model success!")
