@@ -77,6 +77,7 @@ class Trainer(object):
             self.model = MashNet().to(device)
 
         self.ema_model = deepcopy(self.model)
+        self.ema_loss = None
 
         self.optim = Adam(self.model.parameters(), lr=lr)
         self.sched = LambdaLR(self.optim, lr_lambda=self.warmup_lr)
@@ -222,6 +223,12 @@ class Trainer(object):
                             value /= len(loss_dict_list)
                             self.logger.addScalar("Train/" + key, value, self.step)
                         self.logger.addScalar("Train/Lr", lr, self.step)
+
+                        if self.ema_loss is None:
+                            self.ema_loss = train_loss_dict["Loss"]
+                        else:
+                            self.ema_loss = self.ema_loss * self.ema_decay + train_loss_dict["Loss"] * (1 - self.ema_decay)
+                        self.logger.addScalar("Train/EMALoss", self.ema_loss, self.step)
 
                         loss_dict_list = []
 

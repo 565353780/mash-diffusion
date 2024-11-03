@@ -82,7 +82,7 @@ def demoCondition(
     print("start diffuse", sample_num, "mashs....")
     sampled_array = sampler.sample(sample_num, condition)
 
-    object_dist = [2, 2, 2]
+    object_dist = [0, 0, 0]
 
     row_num = ceil(sqrt(sample_num))
 
