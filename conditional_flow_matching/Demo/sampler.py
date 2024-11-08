@@ -5,7 +5,6 @@ import os
 import gc
 import clip
 import torch
-import open3d as o3d
 from PIL import Image
 from tqdm import tqdm
 from typing import Union
@@ -21,6 +20,7 @@ current_time = None
 
 
 def demoCondition(
+    model_file_path: str,
     use_ema: bool = True,
     condition_value: Union[int, str] = 18,
     sample_num: int = 9,
@@ -58,25 +58,6 @@ def demoCondition(
         print('\t condition type not valid!')
         return False
 
-    output_folder_path = './output/'
-    model_folder_name_list = os.listdir(output_folder_path)
-
-    valid_model_folder_name_list = []
-    valid_model_folder_name_list.append('2023')
-    for model_folder_name in model_folder_name_list:
-        if "2024" not in model_folder_name:
-            continue
-        if not os.path.isdir(output_folder_path + model_folder_name + "/"):
-            continue
-
-        valid_model_folder_name_list.append(model_folder_name)
-
-    valid_model_folder_name_list.sort()
-    model_folder_path = valid_model_folder_name_list[-1]
-    #model_folder_path = 'pretrain-single-v1'
-    model_file_path = output_folder_path + model_folder_path + "/total_model_last.pth"
-
-    print(model_file_path)
     sampler = Sampler(model_file_path, use_ema, device)
 
     print("start diffuse", sample_num, "mashs....")
@@ -103,7 +84,14 @@ def demoCondition(
             ema_state = 'ema'
         else:
             ema_state = 'normal'
-        save_folder_path += ema_state + '/' + condition_type + '/'
+        save_folder_path += ema_state + '/'
+
+        if condition_type == 'category':
+            condition_info = 'category/' + str(condition)
+        elif condition_type == 'image':
+            condition_info = 'image/' + image_file_path.split('/ShapeNet/')[1].split('/y_5_x_3.png')[0]
+        save_folder_path += condition_info + '/'
+
         os.makedirs(save_folder_path, exist_ok=True)
 
         if condition_type == 'image':
@@ -125,22 +113,17 @@ def demoCondition(
                 positions=positions,
                 ortho6d_poses=ortho_poses
             )
-            mash_pcd = mash_model.toSamplePcd()
 
-            if True:
-                translate = [
-                    int(i / row_num) * object_dist[0],
-                    (i % row_num) * object_dist[1],
-                    j * object_dist[2],
-                ]
+            translate = [
+                int(i / row_num) * object_dist[0],
+                (i % row_num) * object_dist[1],
+                j * object_dist[2],
+            ]
 
-                mash_pcd.translate(translate)
+            mash_model.translate(translate)
 
-            o3d.io.write_point_cloud(
-                save_folder_path + 'sample_' + str(i+1) + '.ply',
-                mash_pcd,
-                write_ascii=True,
-            )
+            mash_model.saveParamsFile(save_folder_path + 'mash/sample_' + str(i+1) + '.npy', True)
+            mash_model.saveAsPcdFile(save_folder_path + 'pcd/sample_' + str(i+1) + '.ply', True)
 
     del sampler
     del sampled_array
@@ -150,15 +133,28 @@ def demoCondition(
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
+    model_file_path = './output/24depth_370epoch/total_model_last.pth'
     sample_num = 9
-    device = 'cuda:0'
+    device = 'cpu'
 
     categoty_id = 18
-    demoCondition(True, categoty_id, sample_num, device, save_folder_path, 'category')
-    demoCondition(False, categoty_id, sample_num, device, save_folder_path, 'category')
+    for categoty_id in range(55):
+        print('start sample for category ' + str(categoty_id) + '...')
+        demoCondition(model_file_path, True, categoty_id, sample_num, device, save_folder_path, 'category')
 
-    image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/03001627/1a74a83fa6d24b3cacd67ce2c72c02e/y_5_x_3.png'
-    demoCondition(True, image_file_path, sample_num, device, save_folder_path, 'image')
-    demoCondition(False, image_file_path, sample_num, device, save_folder_path, 'image')
+    # image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/02691156/1adb40469ec3636c3d64e724106730cf'
+    image_id_list = [
+        '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
+        '03001627/1a38407b3036795d19fb4103277a6b93',
+        '03001627/1ab8a3b55c14a7b27eaeab1f0c9120b7',
+        '02691156/1a6ad7a24bb89733f412783097373bdc',
+        '02691156/1a32f10b20170883663e90eaf6b4ca52',
+        '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
+        '02691156/1adb40469ec3636c3d64e724106730cf',
+    ]
+    for image_id in image_id_list:
+        print('start sample for image ' + image_id + '...')
+        image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
+        demoCondition(model_file_path, True, image_file_path, sample_num, device, save_folder_path, 'image')
 
     return True

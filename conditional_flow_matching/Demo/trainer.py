@@ -6,15 +6,15 @@ from conditional_flow_matching.Module.trainer import Trainer
 
 def demo():
     dataset_root_folder_path = "/home/chli/Dataset/"
-    batch_size = 48
-    accum_iter = 1
+    batch_size = 24
+    accum_iter = 10
     num_workers = 16
     model_file_path = "./output/cfm_24depth_24h_class-image/total_model_last.pth"
     model_file_path = None
     device = "cuda:0"
     warm_step_num = 5000
     finetune_step_num = -1
-    lr = 1e-4
+    lr = 2e-4
     ema_decay = 0.9999
     save_result_folder_path = "auto"
     save_log_folder_path = "auto"

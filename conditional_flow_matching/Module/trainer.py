@@ -3,7 +3,7 @@ import torch
 from tqdm import tqdm
 from copy import deepcopy
 from typing import Union
-from torch.optim import Adam
+from torch.optim.adam import Adam
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import LambdaLR
 
@@ -149,9 +149,9 @@ class Trainer(object):
 
         accum_loss = loss / self.accum_iter
         accum_loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
 
         if (self.step + 1) % self.accum_iter == 0:
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
             self.optim.step()
             self.sched.step()
             self.ema()
