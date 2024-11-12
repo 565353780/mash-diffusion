@@ -7,10 +7,11 @@ from torch.utils.data import Dataset
 from ma_sh.Model.mash import Mash
 
 
-class ImageEmbeddingDataset(Dataset):
+class EmbeddingDataset(Dataset):
     def __init__(
         self,
         dataset_root_folder_path: str,
+        embedding_folder_name: str,
         split: str = "train",
         preload: bool = False,
     ) -> None:
@@ -19,10 +20,10 @@ class ImageEmbeddingDataset(Dataset):
         self.preload = preload
 
         self.mash_folder_path = self.dataset_root_folder_path + "MashV4/"
-        self.image_embedding_folder_path = self.dataset_root_folder_path + "ImageEmbedding/"
+        self.embedding_folder_path = self.dataset_root_folder_path + embedding_folder_name + "/"
 
         assert os.path.exists(self.mash_folder_path)
-        assert os.path.exists(self.image_embedding_folder_path)
+        assert os.path.exists(self.embedding_folder_path)
 
         self.path_dict_list = []
 
@@ -37,7 +38,7 @@ class ImageEmbeddingDataset(Dataset):
                 # categories = ["02691156"]
                 categories = ["03001627"]
 
-            print("[INFO][ImageEmbeddingDataset::__init__]")
+            print("[INFO][EmbeddingDataset::__init__]")
             print("\t start load dataset [" + dataset_name + "]...")
             for category in tqdm(categories):
                 class_folder_path = dataset_folder_path + category + "/"
@@ -51,20 +52,20 @@ class ImageEmbeddingDataset(Dataset):
                     if not os.path.exists(mash_file_path):
                         continue
 
-                    image_embedding_file_path = self.image_embedding_folder_path + dataset_name + '/' + \
+                    embedding_file_path = self.embedding_folder_path + dataset_name + '/' + \
                         category + '/' + mash_filename
 
-                    if not os.path.exists(image_embedding_file_path):
+                    if not os.path.exists(embedding_file_path):
                         continue
 
                     if self.preload:
                         mash_params = np.load(mash_file_path, allow_pickle=True).item()
-                        image_embedding = np.load(image_embedding_file_path, allow_pickle=True).item()
+                        embedding = np.load(embedding_file_path, allow_pickle=True).item()
                         path_dict['mash'] = mash_params
-                        path_dict['image_embedding'] = image_embedding
+                        path_dict['embedding'] = embedding
                     else:
                         path_dict['mash'] = mash_file_path
-                        path_dict['image_embedding'] = image_embedding_file_path
+                        path_dict['embedding'] = embedding_file_path
 
                     self.path_dict_list.append(path_dict)
         return
@@ -81,12 +82,12 @@ class ImageEmbeddingDataset(Dataset):
 
         if self.preload:
             mash_params = path_dict['mash']
-            image_embedding = path_dict['image_embedding']
+            embedding = path_dict['embedding']
         else:
             mash_file_path = path_dict['mash']
-            image_embedding_file_path = path_dict['image_embedding']
+            embedding_file_path = path_dict['embedding']
             mash_params = np.load(mash_file_path, allow_pickle=True).item()
-            image_embedding = np.load(image_embedding_file_path, allow_pickle=True).item()
+            embedding = np.load(embedding_file_path, allow_pickle=True).item()
 
         rotate_vectors = mash_params["rotate_vectors"]
         positions = mash_params["positions"]
@@ -126,10 +127,11 @@ class ImageEmbeddingDataset(Dataset):
 
         data['cfm_mash_params'] = cfm_mash_params
 
-        image_embedding_tensor = {}
+        key_idx = np.random.choice(len(embedding.keys()))
+        key = list(embedding.keys())[key_idx]
+        condition = embedding[key]
 
-        for key, item in image_embedding.items():
-            image_embedding_tensor[key] = torch.from_numpy(item).float()
+        embedding_tensor = torch.from_numpy(condition).float()
 
-        data['image_embedding'] = image_embedding_tensor
+        data['embedding'] = embedding_tensor
         return data

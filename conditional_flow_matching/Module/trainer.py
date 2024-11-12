@@ -10,7 +10,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torchcfm.conditional_flow_matching import *
 
 from conditional_flow_matching.Dataset.mash import MashDataset
-from conditional_flow_matching.Dataset.image_embedding import ImageEmbeddingDataset
+from conditional_flow_matching.Dataset.embedding import EmbeddingDataset
 from conditional_flow_matching.Model.unet2d import MashUNet
 from conditional_flow_matching.Model.mash_net import MashNet
 from conditional_flow_matching.Method.time import getCurrentTime
@@ -48,27 +48,21 @@ class Trainer(object):
 
         self.logger = Logger()
 
-        mash_dataset = MashDataset(dataset_root_folder_path, 'train')
-        image_embedding_dataset = ImageEmbeddingDataset(dataset_root_folder_path, 'train')
-
-        mash_dataloader = DataLoader(
-            mash_dataset,
-            shuffle=True,
-            batch_size=batch_size,
-            num_workers=num_workers,
-        )
-
-        image_embedding_dataloader = DataLoader(
-            image_embedding_dataset,
-            shuffle=True,
-            batch_size=batch_size,
-            num_workers=num_workers,
-        )
-
-        self.dataloader_dict = {
-            'mash': mash_dataloader,
-            'image_embedding': image_embedding_dataloader,
+        dataset_dict = {
+            'mash': MashDataset(dataset_root_folder_path, 'train'),
+            'image': EmbeddingDataset(dataset_root_folder_path, 'ImageEmbedding_ulip', 'train'),
+            'points': EmbeddingDataset(dataset_root_folder_path, 'PointsEmbedding', 'train'),
+            'text': EmbeddingDataset(dataset_root_folder_path, 'TextEmbedding_ShapeGlot', 'train'),
         }
+
+        self.dataloader_dict = {}
+        for key, item in dataset_dict.items():
+            self.dataloader_dict[key] = DataLoader(
+                item,
+                shuffle=True,
+                batch_size=batch_size,
+                num_workers=num_workers,
+            )
 
         model_id = 2
         if model_id == 1:
@@ -167,13 +161,8 @@ class Trainer(object):
         if 'category_id' in data.keys():
             return data['category_id']
 
-        if 'image_embedding' in data.keys():
-            image_embedding = data["image_embedding"]
-            # key_idx = np.random.choice(len(image_embedding.keys()))
-            # key = list(image_embedding.keys())[key_idx]
-            condition = image_embedding['y_5_x_3.png']
-
-            return condition
+        if 'embedding' in data.keys():
+            return data["embedding"]
 
         print('[ERROR][Trainer::toCondition]')
         print('\t valid condition type not found!')

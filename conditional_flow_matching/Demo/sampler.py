@@ -133,12 +133,25 @@ def demoCondition(
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
-    model_file_path = './output/24depth_370epoch/total_model_last.pth'
+    model_file_path = './output/6depth_1124epoch/total_model_last.pth'
     sample_num = 9
-    device = 'cpu'
+    device = 'cuda:0'
 
     categoty_id = 18
-    for categoty_id in range(55):
+    # 0: airplane
+    # 2: bag
+    # 6: bench
+    # 18: chair
+    # 22: monitor
+    # 23: earphone
+    # 24: spigot
+    # 26: guitar
+    # 30: lamp
+    # 46: skateboard
+    # 47: sofa
+    # 49: table
+    # 53: watercraft
+    for categoty_id in [0, 2, 6, 18, 22, 23, 24, 26, 30, 46, 47, 49, 53]:
         print('start sample for category ' + str(categoty_id) + '...')
         demoCondition(model_file_path, True, categoty_id, sample_num, device, save_folder_path, 'category')
 

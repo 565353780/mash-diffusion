@@ -21,7 +21,7 @@ class Sampler(object):
         self.encoded_mash_channel = 25
         self.mask_degree = 3
         self.sh_degree = 2
-        self.context_dim = 768
+        self.context_dim = 512
         self.n_heads = 8
         self.d_head = 64
         self.depth = 24

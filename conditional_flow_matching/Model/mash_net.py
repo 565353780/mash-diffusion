@@ -10,7 +10,7 @@ class MashNet(torch.nn.Module):
         n_latents=400,
         mask_degree: int = 3,
         sh_degree: int = 2,
-        context_dim=768,
+        context_dim=512,
         n_heads=8,
         d_head=64,
         depth=24,
