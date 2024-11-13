@@ -235,8 +235,6 @@ class Trainer(object):
 
                 pbar.close()
 
-                self.autoSaveModel(data_name)
-
                 self.autoSaveModel("total")
 
                 epoch_idx += 1

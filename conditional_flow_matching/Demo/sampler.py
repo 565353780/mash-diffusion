@@ -1,33 +1,32 @@
 import sys
 sys.path.append("../ma-sh/")
+sys.path.append("../ulip-manage/")
 
 import os
-import gc
-import clip
-import torch
-from PIL import Image
+import numpy as np
+import open3d as o3d
 from tqdm import tqdm
 from typing import Union
 from math import sqrt, ceil
 from shutil import copyfile
 
+from ma_sh.Data.mesh import Mesh
+from ulip_manage.Module.detector import Detector
+
 from conditional_flow_matching.Method.time import getCurrentTime
 from conditional_flow_matching.Module.sampler import Sampler
 
-global current_time
-
-current_time = None
-
 
 def demoCondition(
-    model_file_path: str,
-    use_ema: bool = True,
-    condition_value: Union[int, str] = 18,
+    sampler: Sampler,
+    detector: Detector,
+    time_stamp: str,
+    condition_value: Union[int, str, np.ndarray] = 18,
     sample_num: int = 9,
-    device: str = 'cuda:0',
     save_folder_path: Union[str, None] = None,
-    condition_type: str = 'categoty'):
-    assert condition_type in ['category', 'image']
+    condition_type: str = 'category',
+    condition_name: str = '0'):
+    assert condition_type in ['category', 'image', 'points', 'text']
 
     if condition_type == 'category':
         assert isinstance(condition_value, int)
@@ -42,23 +41,29 @@ def demoCondition(
             print('\t condition image file not exist!')
             return False
 
-        clip_model_id: str = "ViT-L/14"
-        model, preprocess = clip.load(clip_model_id, device=device)
-        model.eval()
+        condition = (
+            detector.encodeImageFile(image_file_path).cpu().numpy()
+        )
+    elif condition_type == 'points':
+        assert isinstance(condition_value, np.ndarray)
 
-        image = Image.open(image_file_path)
-        image = preprocess(image).unsqueeze(0).to(device)
+        points = condition_value
+        condition = (
+            detector.encodePointCloud(points).cpu().numpy()
+        )
+    elif condition_type == 'text':
+        assert isinstance(condition_value, str)
 
-        with torch.no_grad():
-            condition = (
-                model.encode_image(image).detach().clone().cpu().numpy()
-            )
+        text = condition_value
+        condition = (
+            detector.encodeText(condition_value).cpu().numpy()
+        )
     else:
         print('[ERROR][sampler::demoCondition]')
         print('\t condition type not valid!')
         return False
 
-    sampler = Sampler(model_file_path, use_ema, device)
+    condition_info = condition_type + '/' + condition_name
 
     print("start diffuse", sample_num, "mashs....")
     sampled_array = sampler.sample(sample_num, condition)
@@ -69,33 +74,26 @@ def demoCondition(
 
     mash_model = sampler.toInitialMashModel('cpu')
 
-    global current_time
-
     for j in range(sampled_array.shape[0]):
         if j != sampled_array.shape[0] -  1:
             continue
 
         if save_folder_path is None:
-            if current_time is None:
-                current_time = getCurrentTime()
-            save_folder_path = './output/sample/' + current_time + '/iter-' + str(j) + '/'
+            save_folder_path = './output/sample/' + time_stamp + '/iter-' + str(j) + '/'
 
-        if use_ema:
-            ema_state = 'ema'
-        else:
-            ema_state = 'normal'
-        save_folder_path += ema_state + '/'
-
-        if condition_type == 'category':
-            condition_info = 'category/' + str(condition)
-        elif condition_type == 'image':
-            condition_info = 'image/' + image_file_path.split('/ShapeNet/')[1].split('/y_5_x_3.png')[0]
         save_folder_path += condition_info + '/'
 
         os.makedirs(save_folder_path, exist_ok=True)
 
         if condition_type == 'image':
             copyfile(image_file_path, save_folder_path + 'condition_image.png')
+        elif condition_type == 'points':
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(points)
+            o3d.io.write_point_cloud(save_folder_path + 'condition_points.ply', pcd)
+        elif condition_type == 'text':
+            with open(save_folder_path + 'condition_text.txt', 'w') as f:
+                f.write(text)
 
         for i in tqdm(range(sample_num)):
 
@@ -125,19 +123,22 @@ def demoCondition(
             mash_model.saveParamsFile(save_folder_path + 'mash/sample_' + str(i+1) + '.npy', True)
             mash_model.saveAsPcdFile(save_folder_path + 'pcd/sample_' + str(i+1) + '.ply', True)
 
-    del sampler
-    del sampled_array
-    del mash_model
-    gc.collect()
-    torch.cuda.empty_cache()
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
-    model_file_path = './output/6depth_1124epoch/total_model_last.pth'
+    cfm_model_file_path = './output/24depth_512cond_142epoch/total_model_last.pth'
+    use_ema = True
     sample_num = 9
-    device = 'cuda:0'
+    device = 'cpu'
 
-    categoty_id = 18
+    ulip_model_file_path = '/home/chli/chLi/Model/ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
+    open_clip_model_file_path = '/home/chli/Model/CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
+
+    sampler = Sampler(cfm_model_file_path, use_ema, device)
+    detector = Detector(ulip_model_file_path, open_clip_model_file_path, device)
+
+    time_stamp = getCurrentTime()
+
     # 0: airplane
     # 2: bag
     # 6: bench
@@ -153,7 +154,7 @@ def demo(save_folder_path: Union[str, None] = None):
     # 53: watercraft
     for categoty_id in [0, 2, 6, 18, 22, 23, 24, 26, 30, 46, 47, 49, 53]:
         print('start sample for category ' + str(categoty_id) + '...')
-        demoCondition(model_file_path, True, categoty_id, sample_num, device, save_folder_path, 'category')
+        demoCondition(sampler, detector, time_stamp, categoty_id, sample_num, save_folder_path, 'category', str(categoty_id))
 
     # image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/02691156/1adb40469ec3636c3d64e724106730cf'
     image_id_list = [
@@ -168,6 +169,30 @@ def demo(save_folder_path: Union[str, None] = None):
     for image_id in image_id_list:
         print('start sample for image ' + image_id + '...')
         image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
-        demoCondition(model_file_path, True, image_file_path, sample_num, device, save_folder_path, 'image')
+        demoCondition(sampler, detector, time_stamp, image_file_path, sample_num, save_folder_path, 'image', image_id)
+
+    points_id_list = [
+        '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
+        '03001627/1a38407b3036795d19fb4103277a6b93',
+        '03001627/1ab8a3b55c14a7b27eaeab1f0c9120b7',
+        '02691156/1a6ad7a24bb89733f412783097373bdc',
+        '02691156/1a32f10b20170883663e90eaf6b4ca52',
+        '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
+        '02691156/1adb40469ec3636c3d64e724106730cf',
+    ]
+    for points_id in points_id_list:
+        print('start sample for points ' + points_id + '...')
+        mesh_file_path = '/home/chli/chLi/Dataset/ManifoldMesh/ShapeNet/' + points_id + '.obj'
+        points = Mesh(mesh_file_path).toSamplePoints(8192)
+        demoCondition(sampler, detector, time_stamp, points, sample_num, save_folder_path, 'points', points_id)
+
+    text_list = [
+        'a chair',
+        'a tall chair',
+        'a circle chair',
+    ]
+    for i, text in enumerate(text_list):
+        print('start sample for text [' + text + ']...')
+        demoCondition(sampler, detector, time_stamp, text, sample_num, save_folder_path, 'text', str(i))
 
     return True
