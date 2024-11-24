@@ -7,7 +7,7 @@ from torch.optim.adam import Adam
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import LambdaLR
 
-from torchcfm.conditional_flow_matching import *
+from torchcfm.conditional_flow_matching import ExactOptimalTransportConditionalFlowMatcher
 
 from conditional_flow_matching.Dataset.mash import MashDataset
 from conditional_flow_matching.Dataset.embedding import EmbeddingDataset
@@ -22,21 +22,21 @@ class Trainer(object):
     def __init__(
         self,
         dataset_root_folder_path: str,
-        batch_size: int = 48,
-        accum_iter: int = 1,
+        batch_size: int = 24,
+        accum_iter: int = 10,
         num_workers: int = 16,
         model_file_path: Union[str, None] = None,
         device: str = "cuda:0",
         warm_step_num: int = 5000,
         finetune_step_num: int = -1,
-        lr: float = 1e-4,
+        lr: float = 2e-4,
         ema_decay: float = 0.9999,
         save_result_folder_path: Union[str, None] = None,
         save_log_folder_path: Union[str, None] = None,
     ) -> None:
         self.accum_iter = accum_iter
         self.device = device
-        self.warm_step_num = warm_step_num
+        self.warm_step_num = warm_step_num / accum_iter
         self.finetune_step_num = finetune_step_num
         self.lr = lr
         self.ema_decay = ema_decay
@@ -48,17 +48,28 @@ class Trainer(object):
 
         self.logger = Logger()
 
-        dataset_dict = {
-            'mash': MashDataset(dataset_root_folder_path, 'train'),
-            'image': EmbeddingDataset(dataset_root_folder_path, 'ImageEmbedding_ulip', 'train'),
-            'points': EmbeddingDataset(dataset_root_folder_path, 'PointsEmbedding', 'train'),
-            'text': EmbeddingDataset(dataset_root_folder_path, 'TextEmbedding_ShapeGlot', 'train'),
+        self.dataloader_dict = {
+            'mash': {
+                'dataset': MashDataset(dataset_root_folder_path, 'train'),
+                'repeat_num': 1,
+            },
+            'image': {
+                'dataset': EmbeddingDataset(dataset_root_folder_path, 'ImageEmbedding_ulip', 'train'),
+                'repeat_num': 1,
+            },
+            'points': {
+                'dataset': EmbeddingDataset(dataset_root_folder_path, 'PointsEmbedding', 'train'),
+                'repeat_num': 1,
+            },
+            'text': {
+                'dataset': EmbeddingDataset(dataset_root_folder_path, 'TextEmbedding_ShapeGlot', 'train'),
+                'repeat_num': 10,
+            },
         }
 
-        self.dataloader_dict = {}
-        for key, item in dataset_dict.items():
-            self.dataloader_dict[key] = DataLoader(
-                item,
+        for key, item in self.dataloader_dict.items():
+            self.dataloader_dict[key]['dataloader'] = DataLoader(
+                item['dataset'],
                 shuffle=True,
                 batch_size=batch_size,
                 num_workers=num_workers,
@@ -180,60 +191,64 @@ class Trainer(object):
         while self.step < final_step or self.finetune_step_num < 0:
             self.model.train()
 
-            for data_name, dataloader in self.dataloader_dict.items():
-                print('[INFO][Trainer::train]')
-                print('\t start training on dataset [', data_name, ']...')
+            for data_name, dataloader_dict in self.dataloader_dict.items():
 
-                pbar = tqdm(total=len(dataloader))
+                dataloader = dataloader_dict['dataloader']
+                repeat_num = dataloader_dict['repeat_num']
 
-                for data in dataloader:
-                    condition = self.toCondition(data)
-                    if condition is None:
-                        print('[ERROR][Trainer::train]')
-                        print('\t toCondition failed!')
-                        continue
+                for i in range(repeat_num):
+                    print('[INFO][Trainer::train]')
+                    print('\t start training on dataset [', data_name, '] ,', i + 1, '/', repeat_num, '...')
 
-                    conditional_data = {
-                        'cfm_mash_params': data['cfm_mash_params'],
-                        'condition': condition,
-                    }
+                    pbar = tqdm(total=len(dataloader))
+                    for data in dataloader:
+                        condition = self.toCondition(data)
+                        if condition is None:
+                            print('[ERROR][Trainer::train]')
+                            print('\t toCondition failed!')
+                            continue
 
-                    train_loss_dict = self.trainStep(conditional_data)
+                        conditional_data = {
+                            'cfm_mash_params': data['cfm_mash_params'],
+                            'condition': condition,
+                        }
 
-                    loss_dict_list.append(train_loss_dict)
+                        train_loss_dict = self.trainStep(conditional_data)
 
-                    lr = self.getLr()
+                        loss_dict_list.append(train_loss_dict)
 
-                    if (self.step + 1) % self.accum_iter == 0:
-                        for key in train_loss_dict.keys():
-                            value = 0
-                            for i in range(len(loss_dict_list)):
-                                value += loss_dict_list[i][key]
-                            value /= len(loss_dict_list)
-                            self.logger.addScalar("Train/" + key, value, self.step)
-                        self.logger.addScalar("Train/Lr", lr, self.step)
+                        lr = self.getLr()
 
-                        if self.ema_loss is None:
-                            self.ema_loss = train_loss_dict["Loss"]
-                        else:
-                            self.ema_loss = self.ema_loss * self.ema_decay + train_loss_dict["Loss"] * (1 - self.ema_decay)
-                        self.logger.addScalar("Train/EMALoss", self.ema_loss, self.step)
+                        if (self.step + 1) % self.accum_iter == 0:
+                            for key in train_loss_dict.keys():
+                                value = 0
+                                for i in range(len(loss_dict_list)):
+                                    value += loss_dict_list[i][key]
+                                value /= len(loss_dict_list)
+                                self.logger.addScalar("Train/" + key, value, self.step)
+                            self.logger.addScalar("Train/Lr", lr, self.step)
 
-                        loss_dict_list = []
+                            if self.ema_loss is None:
+                                self.ema_loss = train_loss_dict["Loss"]
+                            else:
+                                self.ema_loss = self.ema_loss * self.ema_decay + train_loss_dict["Loss"] * (1 - self.ema_decay)
+                            self.logger.addScalar("Train/EMALoss", self.ema_loss, self.step)
 
-                    pbar.set_description(
-                        "EPOCH %d LOSS %.6f LR %.4f"
-                        % (
-                            epoch_idx,
-                            train_loss_dict["Loss"],
-                            self.getLr() / self.lr,
+                            loss_dict_list = []
+
+                        pbar.set_description(
+                            "EPOCH %d LOSS %.6f LR %.4f"
+                            % (
+                                epoch_idx,
+                                train_loss_dict["Loss"],
+                                self.getLr() / self.lr,
+                            )
                         )
-                    )
 
-                    self.step += 1
-                    pbar.update(1)
+                        self.step += 1
+                        pbar.update(1)
 
-                pbar.close()
+                    pbar.close()
 
                 self.autoSaveModel("total")
 

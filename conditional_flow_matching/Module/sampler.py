@@ -65,7 +65,7 @@ class Sampler(object):
 
     def loadModel(self, model_file_path):
         if not os.path.exists(model_file_path):
-            print("[ERROR][MashSampler::loadModel]")
+            print("[ERROR][Sampler::loadModel]")
             print("\t model_file not exist!")
             print("\t model_file_path:", model_file_path)
             return False
@@ -77,7 +77,7 @@ class Sampler(object):
         else:
             self.model.load_state_dict(model_dict["model"])
 
-        print("[INFO][MashSampler::loadModel]")
+        print("[INFO][Sampler::loadModel]")
         print("\t load model success!")
         print("\t model_file_path:", model_file_path)
         return True
