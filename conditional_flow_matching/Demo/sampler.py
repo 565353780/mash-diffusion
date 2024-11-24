@@ -126,10 +126,10 @@ def demoCondition(
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
-    cfm_model_file_path = './output/24depth_512cond_142epoch/total_model_last.pth'
+    cfm_model_file_path = './output/24depth_512cond_1300epoch/total_model_last.pth'
     use_ema = True
     sample_num = 9
-    device = 'cpu'
+    device = 'cuda:0'
 
     ulip_model_file_path = '/home/chli/chLi/Model/ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
     open_clip_model_file_path = '/home/chli/Model/CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
@@ -152,7 +152,8 @@ def demo(save_folder_path: Union[str, None] = None):
     # 47: sofa
     # 49: table
     # 53: watercraft
-    for categoty_id in [0, 2, 6, 18, 22, 23, 24, 26, 30, 46, 47, 49, 53]:
+    #for categoty_id in [0, 2, 6, 18, 22, 23, 24, 26, 30, 46, 47, 49, 53]:
+    for categoty_id in [0, 18]:
         print('start sample for category ' + str(categoty_id) + '...')
         demoCondition(sampler, detector, time_stamp, categoty_id, sample_num, save_folder_path, 'category', str(categoty_id))
 
