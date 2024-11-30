@@ -131,6 +131,7 @@ def demo(save_folder_path: Union[str, None] = None):
     cfm_model_file_path = './output/24depth_512cond_2000epoch/total_model_last.pth'
     use_ema = True
     sample_num = 100
+    sample_id_num = 50
     device = 'cuda:0'
 
     ulip_model_file_path = '/home/chli/chLi/Model/ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
@@ -192,7 +193,7 @@ def demo(save_folder_path: Union[str, None] = None):
         '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
         '02691156/1adb40469ec3636c3d64e724106730cf',
     ]
-    image_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', None, sample_num)
+    image_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', None, sample_id_num)
     for image_id in image_id_list:
         print('start sample for image ' + image_id + '...')
         image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
@@ -209,7 +210,7 @@ def demo(save_folder_path: Union[str, None] = None):
         '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
         '02691156/1adb40469ec3636c3d64e724106730cf',
     ]
-    points_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', None, sample_num)
+    points_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', None, sample_id_num)
     for points_id in points_id_list:
         print('start sample for points ' + points_id + '...')
         mesh_file_path = '/home/chli/chLi/Dataset/ManifoldMesh/ShapeNet/' + points_id + '.obj'
