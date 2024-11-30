@@ -1,8 +1,10 @@
 import sys
+
 sys.path.append("../ma-sh/")
 sys.path.append("../ulip-manage/")
 
 import os
+import random
 import numpy as np
 import open3d as o3d
 from tqdm import tqdm
@@ -126,9 +128,9 @@ def demoCondition(
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
-    cfm_model_file_path = './output/24depth_512cond_1300epoch/total_model_last.pth'
+    cfm_model_file_path = './output/24depth_512cond_2000epoch/total_model_last.pth'
     use_ema = True
-    sample_num = 9
+    sample_num = 100
     device = 'cuda:0'
 
     ulip_model_file_path = '/home/chli/chLi/Model/ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
@@ -152,12 +154,35 @@ def demo(save_folder_path: Union[str, None] = None):
     # 47: sofa
     # 49: table
     # 53: watercraft
-    #for categoty_id in [0, 2, 6, 18, 22, 23, 24, 26, 30, 46, 47, 49, 53]:
-    for categoty_id in [0, 18]:
+    for categoty_id in range(55):
+    # for categoty_id in [0, 2, 6, 18, 22, 23, 24, 26, 30, 46, 47, 49, 53]:
+    # for categoty_id in [0, 18]:
         print('start sample for category ' + str(categoty_id) + '...')
         demoCondition(sampler, detector, time_stamp, categoty_id, sample_num, save_folder_path, 'category', str(categoty_id))
 
-    # image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/02691156/1adb40469ec3636c3d64e724106730cf'
+    def toRandomIdList(dataset_folder_path: str, valid_category_id_list: Union[list, None]=None, sample_id_num: int=100) -> list:
+        random_id_list = []
+
+        if valid_category_id_list is None:
+            valid_category_id_list = os.listdir(dataset_folder_path)
+
+        for category_id in valid_category_id_list:
+            category_folder_path = dataset_folder_path + category_id + '/'
+            if not os.path.exists(category_folder_path):
+                continue
+
+            model_id_list = os.listdir(category_folder_path)
+
+            if sample_id_num >= len(model_id_list):
+                random_model_id_list = model_id_list
+            else:
+                random_model_id_list = random.sample(model_id_list, sample_id_num)
+
+            for random_model_id in random_model_id_list:
+                random_id_list.append(category_id + '/' + random_model_id.replace('.npy', ''))
+
+        return random_id_list
+
     image_id_list = [
         '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
         '03001627/1a38407b3036795d19fb4103277a6b93',
@@ -167,9 +192,12 @@ def demo(save_folder_path: Union[str, None] = None):
         '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
         '02691156/1adb40469ec3636c3d64e724106730cf',
     ]
+    image_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', None, sample_num)
     for image_id in image_id_list:
         print('start sample for image ' + image_id + '...')
         image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
+        if not os.path.exists(image_file_path):
+            continue
         demoCondition(sampler, detector, time_stamp, image_file_path, sample_num, save_folder_path, 'image', image_id)
 
     points_id_list = [
@@ -181,16 +209,23 @@ def demo(save_folder_path: Union[str, None] = None):
         '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
         '02691156/1adb40469ec3636c3d64e724106730cf',
     ]
+    points_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', None, sample_num)
     for points_id in points_id_list:
         print('start sample for points ' + points_id + '...')
         mesh_file_path = '/home/chli/chLi/Dataset/ManifoldMesh/ShapeNet/' + points_id + '.obj'
+        if not os.path.exists(mesh_file_path):
+            continue
         points = Mesh(mesh_file_path).toSamplePoints(8192)
         demoCondition(sampler, detector, time_stamp, points, sample_num, save_folder_path, 'points', points_id)
 
     text_list = [
-        'a chair',
         'a tall chair',
+        'a short chair',
         'a circle chair',
+        'horizontal slats on top of back',
+        'one big hole between back and seat',
+        'this chair has wheels',
+        'vertical back ribs',
     ]
     for i, text in enumerate(text_list):
         print('start sample for text [' + text + ']...')
