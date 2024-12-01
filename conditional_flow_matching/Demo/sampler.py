@@ -15,9 +15,33 @@ from shutil import copyfile
 from ma_sh.Data.mesh import Mesh
 from ulip_manage.Module.detector import Detector
 
+from conditional_flow_matching.Config.shapenet import CATEGORY_IDS
 from conditional_flow_matching.Method.time import getCurrentTime
 from conditional_flow_matching.Module.sampler import Sampler
 
+
+def toRandomIdList(dataset_folder_path: str, valid_category_id_list: Union[list, None]=None, sample_id_num: int=100) -> list:
+    random_id_list = []
+
+    if valid_category_id_list is None:
+        valid_category_id_list = os.listdir(dataset_folder_path)
+
+    for category_id in valid_category_id_list:
+        category_folder_path = dataset_folder_path + category_id + '/'
+        if not os.path.exists(category_folder_path):
+            continue
+
+        model_id_list = os.listdir(category_folder_path)
+
+        if sample_id_num >= len(model_id_list):
+            random_model_id_list = model_id_list
+        else:
+            random_model_id_list = random.sample(model_id_list, sample_id_num)
+
+        for random_model_id in random_model_id_list:
+            random_id_list.append(category_id + '/' + random_model_id.replace('.npy', ''))
+
+    return random_id_list
 
 def demoCondition(
     sampler: Sampler,
@@ -82,20 +106,25 @@ def demoCondition(
 
         if save_folder_path is None:
             save_folder_path = './output/sample/' + time_stamp + '/iter-' + str(j) + '/'
-
         save_folder_path += condition_info + '/'
 
+        recon_save_folder_path = save_folder_path.replace('/sample/', '/recon/')
+
         os.makedirs(save_folder_path, exist_ok=True)
+        os.makedirs(recon_save_folder_path, exist_ok=True)
 
         if condition_type == 'image':
             copyfile(image_file_path, save_folder_path + 'condition_image.png')
+            copyfile(save_folder_path + 'condition_image.png', recon_save_folder_path + 'condition_image.png')
         elif condition_type == 'points':
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(points)
             o3d.io.write_point_cloud(save_folder_path + 'condition_points.ply', pcd)
+            copyfile(save_folder_path + 'condition_points.ply', recon_save_folder_path + 'condition_points.ply')
         elif condition_type == 'text':
             with open(save_folder_path + 'condition_text.txt', 'w') as f:
                 f.write(text)
+            copyfile(save_folder_path + 'condition_text.txt', recon_save_folder_path + 'condition_text.txt')
 
         for i in tqdm(range(sample_num)):
 
@@ -130,8 +159,8 @@ def demoCondition(
 def demo(save_folder_path: Union[str, None] = None):
     cfm_model_file_path = './output/24depth_512cond_2000epoch/total_model_last.pth'
     use_ema = True
-    sample_num = 100
-    sample_id_num = 50
+    sample_num = 20
+    sample_id_num = 20
     device = 'cuda:0'
 
     ulip_model_file_path = '/home/chli/chLi/Model/ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
@@ -145,44 +174,50 @@ def demo(save_folder_path: Union[str, None] = None):
     # 0: airplane
     # 2: bag
     # 6: bench
+    # 9: bottle
+    # 16: car
     # 18: chair
     # 22: monitor
     # 23: earphone
     # 24: spigot
     # 26: guitar
+    # 27: helmet
     # 30: lamp
+    # 33: mailbox
+    # 40: gun
+    # 44: long-gun
     # 46: skateboard
     # 47: sofa
     # 49: table
+    # 52: train
     # 53: watercraft
-    for categoty_id in range(55):
-    # for categoty_id in [0, 2, 6, 18, 22, 23, 24, 26, 30, 46, 47, 49, 53]:
-    # for categoty_id in [0, 18]:
-        print('start sample for category ' + str(categoty_id) + '...')
-        demoCondition(sampler, detector, time_stamp, categoty_id, sample_num, save_folder_path, 'category', str(categoty_id))
+    valid_category_id_list = [
+        '02691156', # 0: airplane
+        '02773838', # 2: bag
+        '02828884', # 6: bench
+        '02876657', # 9: bottle
+        '02958343', # 16: bottle
+        '03001627', # 18: chair
+        '03211117', # 22: monitor
+        '03261776', # 23: earphone
+        '03325088', # 24: spigot
+        '03467517', # 26: guitar
+        '03513137', # 27: helmet
+        '03636649', # 30: lamp
+        '03710193', # 33: mailbox
+        '03948459', # 40: gun
+        '04090263', # 44: long-gun
+        '04225987', # 46: skateboard
+        '04256520', # 47: sofa
+        '04379243', # 49: table
+        '04468005', # 52: train
+        '04530566', # 53: watercraft
+    ]
 
-    def toRandomIdList(dataset_folder_path: str, valid_category_id_list: Union[list, None]=None, sample_id_num: int=100) -> list:
-        random_id_list = []
-
-        if valid_category_id_list is None:
-            valid_category_id_list = os.listdir(dataset_folder_path)
-
-        for category_id in valid_category_id_list:
-            category_folder_path = dataset_folder_path + category_id + '/'
-            if not os.path.exists(category_folder_path):
-                continue
-
-            model_id_list = os.listdir(category_folder_path)
-
-            if sample_id_num >= len(model_id_list):
-                random_model_id_list = model_id_list
-            else:
-                random_model_id_list = random.sample(model_id_list, sample_id_num)
-
-            for random_model_id in random_model_id_list:
-                random_id_list.append(category_id + '/' + random_model_id.replace('.npy', ''))
-
-        return random_id_list
+    for categoty_id in valid_category_id_list:
+        print('start sample for category ' + categoty_id + '...')
+        category_idx = CATEGORY_IDS[categoty_id]
+        # demoCondition(sampler, detector, time_stamp, categoty_idx, sample_num, save_folder_path, 'category', str(categoty_id))
 
     image_id_list = [
         '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
@@ -193,7 +228,7 @@ def demo(save_folder_path: Union[str, None] = None):
         '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
         '02691156/1adb40469ec3636c3d64e724106730cf',
     ]
-    image_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', None, sample_id_num)
+    image_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', valid_category_id_list, sample_id_num)
     for image_id in image_id_list:
         print('start sample for image ' + image_id + '...')
         image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
@@ -210,7 +245,7 @@ def demo(save_folder_path: Union[str, None] = None):
         '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
         '02691156/1adb40469ec3636c3d64e724106730cf',
     ]
-    points_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', None, sample_id_num)
+    points_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', valid_category_id_list, sample_id_num)
     for points_id in points_id_list:
         print('start sample for points ' + points_id + '...')
         mesh_file_path = '/home/chli/chLi/Dataset/ManifoldMesh/ShapeNet/' + points_id + '.obj'
