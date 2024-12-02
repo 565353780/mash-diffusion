@@ -7,7 +7,11 @@ from torch.optim.adam import Adam
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import LambdaLR
 
-from torchcfm.conditional_flow_matching import ExactOptimalTransportConditionalFlowMatcher
+from torchcfm.conditional_flow_matching import (
+    TargetConditionalFlowMatcher,
+    ExactOptimalTransportConditionalFlowMatcher,
+    VariancePreservingConditionalFlowMatcher,
+)
 
 from conditional_flow_matching.Dataset.mash import MashDataset
 from conditional_flow_matching.Dataset.embedding import EmbeddingDataset
@@ -48,24 +52,31 @@ class Trainer(object):
 
         self.logger = Logger()
 
-        self.dataloader_dict = {
-            'mash': {
+        self.dataloader_dict = {}
+
+        if True:
+            self.dataloader_dict['mash'] =  {
                 'dataset': MashDataset(dataset_root_folder_path, 'train'),
                 'repeat_num': 1,
-            },
-            'image': {
+            }
+
+        if False:
+            self.dataloader_dict['image'] =  {
                 'dataset': EmbeddingDataset(dataset_root_folder_path, 'ImageEmbedding_ulip', 'train'),
                 'repeat_num': 1,
-            },
-            'points': {
+            }
+
+        if False:
+            self.dataloader_dict['points'] =  {
                 'dataset': EmbeddingDataset(dataset_root_folder_path, 'PointsEmbedding', 'train'),
                 'repeat_num': 1,
-            },
-            'text': {
+            }
+
+        if False:
+            self.dataloader_dict['text'] =  {
                 'dataset': EmbeddingDataset(dataset_root_folder_path, 'TextEmbedding_ShapeGlot', 'train'),
                 'repeat_num': 10,
-            },
-        }
+            }
 
         for key, item in self.dataloader_dict.items():
             self.dataloader_dict[key]['dataloader'] = DataLoader(
@@ -87,7 +98,7 @@ class Trainer(object):
         self.optim = Adam(self.model.parameters(), lr=lr)
         self.sched = LambdaLR(self.optim, lr_lambda=self.warmup_lr)
 
-        self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
+        self.FM = VariancePreservingConditionalFlowMatcher(sigma=0.0)
 
         self.initRecords()
 
@@ -146,7 +157,11 @@ class Trainer(object):
 
         cfm_mash_params_noise = torch.randn_like(cfm_mash_params)
 
-        t, xt, ut, _, y1 = self.FM.guided_sample_location_and_conditional_flow(cfm_mash_params_noise, cfm_mash_params, y1=condition)
+        if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
+            t, xt, ut, _, y1 = self.FM.guided_sample_location_and_conditional_flow(cfm_mash_params_noise, cfm_mash_params, y1=condition)
+        else:
+            t, xt, ut = self.FM.sample_location_and_conditional_flow(cfm_mash_params_noise, cfm_mash_params)
+            y1 = condition
 
         vt = self.model(xt, y1, t)
 
