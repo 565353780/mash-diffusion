@@ -2,7 +2,7 @@ import os
 from tqdm import tqdm
 from shutil import copyfile
 
-from conditional_flow_matching.Method.path import createFileFolder
+from conditional_flow_matching.Method.path import createFileFolder, removeFile
 
 def copyConditionFiles(
         root_folder_path: str,
@@ -30,9 +30,10 @@ def copyConditionFiles(
     print('\t', target_root_folder_path)
     for rel_file_path in tqdm(rel_file_path_list):
         target_file_path = target_root_folder_path + rel_file_path
-        if not overwrite:
-            if os.path.exists(target_file_path):
+        if os.path.exists(target_file_path):
+            if not overwrite:
                 continue
+            removeFile(target_file_path)
 
         createFileFolder(target_file_path)
 

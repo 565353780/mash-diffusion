@@ -122,9 +122,9 @@ def demoCondition(
         elif condition_type == 'points':
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(points)
-            o3d.io.write_point_cloud(save_folder_path + 'condition_points.ply', pcd)
-            copyfile(save_folder_path + 'condition_points.ply', recon_save_folder_path + 'condition_points.ply')
-            copyfile(save_folder_path + 'condition_points.ply', render_save_folder_path + 'condition_points.ply')
+            o3d.io.write_point_cloud(save_folder_path + 'condition_pcd.ply', pcd)
+            copyfile(save_folder_path + 'condition_pcd.ply', recon_save_folder_path + 'condition_pcd.ply')
+            copyfile(save_folder_path + 'condition_pcd.ply', render_save_folder_path + 'condition_pcd.ply')
         elif condition_type == 'text':
             with open(save_folder_path + 'condition_text.txt', 'w') as f:
                 f.write(text)
