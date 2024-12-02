@@ -109,22 +109,27 @@ def demoCondition(
         save_folder_path += condition_info + '/'
 
         recon_save_folder_path = save_folder_path.replace('/sample/', '/recon/')
+        render_save_folder_path = save_folder_path.replace('/sample/', '/render/')
 
         os.makedirs(save_folder_path, exist_ok=True)
         os.makedirs(recon_save_folder_path, exist_ok=True)
+        os.makedirs(render_save_folder_path, exist_ok=True)
 
         if condition_type == 'image':
             copyfile(image_file_path, save_folder_path + 'condition_image.png')
             copyfile(save_folder_path + 'condition_image.png', recon_save_folder_path + 'condition_image.png')
+            copyfile(save_folder_path + 'condition_image.png', render_save_folder_path + 'condition_image.png')
         elif condition_type == 'points':
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(points)
             o3d.io.write_point_cloud(save_folder_path + 'condition_points.ply', pcd)
             copyfile(save_folder_path + 'condition_points.ply', recon_save_folder_path + 'condition_points.ply')
+            copyfile(save_folder_path + 'condition_points.ply', render_save_folder_path + 'condition_points.ply')
         elif condition_type == 'text':
             with open(save_folder_path + 'condition_text.txt', 'w') as f:
                 f.write(text)
             copyfile(save_folder_path + 'condition_text.txt', recon_save_folder_path + 'condition_text.txt')
+            copyfile(save_folder_path + 'condition_text.txt', render_save_folder_path + 'condition_text.txt')
 
         for i in tqdm(range(sample_num)):
 
@@ -159,8 +164,8 @@ def demoCondition(
 def demo(save_folder_path: Union[str, None] = None):
     cfm_model_file_path = './output/24depth_512cond_2000epoch/total_model_last.pth'
     use_ema = True
-    sample_num = 20
-    sample_id_num = 20
+    sample_id_num = 10
+    sample_num = 100
     device = 'cuda:0'
 
     ulip_model_file_path = '/home/chli/chLi/Model/ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
@@ -213,58 +218,65 @@ def demo(save_folder_path: Union[str, None] = None):
         '04468005', # 52: train
         '04530566', # 53: watercraft
     ]
-
-    for categoty_id in valid_category_id_list:
-        print('start sample for category ' + categoty_id + '...')
-        category_idx = CATEGORY_IDS[categoty_id]
-        # demoCondition(sampler, detector, time_stamp, categoty_idx, sample_num, save_folder_path, 'category', str(categoty_id))
-
-    image_id_list = [
-        '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
-        '03001627/1a38407b3036795d19fb4103277a6b93',
-        '03001627/1ab8a3b55c14a7b27eaeab1f0c9120b7',
-        '02691156/1a6ad7a24bb89733f412783097373bdc',
-        '02691156/1a32f10b20170883663e90eaf6b4ca52',
-        '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
-        '02691156/1adb40469ec3636c3d64e724106730cf',
+    valid_category_id_list = [
+        '03001627', # 18: chair
     ]
-    image_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', valid_category_id_list, sample_id_num)
-    for image_id in image_id_list:
-        print('start sample for image ' + image_id + '...')
-        image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
-        if not os.path.exists(image_file_path):
-            continue
-        demoCondition(sampler, detector, time_stamp, image_file_path, sample_num, save_folder_path, 'image', image_id)
 
-    points_id_list = [
-        '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
-        '03001627/1a38407b3036795d19fb4103277a6b93',
-        '03001627/1ab8a3b55c14a7b27eaeab1f0c9120b7',
-        '02691156/1a6ad7a24bb89733f412783097373bdc',
-        '02691156/1a32f10b20170883663e90eaf6b4ca52',
-        '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
-        '02691156/1adb40469ec3636c3d64e724106730cf',
-    ]
-    points_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', valid_category_id_list, sample_id_num)
-    for points_id in points_id_list:
-        print('start sample for points ' + points_id + '...')
-        mesh_file_path = '/home/chli/chLi/Dataset/ManifoldMesh/ShapeNet/' + points_id + '.obj'
-        if not os.path.exists(mesh_file_path):
-            continue
-        points = Mesh(mesh_file_path).toSamplePoints(8192)
-        demoCondition(sampler, detector, time_stamp, points, sample_num, save_folder_path, 'points', points_id)
+    if True:
+        for categoty_id in valid_category_id_list:
+            print('start sample for category ' + categoty_id + '...')
+            category_idx = CATEGORY_IDS[categoty_id]
+            demoCondition(sampler, detector, time_stamp, category_idx, sample_num, save_folder_path, 'category', str(categoty_id))
 
-    text_list = [
-        'a tall chair',
-        'a short chair',
-        'a circle chair',
-        'horizontal slats on top of back',
-        'one big hole between back and seat',
-        'this chair has wheels',
-        'vertical back ribs',
-    ]
-    for i, text in enumerate(text_list):
-        print('start sample for text [' + text + ']...')
-        demoCondition(sampler, detector, time_stamp, text, sample_num, save_folder_path, 'text', str(i))
+    if True:
+        image_id_list = [
+            '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
+            '03001627/1a38407b3036795d19fb4103277a6b93',
+            '03001627/1ab8a3b55c14a7b27eaeab1f0c9120b7',
+            '02691156/1a6ad7a24bb89733f412783097373bdc',
+            '02691156/1a32f10b20170883663e90eaf6b4ca52',
+            '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
+            '02691156/1adb40469ec3636c3d64e724106730cf',
+        ]
+        image_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', valid_category_id_list, sample_id_num)
+        for image_id in image_id_list:
+            print('start sample for image ' + image_id + '...')
+            image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
+            if not os.path.exists(image_file_path):
+                continue
+            demoCondition(sampler, detector, time_stamp, image_file_path, sample_num, save_folder_path, 'image', image_id)
+
+    if True:
+        points_id_list = [
+            '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
+            '03001627/1a38407b3036795d19fb4103277a6b93',
+            '03001627/1ab8a3b55c14a7b27eaeab1f0c9120b7',
+            '02691156/1a6ad7a24bb89733f412783097373bdc',
+            '02691156/1a32f10b20170883663e90eaf6b4ca52',
+            '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
+            '02691156/1adb40469ec3636c3d64e724106730cf',
+        ]
+        points_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', valid_category_id_list, sample_id_num)
+        for points_id in points_id_list:
+            print('start sample for points ' + points_id + '...')
+            mesh_file_path = '/home/chli/chLi/Dataset/ManifoldMesh/ShapeNet/' + points_id + '.obj'
+            if not os.path.exists(mesh_file_path):
+                continue
+            points = Mesh(mesh_file_path).toSamplePoints(8192)
+            demoCondition(sampler, detector, time_stamp, points, sample_num, save_folder_path, 'points', points_id)
+
+    if True:
+        text_list = [
+            'a tall chair',
+            'a short chair',
+            'a circle chair',
+            'horizontal slats on top of back',
+            'one big hole between back and seat',
+            'this chair has wheels',
+            'vertical back ribs',
+        ]
+        for i, text in enumerate(text_list):
+            print('start sample for text [' + text + ']...')
+            demoCondition(sampler, detector, time_stamp, text, sample_num, save_folder_path, 'text', str(i))
 
     return True
