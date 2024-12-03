@@ -196,11 +196,13 @@ class Trainer(object):
         with autocast('cuda'):
             vt = self.model(xt, y1, t)
             loss = torch.mean((vt - ut) ** 2)
-            accum_loss = loss / self.accum_iter
+
+        accum_loss = loss / self.accum_iter
 
         self.scaler.scale(accum_loss).backward()
 
         if (self.step + 1) % self.accum_iter == 0:
+            self.scaler.unscale_(self.optim)
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
             self.scaler.step(self.optim)
             self.scaler.update()
