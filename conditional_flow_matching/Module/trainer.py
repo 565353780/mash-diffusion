@@ -31,19 +31,31 @@ def setup_distributed():
     torch.cuda.set_device(local_rank)
     return local_rank
 
+def check_nan_in_grad(model):
+    for name, param in model.named_parameters():
+        if param.grad is not None and torch.isnan(param.grad).any():
+            print(f"NaN detected in gradient: {name}")
+            return True
+    return False
+
+def replace_nan_grads_with_zero(model):
+    for name, param in model.named_parameters():
+        if param.grad is not None:
+            param.grad = torch.where(torch.isnan(param.grad), torch.zeros_like(param.grad), param.grad)
+
 class Trainer(object):
     def __init__(
         self,
         dataset_root_folder_path: str,
-        batch_size: int = 24,
-        accum_iter: int = 10,
+        batch_size: int = 12,
+        accum_iter: int = 1,
         num_workers: int = 16,
         model_file_path: Union[str, None] = None,
         device: str = "cuda:0",
         warm_step_num: int = 5000,
         finetune_step_num: int = -1,
         lr: float = 2e-4,
-        ema_start_step: int = 20000,
+        ema_start_step: int = 5000,
         ema_decay: float = 0.9999,
         save_result_folder_path: Union[str, None] = None,
         save_log_folder_path: Union[str, None] = None,
@@ -223,9 +235,14 @@ class Trainer(object):
 
         self.scaler.scale(accum_loss).backward()
 
+        if check_nan_in_grad(self.model):
+            print('[ERROR][Trainer::trainStep]')
+            print('\t found nan in grad!')
+            replace_nan_grads_with_zero(self.model)
+
         if (self.step + 1) % self.accum_iter == 0:
-            self.scaler.unscale_(self.optim)
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+            # self.scaler.unscale_(self.optim)
+            # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
             self.scaler.step(self.optim)
             self.scaler.update()
             self.sched.step()

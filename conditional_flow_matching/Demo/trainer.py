@@ -9,7 +9,7 @@ from conditional_flow_matching.Module.trainer import Trainer
 def demo():
     dataset_root_folder_path = os.environ['HOME'] + "/Dataset/"
     batch_size = 12
-    accum_iter = 10
+    accum_iter = 1
     num_workers = 16
     # model_file_path = "./output/24depth_512cond_1300epoch/total_model_last.pth"
     model_file_path = None
@@ -17,7 +17,7 @@ def demo():
     warm_step_num = 5000
     finetune_step_num = -1
     lr = 5e-5
-    ema_start_step = 20000
+    ema_start_step = 5000
     ema_decay = 0.9999
     save_result_folder_path = "auto"
     save_log_folder_path = "auto"
