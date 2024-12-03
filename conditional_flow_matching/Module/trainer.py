@@ -34,6 +34,7 @@ class Trainer(object):
         warm_step_num: int = 5000,
         finetune_step_num: int = -1,
         lr: float = 2e-4,
+        ema_start_step: int = 20000,
         ema_decay: float = 0.9999,
         save_result_folder_path: Union[str, None] = None,
         save_log_folder_path: Union[str, None] = None,
@@ -43,6 +44,7 @@ class Trainer(object):
         self.warm_step_num = warm_step_num / accum_iter
         self.finetune_step_num = finetune_step_num
         self.lr = lr
+        self.ema_start_step = ema_start_step
         self.ema_decay = ema_decay
 
         self.save_result_folder_path = save_result_folder_path
@@ -98,7 +100,8 @@ class Trainer(object):
         self.optim = Adam(self.model.parameters(), lr=lr)
         self.sched = LambdaLR(self.optim, lr_lambda=self.warmup_lr)
 
-        self.FM = VariancePreservingConditionalFlowMatcher(sigma=0.0)
+        self.FM = TargetConditionalFlowMatcher(sigma=0.0)
+        # self.FM = VariancePreservingConditionalFlowMatcher(sigma=0.0)
 
         self.initRecords()
 
@@ -140,6 +143,14 @@ class Trainer(object):
         return min(step, self.warm_step_num) / self.warm_step_num
 
     def ema(self) -> bool:
+        if self.step <= self.ema_start_step:
+            source_dict = self.model.state_dict()
+            target_dict = self.ema_model.state_dict()
+            for key in source_dict.keys():
+                target_dict[key].data.copy_(source_dict[key].data)
+
+            return True
+
         source_dict = self.model.state_dict()
         target_dict = self.ema_model.state_dict()
         for key in source_dict.keys():
@@ -243,7 +254,7 @@ class Trainer(object):
                                 self.logger.addScalar("Train/" + key, value, self.step)
                             self.logger.addScalar("Train/Lr", lr, self.step)
 
-                            if self.ema_loss is None:
+                            if self.ema_loss is None or self.step <= self.ema_start_step:
                                 self.ema_loss = train_loss_dict["Loss"]
                             else:
                                 self.ema_loss = self.ema_loss * self.ema_decay + train_loss_dict["Loss"] * (1 - self.ema_decay)

@@ -9,12 +9,13 @@ def demo():
     batch_size = 24
     accum_iter = 10
     num_workers = 16
-    model_file_path = "./output/cfm_24depth_24h_class-image/total_model_last.pth"
+    # model_file_path = "./output/24depth_512cond_1300epoch/total_model_last.pth"
     model_file_path = None
     device = "cuda:0"
     warm_step_num = 5000
     finetune_step_num = -1
     lr = 2e-4
+    ema_start_step = 20000
     ema_decay = 0.9999
     save_result_folder_path = "auto"
     save_log_folder_path = "auto"
@@ -29,6 +30,7 @@ def demo():
         warm_step_num,
         finetune_step_num,
         lr,
+        ema_start_step,
         ema_decay,
         save_result_folder_path,
         save_log_folder_path,
