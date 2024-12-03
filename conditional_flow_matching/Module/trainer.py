@@ -31,17 +31,12 @@ def setup_distributed():
     torch.cuda.set_device(local_rank)
     return local_rank
 
-def check_nan_in_grad(model):
+def check_and_replace_nan_in_grad(model):
     for name, param in model.named_parameters():
         if param.grad is not None and torch.isnan(param.grad).any():
             print(f"NaN detected in gradient: {name}")
-            return True
-    return False
-
-def replace_nan_grads_with_zero(model):
-    for name, param in model.named_parameters():
-        if param.grad is not None:
             param.grad = torch.where(torch.isnan(param.grad), torch.zeros_like(param.grad), param.grad)
+    return True
 
 class Trainer(object):
     def __init__(
@@ -235,10 +230,10 @@ class Trainer(object):
 
         self.scaler.scale(accum_loss).backward()
 
-        if check_nan_in_grad(self.model):
+        if not check_and_replace_nan_in_grad(self.model):
             print('[ERROR][Trainer::trainStep]')
-            print('\t found nan in grad!')
-            replace_nan_grads_with_zero(self.model)
+            print('\t check_and_replace_nan_in_grad failed!')
+            exit()
 
         if (self.step + 1) % self.accum_iter == 0:
             # self.scaler.unscale_(self.optim)
