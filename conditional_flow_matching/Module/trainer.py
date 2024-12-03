@@ -51,6 +51,15 @@ class Trainer(object):
         self.local_rank = setup_distributed()
         self.scaler = GradScaler()
 
+        self.mash_channel = 400
+        self.encoded_mash_channel = 25
+        self.mask_degree = 3
+        self.sh_degree = 2
+        self.context_dim = 512
+        self.n_heads = 8
+        self.d_head = 64
+        self.depth = 48
+
         self.accum_iter = accum_iter
         if device == 'auto':
             self.device = torch.device('cuda:' + str(self.local_rank))
@@ -107,9 +116,18 @@ class Trainer(object):
 
         model_id = 2
         if model_id == 1:
-            self.model = MashUNet(768).to(self.device)
+            self.model = MashUNet(self.context_dim).to(self.device)
         elif model_id == 2:
-            self.model = MashNet().to(self.device)
+            self.model = MashNet(
+                n_latents=self.mash_channel,
+                mask_degree=self.mask_degree,
+                sh_degree=self.sh_degree,
+                context_dim=self.context_dim,
+                n_heads=self.n_heads,
+                d_head=self.d_head,
+                depth=self.depth
+            ).to(self.device)
+
 
         if self.local_rank == 0:
             self.ema_model = deepcopy(self.model)
