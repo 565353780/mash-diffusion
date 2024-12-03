@@ -299,9 +299,6 @@ class Trainer(object):
                         if self.local_rank == 0:
                             pbar.update(1)
 
-                        if self.step % 10 == 0:
-                            break
-
                     if self.local_rank == 0:
                         pbar.close()
 
