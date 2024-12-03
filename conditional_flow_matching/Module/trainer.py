@@ -76,6 +76,7 @@ class Trainer(object):
 
         self.step = 0
 
+        self.logger = None
         if self.local_rank == 0:
             self.logger = Logger()
 
@@ -147,6 +148,9 @@ class Trainer(object):
         return
 
     def initRecords(self) -> bool:
+        if self.logger is None:
+            return True
+
         current_time = getCurrentTime()
 
         if self.save_result_folder_path == "auto":

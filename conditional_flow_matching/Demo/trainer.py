@@ -1,17 +1,19 @@
 import sys
 sys.path.append('../ma-sh/')
 
+import os
+
 from conditional_flow_matching.Module.trainer import Trainer
 
 
 def demo():
-    dataset_root_folder_path = "/home/chli/Dataset/"
+    dataset_root_folder_path = os.environ['HOME'] + "/Dataset/"
     batch_size = 12
     accum_iter = 10
     num_workers = 16
     # model_file_path = "./output/24depth_512cond_1300epoch/total_model_last.pth"
     model_file_path = None
-    device = "cuda:0"
+    device = "auto"
     warm_step_num = 5000
     finetune_step_num = -1
     lr = 5e-5

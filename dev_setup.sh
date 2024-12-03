@@ -12,6 +12,6 @@ pip install -U torch torchvision torchaudio
 pip install -r requirements.txt
 pip install -e .
 
-pip install -U timm einops
+pip install -U timm einops diffusers
 
 pip install git+https://github.com/openai/CLIP.git
