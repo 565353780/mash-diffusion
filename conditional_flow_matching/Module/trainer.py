@@ -4,8 +4,9 @@ import torch.distributed as dist
 from tqdm import tqdm
 from copy import deepcopy
 from typing import Union
-from torch.optim.adam import Adam
+from torch.optim.adamw import AdamW
 from torch.utils.data import DataLoader
+from torch.amp import GradScaler, autocast
 from torch.optim.lr_scheduler import LambdaLR
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, DistributedSampler
@@ -13,7 +14,6 @@ from torch.utils.data import DataLoader, DistributedSampler
 from torchcfm.conditional_flow_matching import (
     TargetConditionalFlowMatcher,
     ExactOptimalTransportConditionalFlowMatcher,
-    VariancePreservingConditionalFlowMatcher,
 )
 
 from conditional_flow_matching.Dataset.mash import MashDataset
@@ -49,6 +49,7 @@ class Trainer(object):
         save_log_folder_path: Union[str, None] = None,
     ) -> None:
         self.local_rank = setup_distributed()
+        self.scaler = GradScaler()
 
         self.accum_iter = accum_iter
         if device == 'auto':
@@ -57,7 +58,7 @@ class Trainer(object):
             self.device = device
         self.warm_step_num = warm_step_num / accum_iter
         self.finetune_step_num = finetune_step_num
-        self.lr = lr
+        self.lr = lr * self.accum_iter * dist.get_world_size()
         self.ema_start_step = ema_start_step
         self.ema_decay = ema_decay
 
@@ -96,10 +97,10 @@ class Trainer(object):
             }
 
         for key, item in self.dataloader_dict.items():
-            sampler = DistributedSampler(item['dataset'])
+            self.dataloader_dict[key]['sampler'] = DistributedSampler(item['dataset'])
             self.dataloader_dict[key]['dataloader'] = DataLoader(
                 item['dataset'],
-                sampler=sampler,
+                sampler=self.dataloader_dict[key]['sampler'],
                 batch_size=batch_size,
                 num_workers=num_workers,
             )
@@ -119,11 +120,10 @@ class Trainer(object):
 
         self.model = DDP(self.model, device_ids=[self.local_rank], output_device=self.local_rank)
 
-        self.optim = Adam(self.model.parameters(), lr=lr)
+        self.optim = AdamW(self.model.parameters(), lr=self.lr)
         self.sched = LambdaLR(self.optim, lr_lambda=self.warmup_lr)
 
         self.FM = TargetConditionalFlowMatcher(sigma=0.0)
-        # self.FM = VariancePreservingConditionalFlowMatcher(sigma=0.0)
 
         self.initRecords()
         return
@@ -193,16 +193,17 @@ class Trainer(object):
             t, xt, ut = self.FM.sample_location_and_conditional_flow(cfm_mash_params_noise, cfm_mash_params)
             y1 = condition
 
-        vt = self.model(xt, y1, t)
+        with autocast('cuda'):
+            vt = self.model(xt, y1, t)
+            loss = torch.mean((vt - ut) ** 2)
+            accum_loss = loss / self.accum_iter
 
-        loss = torch.mean((vt - ut) ** 2)
-
-        accum_loss = loss / self.accum_iter
-        accum_loss.backward()
+        self.scaler.scale(accum_loss).backward()
 
         if (self.step + 1) % self.accum_iter == 0:
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
-            self.optim.step()
+            self.scaler.step(self.optim)
+            self.scaler.update()
             self.sched.step()
             if self.local_rank == 0:
                 self.ema()
@@ -239,6 +240,7 @@ class Trainer(object):
             self.model.train()
 
             for data_name, dataloader_dict in self.dataloader_dict.items():
+                dataloader_dict['sampler'].set_epoch(epoch_idx)
 
                 dataloader = dataloader_dict['dataloader']
                 repeat_num = dataloader_dict['repeat_num']

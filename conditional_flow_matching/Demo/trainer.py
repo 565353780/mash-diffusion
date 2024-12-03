@@ -14,7 +14,7 @@ def demo():
     device = "cuda:0"
     warm_step_num = 5000
     finetune_step_num = -1
-    lr = 2e-4
+    lr = 5e-5
     ema_start_step = 20000
     ema_decay = 0.9999
     save_result_folder_path = "auto"
