@@ -162,11 +162,15 @@ def demoCondition(
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
-    cfm_model_file_path = './output/24depth_512cond_2000epoch/total_model_last.pth'
+    cfm_model_file_path = './output/20241203_19:58:52/total_model_last.pth'
     use_ema = True
-    sample_id_num = 10
-    sample_num = 100
+    sample_id_num = 1
+    sample_num = 10
     device = 'cuda:0'
+    sample_category = True
+    sample_image = False
+    sample_points = False
+    sample_text = False
 
     ulip_model_file_path = '/home/chli/chLi/Model/ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
     open_clip_model_file_path = '/home/chli/Model/CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
@@ -222,13 +226,13 @@ def demo(save_folder_path: Union[str, None] = None):
         '03001627', # 18: chair
     ]
 
-    if True:
+    if sample_category:
         for categoty_id in valid_category_id_list:
             print('start sample for category ' + categoty_id + '...')
             category_idx = CATEGORY_IDS[categoty_id]
             demoCondition(sampler, detector, time_stamp, category_idx, sample_num, save_folder_path, 'category', str(categoty_id))
 
-    if True:
+    if sample_image:
         image_id_list = [
             '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
             '03001627/1a38407b3036795d19fb4103277a6b93',
@@ -246,7 +250,7 @@ def demo(save_folder_path: Union[str, None] = None):
                 continue
             demoCondition(sampler, detector, time_stamp, image_file_path, sample_num, save_folder_path, 'image', image_id)
 
-    if True:
+    if sample_points:
         points_id_list = [
             '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
             '03001627/1a38407b3036795d19fb4103277a6b93',
@@ -265,7 +269,7 @@ def demo(save_folder_path: Union[str, None] = None):
             points = Mesh(mesh_file_path).toSamplePoints(8192)
             demoCondition(sampler, detector, time_stamp, points, sample_num, save_folder_path, 'points', points_id)
 
-    if True:
+    if sample_text:
         text_list = [
             'a tall chair',
             'a short chair',

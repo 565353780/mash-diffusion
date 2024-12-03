@@ -1,11 +1,14 @@
 import os
 import torch
+import torch.distributed as dist
 from tqdm import tqdm
 from copy import deepcopy
 from typing import Union
 from torch.optim.adam import Adam
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import LambdaLR
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data import DataLoader, DistributedSampler
 
 from torchcfm.conditional_flow_matching import (
     TargetConditionalFlowMatcher,
@@ -21,6 +24,12 @@ from conditional_flow_matching.Method.time import getCurrentTime
 from conditional_flow_matching.Method.path import createFileFolder, removeFile, renameFile
 from conditional_flow_matching.Module.logger import Logger
 
+
+def setup_distributed():
+    dist.init_process_group(backend="nccl")
+    local_rank = int(os.environ["LOCAL_RANK"])
+    torch.cuda.set_device(local_rank)
+    return local_rank
 
 class Trainer(object):
     def __init__(
@@ -39,8 +48,13 @@ class Trainer(object):
         save_result_folder_path: Union[str, None] = None,
         save_log_folder_path: Union[str, None] = None,
     ) -> None:
+        self.local_rank = setup_distributed()
+
         self.accum_iter = accum_iter
-        self.device = device
+        if device == 'auto':
+            self.device = torch.device('cuda:' + str(self.local_rank))
+        else:
+            self.device = device
         self.warm_step_num = warm_step_num / accum_iter
         self.finetune_step_num = finetune_step_num
         self.lr = lr
@@ -52,7 +66,8 @@ class Trainer(object):
 
         self.step = 0
 
-        self.logger = Logger()
+        if self.local_rank == 0:
+            self.logger = Logger()
 
         self.dataloader_dict = {}
 
@@ -81,21 +96,28 @@ class Trainer(object):
             }
 
         for key, item in self.dataloader_dict.items():
+            sampler = DistributedSampler(item['dataset'])
             self.dataloader_dict[key]['dataloader'] = DataLoader(
                 item['dataset'],
-                shuffle=True,
+                sampler=sampler,
                 batch_size=batch_size,
                 num_workers=num_workers,
             )
 
         model_id = 2
         if model_id == 1:
-            self.model = MashUNet(768).to(device)
+            self.model = MashUNet(768).to(self.device)
         elif model_id == 2:
-            self.model = MashNet().to(device)
+            self.model = MashNet().to(self.device)
 
-        self.ema_model = deepcopy(self.model)
-        self.ema_loss = None
+        if self.local_rank == 0:
+            self.ema_model = deepcopy(self.model)
+            self.ema_loss = None
+
+        if model_file_path is not None:
+            self.loadModel(model_file_path)
+
+        self.model = DDP(self.model, device_ids=[self.local_rank], output_device=self.local_rank)
 
         self.optim = Adam(self.model.parameters(), lr=lr)
         self.sched = LambdaLR(self.optim, lr_lambda=self.warmup_lr)
@@ -104,9 +126,6 @@ class Trainer(object):
         # self.FM = VariancePreservingConditionalFlowMatcher(sigma=0.0)
 
         self.initRecords()
-
-        if model_file_path is not None:
-            self.loadModel(model_file_path)
         return
 
     def initRecords(self) -> bool:
@@ -144,14 +163,14 @@ class Trainer(object):
 
     def ema(self) -> bool:
         if self.step <= self.ema_start_step:
-            source_dict = self.model.state_dict()
+            source_dict = self.model.module.state_dict()
             target_dict = self.ema_model.state_dict()
             for key in source_dict.keys():
                 target_dict[key].data.copy_(source_dict[key].data)
 
             return True
 
-        source_dict = self.model.state_dict()
+        source_dict = self.model.module.state_dict()
         target_dict = self.ema_model.state_dict()
         for key in source_dict.keys():
             target_dict[key].data.copy_(
@@ -185,7 +204,8 @@ class Trainer(object):
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
             self.optim.step()
             self.sched.step()
-            self.ema()
+            if self.local_rank == 0:
+                self.ema()
             self.optim.zero_grad()
 
         loss_dict = {
@@ -208,8 +228,9 @@ class Trainer(object):
     def train(self) -> bool:
         final_step = self.step + self.finetune_step_num
 
-        print("[INFO][Trainer::train]")
-        print("\t start training ...")
+        if self.local_rank == 0:
+            print("[INFO][Trainer::train]")
+            print("\t start training ...")
 
         loss_dict_list = []
 
@@ -223,10 +244,12 @@ class Trainer(object):
                 repeat_num = dataloader_dict['repeat_num']
 
                 for i in range(repeat_num):
-                    print('[INFO][Trainer::train]')
-                    print('\t start training on dataset [', data_name, '] ,', i + 1, '/', repeat_num, '...')
+                    if self.local_rank == 0:
+                        print('[INFO][Trainer::train]')
+                        print('\t start training on dataset [', data_name, '] ,', i + 1, '/', repeat_num, '...')
 
-                    pbar = tqdm(total=len(dataloader))
+                    if self.local_rank == 0:
+                        pbar = tqdm(total=len(dataloader))
                     for data in dataloader:
                         condition = self.toCondition(data)
                         if condition is None:
@@ -245,7 +268,7 @@ class Trainer(object):
 
                         lr = self.getLr()
 
-                        if (self.step + 1) % self.accum_iter == 0:
+                        if (self.step + 1) % self.accum_iter == 0 and self.local_rank == 0:
                             for key in train_loss_dict.keys():
                                 value = 0
                                 for i in range(len(loss_dict_list)):
@@ -262,21 +285,28 @@ class Trainer(object):
 
                             loss_dict_list = []
 
-                        pbar.set_description(
-                            "EPOCH %d LOSS %.6f LR %.4f"
-                            % (
-                                epoch_idx,
-                                train_loss_dict["Loss"],
-                                self.getLr() / self.lr,
+                        if self.local_rank == 0:
+                            pbar.set_description(
+                                "EPOCH %d LOSS %.6f LR %.4f"
+                                % (
+                                    epoch_idx,
+                                    train_loss_dict["Loss"],
+                                    self.getLr() / self.lr,
+                                )
                             )
-                        )
 
                         self.step += 1
-                        pbar.update(1)
+                        if self.local_rank == 0:
+                            pbar.update(1)
 
-                    pbar.close()
+                        if self.step % 10 == 0:
+                            break
 
-                self.autoSaveModel("total")
+                    if self.local_rank == 0:
+                        pbar.close()
+
+                if self.local_rank == 0:
+                    self.autoSaveModel("total")
 
                 epoch_idx += 1
 
