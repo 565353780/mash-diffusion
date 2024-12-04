@@ -219,7 +219,7 @@ class Trainer(object):
         init_cfm_mash_params = sampleRandomMashParams(
             self.mash_channel,
             self.mask_degree,
-            self.sh_degree, cfm_mash_params.shape[0], False).type(cfm_mash_params.dtype).to(self.device)
+            self.sh_degree, cfm_mash_params.shape[0], 'cpu', False).type(cfm_mash_params.dtype).to(self.device)
 
         if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
             t, xt, ut, _, y1 = self.FM.guided_sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params, y1=condition)
