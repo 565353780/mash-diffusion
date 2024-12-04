@@ -1,8 +1,11 @@
 import os
 import cv2
+import numpy as np
 from tqdm import tqdm
+from typing import Union
 
 from conditional_flow_matching.Method.path import createFileFolder, removeFile
+from conditional_flow_matching.Method.image import paintPNGBackGround
 
 def sampleImagesToVideo(
     iter_root_folder_path: str,
@@ -11,6 +14,7 @@ def sampleImagesToVideo(
     video_width: int = 540,
     video_height: int = 540,
     video_fps: int = 24,
+    background_color: Union[np.ndarray, list] = [255, 255, 255],
     overwrite: bool = False
 ) -> bool:
     if os.path.exists(save_video_file_path):
@@ -41,7 +45,10 @@ def sampleImagesToVideo(
         if not os.path.exists(iter_image_file_path):
             continue
 
-        frame = cv2.imread(iter_image_file_path)
+        frame = cv2.imread(iter_image_file_path, cv2.IMREAD_UNCHANGED)
+
+        if iter_image_file_path[-4:] == '.png':
+            frame = paintPNGBackGround(frame, background_color)
 
         if (frame.shape[1], frame.shape[0]) != video_size:
             frame = cv2.resize(frame, video_size)
@@ -58,6 +65,7 @@ def sampleImagesFolderToVideos(
     video_width: int = 540,
     video_height: int = 540,
     video_fps: int = 24,
+    background_color: Union[np.ndarray, list] = [255, 255, 255],
     overwrite: bool = False
 ) -> bool:
     iter_folder_name_list = os.listdir(iter_root_folder_path)
@@ -92,6 +100,7 @@ def sampleImagesFolderToVideos(
             video_width,
             video_height,
             video_fps,
+            background_color,
             overwrite):
             print('[ERROR][sample_to_video::sampleImagesFolderToVideos]')
             print('\t sampleImagesToVideo failed!')

@@ -6,8 +6,9 @@ if __name__ == "__main__":
     save_video_folder_path = './output/video_sample/20241204_18:06:56/'
     video_width = 540
     video_height = 540
-    video_fps = 24
-    overwrite = False
+    video_fps = 10
+    back_ground = [255, 255, 255]
+    overwrite = True
 
     sampleImagesFolderToVideos(
         iter_root_folder_path,
@@ -15,5 +16,6 @@ if __name__ == "__main__":
         video_width,
         video_height,
         video_fps,
+        back_ground,
         overwrite
     )
