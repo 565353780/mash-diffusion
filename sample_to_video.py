@@ -8,7 +8,7 @@ if __name__ == "__main__":
     video_height = 540
     video_fps = 10
     back_ground = [255, 255, 255]
-    overwrite = True
+    overwrite = False
 
     sampleImagesFolderToVideos(
         iter_root_folder_path,
