@@ -190,24 +190,66 @@ class Trainer(object):
     def warmup_lr(self, step: int) -> float:
         return min(step, self.warm_step_num) / self.warm_step_num
 
-    def ema(self) -> bool:
+    def toEMADecay(self) -> float:
         if self.step <= self.ema_start_step:
-            source_dict = self.model.module.state_dict()
-            target_dict = self.ema_model.state_dict()
-            for key in source_dict.keys():
-                target_dict[key].data.copy_(source_dict[key].data)
+            return self.step / self.ema_start_step * self.ema_decay
 
-            return True
+        return self.ema_decay
+
+    def ema(self) -> bool:
+        ema_decay = self.toEMADecay()
 
         source_dict = self.model.module.state_dict()
         target_dict = self.ema_model.state_dict()
         for key in source_dict.keys():
             target_dict[key].data.copy_(
-                target_dict[key].data * self.ema_decay + source_dict[key].data * (1 - self.ema_decay)
+                target_dict[key].data * ema_decay + source_dict[key].data * (1 - ema_decay)
             )
         return True
 
     def trainStep(
+        self,
+        data: dict,
+    ) -> dict:
+        cfm_mash_params = data['cfm_mash_params'].to(self.device)
+        condition = data['condition'].to(self.device)
+
+        cfm_mash_params_noise = torch.randn_like(cfm_mash_params)
+
+        if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
+            t, xt, ut, _, y1 = self.FM.guided_sample_location_and_conditional_flow(cfm_mash_params_noise, cfm_mash_params, y1=condition)
+        else:
+            t, xt, ut = self.FM.sample_location_and_conditional_flow(cfm_mash_params_noise, cfm_mash_params)
+            y1 = condition
+
+        vt = self.model(xt, y1, t)
+        loss = torch.mean((vt - ut) ** 2)
+
+        accum_loss = loss / self.accum_iter
+
+        accum_loss.backward()
+
+        if not check_and_replace_nan_in_grad(self.model):
+            print('[ERROR][Trainer::trainStep]')
+            print('\t check_and_replace_nan_in_grad failed!')
+            exit()
+
+        if (self.step + 1) % self.accum_iter == 0:
+            # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+            self.optim.step()
+            self.sched.step()
+            if self.local_rank == 0:
+                self.ema()
+            self.optim.zero_grad()
+
+        loss_dict = {
+            "Loss": loss.item(),
+        }
+
+        return loss_dict
+
+
+    def trainStepAMP(
         self,
         data: dict,
     ) -> dict:
@@ -315,10 +357,12 @@ class Trainer(object):
                                 self.logger.addScalar("Train/" + key, value, self.step)
                             self.logger.addScalar("Train/Lr", lr, self.step)
 
-                            if self.ema_loss is None or self.step <= self.ema_start_step:
+                            if self.ema_loss is None:
                                 self.ema_loss = train_loss_dict["Loss"]
                             else:
-                                self.ema_loss = self.ema_loss * self.ema_decay + train_loss_dict["Loss"] * (1 - self.ema_decay)
+                                ema_decay = self.toEMADecay()
+
+                                self.ema_loss = self.ema_loss * ema_decay + train_loss_dict["Loss"] * (1 - ema_decay)
                             self.logger.addScalar("Train/EMALoss", self.ema_loss, self.step)
 
                             loss_dict_list = []
