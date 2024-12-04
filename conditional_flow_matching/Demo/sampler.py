@@ -49,6 +49,7 @@ def demoCondition(
     time_stamp: str,
     condition_value: Union[int, str, np.ndarray] = 18,
     sample_num: int = 9,
+    timestamp_num: int = 10,
     save_folder_path: Union[str, None] = None,
     condition_type: str = 'category',
     condition_name: str = '0'):
@@ -92,44 +93,46 @@ def demoCondition(
     condition_info = condition_type + '/' + condition_name
 
     print("start diffuse", sample_num, "mashs....")
-    sampled_array = sampler.sample(sample_num, condition)
+    sampled_array = sampler.sample(sample_num, condition, timestamp_num)
 
     object_dist = [0, 0, 0]
 
     row_num = ceil(sqrt(sample_num))
 
-    mash_model = sampler.toInitialMashModel('cpu')
+    mash_model = sampler.toInitialMashModel()
 
     for j in range(sampled_array.shape[0]):
+        '''
         if j != sampled_array.shape[0] -  1:
             continue
+        '''
 
         if save_folder_path is None:
-            save_folder_path = './output/sample/' + time_stamp + '/iter-' + str(j) + '/'
-        save_folder_path += condition_info + '/'
+            save_folder_path = './output/sample/' + time_stamp + '/'
+        current_save_folder_path = save_folder_path + 'iter_' + str(j) + '/' + condition_info + '/'
 
-        recon_save_folder_path = save_folder_path.replace('/sample/', '/recon/')
-        render_save_folder_path = save_folder_path.replace('/sample/', '/render/')
+        recon_save_folder_path = current_save_folder_path.replace('/sample/', '/recon/')
+        render_save_folder_path = current_save_folder_path.replace('/sample/', '/render/')
 
-        os.makedirs(save_folder_path, exist_ok=True)
+        os.makedirs(current_save_folder_path, exist_ok=True)
         os.makedirs(recon_save_folder_path, exist_ok=True)
         os.makedirs(render_save_folder_path, exist_ok=True)
 
         if condition_type == 'image':
-            copyfile(image_file_path, save_folder_path + 'condition_image.png')
-            copyfile(save_folder_path + 'condition_image.png', recon_save_folder_path + 'condition_image.png')
-            copyfile(save_folder_path + 'condition_image.png', render_save_folder_path + 'condition_image.png')
+            copyfile(image_file_path, current_save_folder_path + 'condition_image.png')
+            copyfile(current_save_folder_path + 'condition_image.png', recon_save_folder_path + 'condition_image.png')
+            copyfile(current_save_folder_path + 'condition_image.png', render_save_folder_path + 'condition_image.png')
         elif condition_type == 'points':
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(points)
-            o3d.io.write_point_cloud(save_folder_path + 'condition_pcd.ply', pcd)
-            copyfile(save_folder_path + 'condition_pcd.ply', recon_save_folder_path + 'condition_pcd.ply')
-            copyfile(save_folder_path + 'condition_pcd.ply', render_save_folder_path + 'condition_pcd.ply')
+            o3d.io.write_point_cloud(current_save_folder_path + 'condition_pcd.ply', pcd)
+            copyfile(current_save_folder_path + 'condition_pcd.ply', recon_save_folder_path + 'condition_pcd.ply')
+            copyfile(current_save_folder_path + 'condition_pcd.ply', render_save_folder_path + 'condition_pcd.ply')
         elif condition_type == 'text':
-            with open(save_folder_path + 'condition_text.txt', 'w') as f:
+            with open(current_save_folder_path + 'condition_text.txt', 'w') as f:
                 f.write(text)
-            copyfile(save_folder_path + 'condition_text.txt', recon_save_folder_path + 'condition_text.txt')
-            copyfile(save_folder_path + 'condition_text.txt', render_save_folder_path + 'condition_text.txt')
+            copyfile(current_save_folder_path + 'condition_text.txt', recon_save_folder_path + 'condition_text.txt')
+            copyfile(current_save_folder_path + 'condition_text.txt', render_save_folder_path + 'condition_text.txt')
 
         for i in tqdm(range(sample_num)):
 
@@ -156,17 +159,18 @@ def demoCondition(
 
             mash_model.translate(translate)
 
-            mash_model.saveParamsFile(save_folder_path + 'mash/sample_' + str(i+1) + '.npy', True)
-            mash_model.saveAsPcdFile(save_folder_path + 'pcd/sample_' + str(i+1) + '.ply', True)
+            mash_model.saveParamsFile(current_save_folder_path + 'mash/sample_' + str(i+1) + '_mash.npy', True)
+            mash_model.saveAsPcdFile(current_save_folder_path + 'pcd/sample_' + str(i+1) + '_pcd.ply', True)
 
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
-    cfm_model_file_path = './output/48depth-v1/total_model_last.pth'
+    cfm_model_file_path = './output/24depth_512cond_2000epoch/total_model_last.pth'
     use_ema = True
     sample_id_num = 1
-    sample_num = 10
-    device = 'cpu'
+    sample_num = 20
+    timestamp_num = 100
+    device = 'cuda:0'
     sample_category = True
     sample_image = False
     sample_points = False
@@ -231,7 +235,7 @@ def demo(save_folder_path: Union[str, None] = None):
         for categoty_id in valid_category_id_list:
             print('start sample for category ' + categoty_id + '...')
             category_idx = CATEGORY_IDS[categoty_id]
-            demoCondition(sampler, detector, time_stamp, category_idx, sample_num, save_folder_path, 'category', str(categoty_id))
+            demoCondition(sampler, detector, time_stamp, category_idx, sample_num, timestamp_num, save_folder_path, 'category', str(categoty_id))
 
     if sample_image:
         image_id_list = [
@@ -249,7 +253,7 @@ def demo(save_folder_path: Union[str, None] = None):
             image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
             if not os.path.exists(image_file_path):
                 continue
-            demoCondition(sampler, detector, time_stamp, image_file_path, sample_num, save_folder_path, 'image', image_id)
+            demoCondition(sampler, detector, time_stamp, image_file_path, sample_num, timestamp_num, save_folder_path, 'image', image_id)
 
     if sample_points:
         points_id_list = [
@@ -268,7 +272,7 @@ def demo(save_folder_path: Union[str, None] = None):
             if not os.path.exists(mesh_file_path):
                 continue
             points = Mesh(mesh_file_path).toSamplePoints(8192)
-            demoCondition(sampler, detector, time_stamp, points, sample_num, save_folder_path, 'points', points_id)
+            demoCondition(sampler, detector, time_stamp, points, sample_num, timestamp_num, save_folder_path, 'points', points_id)
 
     if sample_text:
         text_list = [
@@ -282,6 +286,6 @@ def demo(save_folder_path: Union[str, None] = None):
         ]
         for i, text in enumerate(text_list):
             print('start sample for text [' + text + ']...')
-            demoCondition(sampler, detector, time_stamp, text, sample_num, save_folder_path, 'text', str(i))
+            demoCondition(sampler, detector, time_stamp, text, sample_num, timestamp_num, save_folder_path, 'text', str(i))
 
     return True

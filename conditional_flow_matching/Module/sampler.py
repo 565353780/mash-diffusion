@@ -24,7 +24,7 @@ class Sampler(object):
         self.context_dim = 512
         self.n_heads = 8
         self.d_head = 64
-        self.depth = 48
+        self.depth = 24
 
         self.use_ema = use_ema
         self.device = device
@@ -87,7 +87,8 @@ class Sampler(object):
         self,
         sample_num: int,
         condition: Union[int, np.ndarray] = 0,
-        ) -> np.ndarray: 
+        timestamp_num: int = 10,
+        ) -> np.ndarray:
         self.model.eval()
 
         if isinstance(condition, int):
@@ -103,7 +104,7 @@ class Sampler(object):
         traj = torchdiffeq.odeint(
             lambda t, x: self.model.forward(x, condition_tensor, t),
             torch.randn(condition_tensor.shape[0], 400, 25, device=self.device),
-            torch.linspace(0, 1, 10, device=self.device),
+            torch.linspace(0, 1, timestamp_num, device=self.device),
             atol=1e-4,
             rtol=1e-4,
             method="dopri5",
