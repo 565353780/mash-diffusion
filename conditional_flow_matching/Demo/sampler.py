@@ -111,28 +111,17 @@ def demoCondition(
             save_folder_path = './output/sample/' + time_stamp + '/'
         current_save_folder_path = save_folder_path + 'iter_' + str(j) + '/' + condition_info + '/'
 
-        recon_save_folder_path = current_save_folder_path.replace('/sample/', '/recon/')
-        render_save_folder_path = current_save_folder_path.replace('/sample/', '/render/')
-
         os.makedirs(current_save_folder_path, exist_ok=True)
-        os.makedirs(recon_save_folder_path, exist_ok=True)
-        os.makedirs(render_save_folder_path, exist_ok=True)
 
         if condition_type == 'image':
             copyfile(image_file_path, current_save_folder_path + 'condition_image.png')
-            copyfile(current_save_folder_path + 'condition_image.png', recon_save_folder_path + 'condition_image.png')
-            copyfile(current_save_folder_path + 'condition_image.png', render_save_folder_path + 'condition_image.png')
         elif condition_type == 'points':
             pcd = o3d.geometry.PointCloud()
             pcd.points = o3d.utility.Vector3dVector(points)
             o3d.io.write_point_cloud(current_save_folder_path + 'condition_pcd.ply', pcd)
-            copyfile(current_save_folder_path + 'condition_pcd.ply', recon_save_folder_path + 'condition_pcd.ply')
-            copyfile(current_save_folder_path + 'condition_pcd.ply', render_save_folder_path + 'condition_pcd.ply')
         elif condition_type == 'text':
             with open(current_save_folder_path + 'condition_text.txt', 'w') as f:
                 f.write(text)
-            copyfile(current_save_folder_path + 'condition_text.txt', recon_save_folder_path + 'condition_text.txt')
-            copyfile(current_save_folder_path + 'condition_text.txt', render_save_folder_path + 'condition_text.txt')
 
         for i in tqdm(range(sample_num)):
 
