@@ -5,6 +5,7 @@ import numpy as np
 from typing import Union
 
 from ma_sh.Model.mash import Mash
+from ma_sh.Method.random_mash import sampleRandomMashParams
 
 from conditional_flow_matching.Model.unet2d import MashUNet
 from conditional_flow_matching.Model.mash_net import MashNet
@@ -103,7 +104,7 @@ class Sampler(object):
 
         traj = torchdiffeq.odeint(
             lambda t, x: self.model.forward(x, condition_tensor, t),
-            torch.randn(condition_tensor.shape[0], 400, 25, device=self.device),
+            sampleRandomMashParams(400, 3, 2).type(torch.float32).to(self.device),
             torch.linspace(0, 1, timestamp_num, device=self.device),
             atol=1e-4,
             rtol=1e-4,

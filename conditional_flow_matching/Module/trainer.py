@@ -16,6 +16,8 @@ from torchcfm.conditional_flow_matching import (
     ExactOptimalTransportConditionalFlowMatcher,
 )
 
+from ma_sh.Method.random_mash import sampleRandomMashParams
+
 from conditional_flow_matching.Dataset.mash import MashDataset
 from conditional_flow_matching.Dataset.embedding import EmbeddingDataset
 from conditional_flow_matching.Model.unet2d import MashUNet
@@ -214,12 +216,15 @@ class Trainer(object):
         cfm_mash_params = data['cfm_mash_params'].to(self.device)
         condition = data['condition'].to(self.device)
 
-        cfm_mash_params_noise = torch.randn_like(cfm_mash_params)
+        init_cfm_mash_params = sampleRandomMashParams(
+            self.mash_channel,
+            self.mask_degree,
+            self.sh_degree).type(cfm_mash_params.dtype).to(self.device)
 
         if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
-            t, xt, ut, _, y1 = self.FM.guided_sample_location_and_conditional_flow(cfm_mash_params_noise, cfm_mash_params, y1=condition)
+            t, xt, ut, _, y1 = self.FM.guided_sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params, y1=condition)
         else:
-            t, xt, ut = self.FM.sample_location_and_conditional_flow(cfm_mash_params_noise, cfm_mash_params)
+            t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
             y1 = condition
 
         vt = self.model(xt, y1, t)
