@@ -2,8 +2,9 @@ from conditional_flow_matching.Method.video import sampleImagesFolderToVideos
 
 
 if __name__ == "__main__":
-    iter_root_folder_path = './output/render_sample/20241204_18:06:56/'
-    save_video_folder_path = './output/video_sample/20241204_18:06:56/'
+    timestamp = '20241205_03:18:59'
+    iter_root_folder_path = './output/render_sample/' + timestamp + '/'
+    save_video_folder_path = './output/video_sample/' + timestamp + '/'
     video_width = 540
     video_height = 540
     video_fps = 10
