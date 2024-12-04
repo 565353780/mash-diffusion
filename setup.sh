@@ -1,8 +1,12 @@
 cd ..
 git clone https://github.com/565353780/ma-sh.git
+git clone https://github.com/565353780/ulip-manage.git
 git clone https://github.com/atong01/conditional-flow-matching.git CFM
 
 cd ma-sh
+./setup.sh
+
+cd ../ulip-manage
 ./setup.sh
 
 cd ../CFM
