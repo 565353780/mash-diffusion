@@ -162,11 +162,11 @@ def demoCondition(
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
-    cfm_model_file_path = './output/20241203_19:58:52/total_model_last.pth'
+    cfm_model_file_path = './output/48depth-v1/total_model_last.pth'
     use_ema = True
     sample_id_num = 1
     sample_num = 10
-    device = 'cuda:0'
+    device = 'cpu'
     sample_category = True
     sample_image = False
     sample_points = False
@@ -176,7 +176,8 @@ def demo(save_folder_path: Union[str, None] = None):
     open_clip_model_file_path = '/home/chli/Model/CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
 
     sampler = Sampler(cfm_model_file_path, use_ema, device)
-    detector = Detector(ulip_model_file_path, open_clip_model_file_path, device)
+    # detector = Detector(ulip_model_file_path, open_clip_model_file_path, device)
+    detector = None
 
     time_stamp = getCurrentTime()
 
