@@ -1,5 +1,7 @@
 import sys
 
+from torch import save
+
 sys.path.append("../ma-sh/")
 sys.path.append("../ulip-manage/")
 
@@ -52,7 +54,8 @@ def demoCondition(
     timestamp_num: int = 10,
     save_folder_path: Union[str, None] = None,
     condition_type: str = 'category',
-    condition_name: str = '0'):
+    condition_name: str = '0',
+    save_results_only: bool = True):
     assert condition_type in ['category', 'image', 'points', 'text']
 
     if condition_type == 'category':
@@ -102,10 +105,9 @@ def demoCondition(
     mash_model = sampler.toInitialMashModel()
 
     for j in range(sampled_array.shape[0]):
-        '''
-        if j != sampled_array.shape[0] -  1:
-            continue
-        '''
+        if save_results_only:
+            if j != sampled_array.shape[0] -  1:
+                continue
 
         if save_folder_path is None:
             save_folder_path = './output/sample/' + time_stamp + '/'
@@ -160,6 +162,7 @@ def demo(save_folder_path: Union[str, None] = None):
     sample_num = 20
     timestamp_num = 100
     device = 'cuda:0'
+    save_results_only = True
     sample_category = True
     sample_image = False
     sample_points = False
@@ -224,7 +227,7 @@ def demo(save_folder_path: Union[str, None] = None):
         for categoty_id in valid_category_id_list:
             print('start sample for category ' + categoty_id + '...')
             category_idx = CATEGORY_IDS[categoty_id]
-            demoCondition(sampler, detector, time_stamp, category_idx, sample_num, timestamp_num, save_folder_path, 'category', str(categoty_id))
+            demoCondition(sampler, detector, time_stamp, category_idx, sample_num, timestamp_num, save_folder_path, 'category', str(categoty_id), save_results_only)
 
     if sample_image:
         image_id_list = [
@@ -242,7 +245,7 @@ def demo(save_folder_path: Union[str, None] = None):
             image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
             if not os.path.exists(image_file_path):
                 continue
-            demoCondition(sampler, detector, time_stamp, image_file_path, sample_num, timestamp_num, save_folder_path, 'image', image_id)
+            demoCondition(sampler, detector, time_stamp, image_file_path, sample_num, timestamp_num, save_folder_path, 'image', image_id, save_results_only)
 
     if sample_points:
         points_id_list = [
@@ -261,7 +264,7 @@ def demo(save_folder_path: Union[str, None] = None):
             if not os.path.exists(mesh_file_path):
                 continue
             points = Mesh(mesh_file_path).toSamplePoints(8192)
-            demoCondition(sampler, detector, time_stamp, points, sample_num, timestamp_num, save_folder_path, 'points', points_id)
+            demoCondition(sampler, detector, time_stamp, points, sample_num, timestamp_num, save_folder_path, 'points', points_id, save_results_only)
 
     if sample_text:
         text_list = [
@@ -275,6 +278,6 @@ def demo(save_folder_path: Union[str, None] = None):
         ]
         for i, text in enumerate(text_list):
             print('start sample for text [' + text + ']...')
-            demoCondition(sampler, detector, time_stamp, text, sample_num, timestamp_num, save_folder_path, 'text', str(i))
+            demoCondition(sampler, detector, time_stamp, text, sample_num, timestamp_num, save_folder_path, 'text', str(i), save_results_only)
 
     return True
