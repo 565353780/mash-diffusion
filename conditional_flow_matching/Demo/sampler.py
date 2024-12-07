@@ -156,13 +156,13 @@ def demoCondition(
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
-    cfm_model_file_path = './output/24depth_512cond_2000epoch/total_model_last.pth'
+    cfm_model_file_path = './output/48depth_600epoch/total_model_last.pth'
     use_ema = True
     sample_id_num = 1
     sample_num = 20
-    timestamp_num = 100
-    device = 'cuda:0'
-    save_results_only = True
+    timestamp_num = 1000
+    device = 'cpu'
+    save_results_only = False
     sample_category = True
     sample_image = False
     sample_points = False

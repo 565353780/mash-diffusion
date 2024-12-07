@@ -2,12 +2,12 @@ from conditional_flow_matching.Method.video import sampleImagesFolderToVideos
 
 
 if __name__ == "__main__":
-    timestamp = '20241205_03:18:59'
+    timestamp = '48depth_600epoch'
     iter_root_folder_path = './output/render_sample/' + timestamp + '/'
     save_video_folder_path = './output/video_sample/' + timestamp + '/'
     video_width = 540
     video_height = 540
-    video_fps = 10
+    video_fps = 30
     back_ground = [255, 255, 255]
     overwrite = False
 

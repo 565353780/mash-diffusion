@@ -25,7 +25,7 @@ class Sampler(object):
         self.context_dim = 512
         self.n_heads = 8
         self.d_head = 64
-        self.depth = 24
+        self.depth = 48
 
         self.use_ema = use_ema
         self.device = device
