@@ -125,6 +125,7 @@ def demoCondition(
             with open(current_save_folder_path + 'condition_text.txt', 'w') as f:
                 f.write(text)
 
+        print("start create mash files,", j + 1, '/', sampled_array.shape[0], "...")
         for i in tqdm(range(sample_num)):
 
             mash_params = sampled_array[j][i]
