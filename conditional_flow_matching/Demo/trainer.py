@@ -16,8 +16,8 @@ def demo():
     device = "auto"
     warm_step_num = 2000
     finetune_step_num = -1
-    lr = 2e-4
-    ema_start_step = warm_step_num / 2
+    lr = 2e-5
+    ema_start_step = 5000
     ema_decay = 0.999
     save_result_folder_path = "auto"
     save_log_folder_path = "auto"

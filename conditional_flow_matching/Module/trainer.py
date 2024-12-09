@@ -179,7 +179,7 @@ class Trainer(object):
             return False
 
         model_state_dict = torch.load(model_file_path)
-        self.model.load_state_dict(model_state_dict["model"])
+        self.model.module.load_state_dict(model_state_dict["model"])
         self.ema_model.load_state_dict(model_state_dict["ema_model"])
         return True
 
@@ -397,7 +397,7 @@ class Trainer(object):
         createFileFolder(save_model_file_path)
 
         model_state_dict = {
-            "model": self.model.state_dict(),
+            "model": self.model.module.state_dict(),
             "ema_model": self.ema_model.state_dict(),
         }
 
