@@ -11,10 +11,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, DistributedSampler
 
-from torchcfm.conditional_flow_matching import (
-    TargetConditionalFlowMatcher,
-    ExactOptimalTransportConditionalFlowMatcher,
-)
+from torchcfm.conditional_flow_matching import ExactOptimalTransportConditionalFlowMatcher
 
 from ma_sh.Method.random_mash import sampleRandomMashParams
 
@@ -67,7 +64,7 @@ class Trainer(object):
         self.context_dim = 512
         self.n_heads = 8
         self.d_head = 64
-        self.depth = 48
+        self.depth = 24
 
         self.accum_iter = accum_iter
         if device == 'auto':
@@ -151,7 +148,7 @@ class Trainer(object):
         self.optim = AdamW(self.model.parameters(), lr=self.lr)
         self.sched = LambdaLR(self.optim, lr_lambda=self.warmup_lr)
 
-        self.FM = TargetConditionalFlowMatcher(sigma=0.0)
+        self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
 
         self.initRecords()
         return

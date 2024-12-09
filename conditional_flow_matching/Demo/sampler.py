@@ -1,7 +1,5 @@
 import sys
 
-from torch import save
-
 sys.path.append("../ma-sh/")
 sys.path.append("../ulip-manage/")
 
@@ -157,12 +155,12 @@ def demoCondition(
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
-    cfm_model_file_path = './output/48depth_600epoch/total_model_last.pth'
+    cfm_model_file_path = './output/48depth-v2/total_model_last.pth'
     use_ema = True
     sample_id_num = 1
     sample_num = 20
     timestamp_num = 1000
-    device = 'cpu'
+    device = 'cuda'
     save_results_only = False
     sample_category = True
     sample_image = False
