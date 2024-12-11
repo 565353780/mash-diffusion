@@ -217,7 +217,11 @@ class Trainer(object):
         init_cfm_mash_params = sampleRandomMashParams(
             self.mash_channel,
             self.mask_degree,
-            self.sh_degree, cfm_mash_params.shape[0], 'cpu', False).type(cfm_mash_params.dtype).to(self.device)
+            self.sh_degree,
+            cfm_mash_params.shape[0],
+            'cpu',
+            'normal',
+            False).type(cfm_mash_params.dtype).to(self.device)
 
         t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
 
@@ -255,12 +259,14 @@ class Trainer(object):
         cfm_mash_params = data['cfm_mash_params'].to(self.device)
         condition = data['condition'].to(self.device)
 
-        # cfm_mash_params_noise = torch.randn_like(cfm_mash_params)
-
         init_cfm_mash_params = sampleRandomMashParams(
             self.mash_channel,
             self.mask_degree,
-            self.sh_degree, cfm_mash_params.shape[0], 'cpu', False).type(cfm_mash_params.dtype).to(self.device)
+            self.sh_degree,
+            cfm_mash_params.shape[0],
+            'cpu',
+            'normal',
+            False).type(cfm_mash_params.dtype).to(self.device)
 
         t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
 

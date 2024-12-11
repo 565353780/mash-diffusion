@@ -25,7 +25,7 @@ class Sampler(object):
         self.context_dim = 512
         self.n_heads = 8
         self.d_head = 64
-        self.depth = 48
+        self.depth = 24
 
         self.use_ema = use_ema
         self.device = device
@@ -104,7 +104,7 @@ class Sampler(object):
 
         traj = torchdiffeq.odeint(
             lambda t, x: self.model.forward(x, condition_tensor, t),
-            sampleRandomMashParams(self.mash_channel, self.mask_degree, self.sh_degree, sample_num, 'cpu', False).type(torch.float32).to(self.device),
+            sampleRandomMashParams(self.mash_channel, self.mask_degree, self.sh_degree, sample_num, 'cpu', 'normal', False).type(torch.float32).to(self.device),
             torch.linspace(0, 1, timestamp_num, device=self.device),
             atol=1e-4,
             rtol=1e-4,
