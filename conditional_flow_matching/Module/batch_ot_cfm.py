@@ -1,13 +1,13 @@
 import torch
-import numpy as np
 from typing import Union
-from torchcfm.optimal_transport import OTPlanSampler
 from torchcfm.conditional_flow_matching import pad_t_like_x
 
+from conditional_flow_matching.Module.target_ot_plan_sampler import TargetOTPlanSampler
+
 class BatchExactOptimalTransportConditionalFlowMatcher(object):
-    def __init__(self, sigma: Union[float, int] = 0.0):
+    def __init__(self, sigma: Union[float, int] = 0.0, target_dim: Union[list, None]=None):
         self.sigma = sigma
-        self.ot_sampler = OTPlanSampler(method="exact")
+        self.ot_sampler = TargetOTPlanSampler(method="exact", target_dim=target_dim)
         return
 
     def compute_mu_t(self, x0, x1, t):

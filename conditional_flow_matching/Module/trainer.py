@@ -147,7 +147,9 @@ class Trainer(object):
         self.optim = AdamW(self.model.parameters(), lr=self.lr)
         self.sched = LambdaLR(self.optim, lr_lambda=self.warmup_lr)
 
-        self.FM = BatchExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
+        self.FM = BatchExactOptimalTransportConditionalFlowMatcher(
+            sigma=0.0,
+            target_dim=[6, 7, 8])
 
         self.initRecords()
         return
