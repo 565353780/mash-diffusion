@@ -11,8 +11,6 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, DistributedSampler
 
-from torchcfm.conditional_flow_matching import ExactOptimalTransportConditionalFlowMatcher
-
 from ma_sh.Method.random_mash import sampleRandomMashParams
 
 from conditional_flow_matching.Dataset.mash import MashDataset
@@ -21,6 +19,7 @@ from conditional_flow_matching.Model.unet2d import MashUNet
 from conditional_flow_matching.Model.mash_net import MashNet
 from conditional_flow_matching.Method.time import getCurrentTime
 from conditional_flow_matching.Method.path import createFileFolder, removeFile, renameFile
+from conditional_flow_matching.Module.batch_ot_cfm import BatchExactOptimalTransportConditionalFlowMatcher
 from conditional_flow_matching.Module.logger import Logger
 
 
@@ -148,7 +147,7 @@ class Trainer(object):
         self.optim = AdamW(self.model.parameters(), lr=self.lr)
         self.sched = LambdaLR(self.optim, lr_lambda=self.warmup_lr)
 
-        self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
+        self.FM = BatchExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
 
         self.initRecords()
         return
@@ -218,13 +217,9 @@ class Trainer(object):
             self.mask_degree,
             self.sh_degree, cfm_mash_params.shape[0], 'cpu', False).type(cfm_mash_params.dtype).to(self.device)
 
-        if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
-            t, xt, ut, _, y1 = self.FM.guided_sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params, y1=condition)
-        else:
-            t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
-            y1 = condition
+        t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
 
-        vt = self.model(xt, y1, t)
+        vt = self.model(xt, condition, t)
         loss = torch.mean((vt - ut) ** 2)
 
         accum_loss = loss / self.accum_iter
@@ -258,16 +253,17 @@ class Trainer(object):
         cfm_mash_params = data['cfm_mash_params'].to(self.device)
         condition = data['condition'].to(self.device)
 
-        cfm_mash_params_noise = torch.randn_like(cfm_mash_params)
+        # cfm_mash_params_noise = torch.randn_like(cfm_mash_params)
 
-        if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
-            t, xt, ut, _, y1 = self.FM.guided_sample_location_and_conditional_flow(cfm_mash_params_noise, cfm_mash_params, y1=condition)
-        else:
-            t, xt, ut = self.FM.sample_location_and_conditional_flow(cfm_mash_params_noise, cfm_mash_params)
-            y1 = condition
+        init_cfm_mash_params = sampleRandomMashParams(
+            self.mash_channel,
+            self.mask_degree,
+            self.sh_degree, cfm_mash_params.shape[0], 'cpu', False).type(cfm_mash_params.dtype).to(self.device)
+
+        t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
 
         with autocast('cuda'):
-            vt = self.model(xt, y1, t)
+            vt = self.model(xt, condition, t)
             loss = torch.mean((vt - ut) ** 2)
 
         accum_loss = loss / self.accum_iter
