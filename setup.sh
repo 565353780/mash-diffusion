@@ -19,3 +19,5 @@ pip install -e .
 pip install -U timm einops diffusers
 
 pip install git+https://github.com/openai/CLIP.git
+
+pip install -U flow_matching
