@@ -24,7 +24,7 @@ def inf_train_gen(batch_size: int = 200, device: str = "cpu"):
     x2 = x2_ + (torch.floor(x1) % 2)
 
     data = 1.0 * torch.cat([x1[:, None], x2[:, None]], dim=1) / 0.45
-    
+
     return data.float()
 
 # Activation class
@@ -39,7 +39,7 @@ class Swish(nn.Module):
 class MLP(nn.Module):
     def __init__(self, input_dim: int = 2, time_dim: int = 1, hidden_dim: int = 128):
         super().__init__()
-        
+
         self.input_dim = input_dim
         self.time_dim = time_dim
         self.hidden_dim = hidden_dim
@@ -55,7 +55,6 @@ class MLP(nn.Module):
             Swish(),
             nn.Linear(hidden_dim, input_dim),
             )
-    
 
     def forward(self, x: Tensor, t: Tensor) -> Tensor:
         sz = x.size()
@@ -65,7 +64,7 @@ class MLP(nn.Module):
         t = t.reshape(-1, 1).expand(x.shape[0], 1)
         h = torch.cat([x, t], dim=1)
         output = self.main(h)
-        
+
         return output.reshape(*sz)
 
 lr = 0.001
@@ -104,7 +103,7 @@ for i in range(iterations):
     # optimizer step
     loss.backward() # backward
     optim.step() # update
-    
+
     # log loss
     if (i+1) % print_every == 0:
         elapsed = time.time() - start_time
