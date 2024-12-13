@@ -9,6 +9,7 @@ from ma_sh.Method.random_mash import sampleRandomMashParams
 
 from conditional_flow_matching.Model.unet2d import MashUNet
 from conditional_flow_matching.Model.mash_net import MashNet
+from conditional_flow_matching.Model.mash_latent_net import MashLatentNet
 
 
 class Sampler(object):
@@ -22,15 +23,16 @@ class Sampler(object):
         self.encoded_mash_channel = 25
         self.mask_degree = 3
         self.sh_degree = 2
-        self.context_dim = 512
-        self.n_heads = 8
+        self.embed_dim = 256
+        self.context_dim = 1024
+        self.n_heads = 4
         self.d_head = 64
         self.depth = 24
 
         self.use_ema = use_ema
         self.device = device
 
-        model_id = 2
+        model_id = 3
         if model_id == 1:
             self.model = MashUNet(self.context_dim).to(self.device)
         elif model_id == 2:
@@ -38,6 +40,17 @@ class Sampler(object):
                 n_latents=self.mash_channel,
                 mask_degree=self.mask_degree,
                 sh_degree=self.sh_degree,
+                context_dim=self.context_dim,
+                n_heads=self.n_heads,
+                d_head=self.d_head,
+                depth=self.depth
+            ).to(self.device)
+        elif model_id == 3:
+            self.model = MashLatentNet(
+                n_latents=self.mash_channel,
+                mask_degree=self.mask_degree,
+                sh_degree=self.sh_degree,
+                embed_dim=self.embed_dim,
                 context_dim=self.context_dim,
                 n_heads=self.n_heads,
                 d_head=self.d_head,
@@ -104,7 +117,14 @@ class Sampler(object):
 
         traj = torchdiffeq.odeint(
             lambda t, x: self.model.forward(x, condition_tensor, t),
-            sampleRandomMashParams(self.mash_channel, self.mask_degree, self.sh_degree, sample_num, 'cpu', 'normal', False).type(torch.float32).to(self.device),
+            sampleRandomMashParams(
+                self.mash_channel,
+                self.mask_degree,
+                self.sh_degree,
+                sample_num,
+                'cpu',
+                'randn',
+                False).type(torch.float32).to(self.device),
             torch.linspace(0, 1, timestamp_num, device=self.device),
             atol=1e-4,
             rtol=1e-4,

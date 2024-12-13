@@ -17,6 +17,7 @@ from conditional_flow_matching.Dataset.mash import MashDataset
 from conditional_flow_matching.Dataset.embedding import EmbeddingDataset
 from conditional_flow_matching.Model.unet2d import MashUNet
 from conditional_flow_matching.Model.mash_net import MashNet
+from conditional_flow_matching.Model.mash_latent_net import MashLatentNet
 from conditional_flow_matching.Method.time import getCurrentTime
 from conditional_flow_matching.Method.path import createFileFolder, removeFile, renameFile
 from conditional_flow_matching.Module.batch_ot_cfm import BatchExactOptimalTransportConditionalFlowMatcher
@@ -60,8 +61,9 @@ class Trainer(object):
         self.encoded_mash_channel = 25
         self.mask_degree = 3
         self.sh_degree = 2
-        self.context_dim = 512
-        self.n_heads = 8
+        self.embed_dim = 256
+        self.context_dim = 1024
+        self.n_heads = 4
         self.d_head = 64
         self.depth = 24
 
@@ -120,7 +122,7 @@ class Trainer(object):
                 num_workers=num_workers,
             )
 
-        model_id = 2
+        model_id = 3
         if model_id == 1:
             self.model = MashUNet(self.context_dim).to(self.device)
         elif model_id == 2:
@@ -133,7 +135,17 @@ class Trainer(object):
                 d_head=self.d_head,
                 depth=self.depth
             ).to(self.device)
-
+        elif model_id == 3:
+            self.model = MashLatentNet(
+                n_latents=self.mash_channel,
+                mask_degree=self.mask_degree,
+                sh_degree=self.sh_degree,
+                embed_dim=self.embed_dim,
+                context_dim=self.context_dim,
+                n_heads=self.n_heads,
+                d_head=self.d_head,
+                depth=self.depth
+            ).to(self.device)
 
         if self.local_rank == 0:
             self.ema_model = deepcopy(self.model)
@@ -149,7 +161,8 @@ class Trainer(object):
 
         self.FM = BatchExactOptimalTransportConditionalFlowMatcher(
             sigma=0.0,
-            target_dim=[6, 7, 8])
+            target_dim=None)
+            #target_dim=[6, 7, 8])
 
         self.initRecords()
         return
@@ -220,7 +233,7 @@ class Trainer(object):
             self.sh_degree,
             cfm_mash_params.shape[0],
             'cpu',
-            'normal',
+            'randn',
             False).type(cfm_mash_params.dtype).to(self.device)
 
         t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
@@ -238,7 +251,7 @@ class Trainer(object):
             exit()
 
         if (self.step + 1) % self.accum_iter == 0:
-            # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
             self.optim.step()
             self.sched.step()
             if self.local_rank == 0:
@@ -284,8 +297,8 @@ class Trainer(object):
             exit()
 
         if (self.step + 1) % self.accum_iter == 0:
-            # self.scaler.unscale_(self.optim)
-            # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 0.5)
+            self.scaler.unscale_(self.optim)
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
             self.scaler.step(self.optim)
             self.scaler.update()
             self.sched.step()
