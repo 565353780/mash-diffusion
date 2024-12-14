@@ -1,7 +1,9 @@
 import os
 import torch
+import torchdiffeq
+import numpy as np
 import torch.distributed as dist
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from copy import deepcopy
 from typing import Union
 from torch.optim.adamw import AdamW
@@ -16,6 +18,7 @@ from flow_matching.path import AffineProbPath
 
 from torchcfm.conditional_flow_matching import ExactOptimalTransportConditionalFlowMatcher
 
+from ma_sh.Model.mash import Mash
 from ma_sh.Method.random_mash import sampleRandomMashParams
 
 from conditional_flow_matching.Dataset.mash import MashDataset
@@ -243,6 +246,8 @@ class Trainer(object):
         self,
         data: dict,
     ) -> dict:
+        self.model.train()
+
         cfm_mash_params = data['cfm_mash_params'].to(self.device)
         condition = data['condition'].to(self.device)
 
@@ -302,6 +307,8 @@ class Trainer(object):
         self,
         data: dict,
     ) -> dict:
+        self.model.train()
+
         cfm_mash_params = data['cfm_mash_params'].to(self.device)
         condition = data['condition'].to(self.device)
 
@@ -356,6 +363,85 @@ class Trainer(object):
         }
 
         return loss_dict
+
+    @torch.no_grad()
+    def sampleStep(self) -> bool:
+        if self.local_rank != 0:
+            return True
+
+        self.model.eval()
+
+        sample_num = 2
+        timestamp_num = 2
+        condition = 18
+
+        print('[INFO][Trainer::sampleStep]')
+        print("\t start diffuse", sample_num, "mashs....")
+        if isinstance(condition, int):
+            condition_tensor = torch.ones([sample_num]).long().to(self.device) * condition
+        elif isinstance(condition, np.ndarray):
+            # condition dim: 1x768
+            condition_tensor = torch.from_numpy(condition).type(torch.float32).to(self.device).repeat(sample_num, 1)
+        else:
+            print('[ERROR][Trainer::sampleStep]')
+            print('\t condition type not valid!')
+            return False
+
+        query_t = torch.linspace(0,1,timestamp_num).to(self.device)
+        query_t = torch.pow(query_t, 1.0 / 2.0)
+
+        x_init = sampleRandomMashParams(
+            self.mash_channel,
+            self.mask_degree,
+            self.sh_degree,
+            sample_num,
+            'cpu',
+            'randn',
+            False).type(torch.float32).to(self.device)
+
+        traj = torchdiffeq.odeint(
+            lambda t, x: self.model.forward(x, condition_tensor, t),
+            x_init,
+            query_t,
+            atol=1e-4,
+            rtol=1e-4,
+            method="dopri5",
+        )
+
+        sampled_array = traj.cpu().numpy()[-1]
+
+        mash_model = Mash(
+            self.mash_channel,
+            self.mask_degree,
+            self.sh_degree,
+            20,
+            800,
+            0.4,
+            dtype=torch.float64,
+            device=self.device,
+        )
+
+        for i in trange(sample_num):
+            mash_params = sampled_array[i]
+
+            sh2d = 2 * self.mask_degree + 1
+            ortho_poses = mash_params[:, :6]
+            positions = mash_params[:, 6:9]
+            mask_params = mash_params[:, 9 : 9 + sh2d]
+            sh_params = mash_params[:, 9 + sh2d :]
+
+            mash_model.loadParams(
+                mask_params=mask_params,
+                sh_params=sh_params,
+                positions=positions,
+                ortho6d_poses=ortho_poses
+            )
+
+            pcd = mash_model.toSamplePcd()
+
+            self.logger.addPointCloud('Sample/pcd_' + str(i), pcd, self.step)
+
+        return True
 
     def toCondition(self, data: dict) -> Union[torch.Tensor, None]:
         if 'category_id' in data.keys():
@@ -450,6 +536,9 @@ class Trainer(object):
 
                 if self.local_rank == 0:
                     self.autoSaveModel("total")
+
+                if self.local_rank == 0:
+                    self.sampleStep()
 
                 epoch_idx += 1
 

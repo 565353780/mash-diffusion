@@ -155,7 +155,7 @@ def demoCondition(
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
-    cfm_model_file_path = './output/20241214_18:42:47/total_model_last.pth'
+    cfm_model_file_path = "../../output/20241214_19:53:00/total_model_last.pth".replace('../../', './')
     use_ema = False
     sample_id_num = 1
     sample_num = 2

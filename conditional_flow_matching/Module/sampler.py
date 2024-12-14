@@ -23,10 +23,10 @@ class Sampler(object):
         self.encoded_mash_channel = 25
         self.mask_degree = 3
         self.sh_degree = 2
-        self.embed_dim = 512
+        self.embed_dim = 1024
         self.context_dim = 1024
-        self.n_heads = 8
-        self.d_head = 64
+        self.n_heads = 4
+        self.d_head = 256
         self.depth = 24
 
         self.use_ema = use_ema
