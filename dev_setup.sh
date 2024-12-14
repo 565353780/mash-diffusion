@@ -11,13 +11,10 @@ cd ../ulip-manage
 
 cd ../CFM
 pip install -U torch torchvision torchaudio
-# pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 
 pip install -r requirements.txt
 pip install -e .
 
-pip install -U timm einops diffusers
+pip install -U timm einops diffusers flow_matching thop
 
 pip install git+https://github.com/openai/CLIP.git
-
-pip install -U flow_matching
