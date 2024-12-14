@@ -365,17 +365,17 @@ class Trainer(object):
         return loss_dict
 
     @torch.no_grad()
-    def sampleStep(self) -> bool:
+    def sampleModelStep(self, model: torch.nn.Module, model_name: str) -> bool:
         if self.local_rank != 0:
             return True
 
-        self.model.eval()
+        model.eval()
 
-        sample_num = 2
+        sample_num = 4
         timestamp_num = 2
         condition = 18
 
-        print('[INFO][Trainer::sampleStep]')
+        print('[INFO][Trainer::sampleModelStep]')
         print("\t start diffuse", sample_num, "mashs....")
         if isinstance(condition, int):
             condition_tensor = torch.ones([sample_num]).long().to(self.device) * condition
@@ -383,7 +383,7 @@ class Trainer(object):
             # condition dim: 1x768
             condition_tensor = torch.from_numpy(condition).type(torch.float32).to(self.device).repeat(sample_num, 1)
         else:
-            print('[ERROR][Trainer::sampleStep]')
+            print('[ERROR][Trainer::sampleModelStep]')
             print('\t condition type not valid!')
             return False
 
@@ -400,7 +400,7 @@ class Trainer(object):
             False).type(torch.float32).to(self.device)
 
         traj = torchdiffeq.odeint(
-            lambda t, x: self.model.forward(x, condition_tensor, t),
+            lambda t, x: model.forward(x, condition_tensor, t),
             x_init,
             query_t,
             atol=1e-4,
@@ -439,8 +439,18 @@ class Trainer(object):
 
             pcd = mash_model.toSamplePcd()
 
-            self.logger.addPointCloud('Sample/pcd_' + str(i), pcd, self.step)
+            self.logger.addPointCloud(model_name + '/pcd_' + str(i), pcd, self.step)
 
+        return True
+
+    @torch.no_grad()
+    def sampleStep(self) -> bool:
+        self.sampleModelStep(self.model.module, 'Model')
+        return True
+
+    @torch.no_grad()
+    def sampleEMAStep(self) -> bool:
+        self.sampleModelStep(self.ema_model, 'EMA')
         return True
 
     def toCondition(self, data: dict) -> Union[torch.Tensor, None]:
@@ -539,6 +549,7 @@ class Trainer(object):
 
                 if self.local_rank == 0:
                     self.sampleStep()
+                    self.sampleEMAStep()
 
                 epoch_idx += 1
 
