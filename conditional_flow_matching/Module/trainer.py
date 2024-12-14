@@ -11,6 +11,9 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader, DistributedSampler
 
+from flow_matching.path.scheduler import CondOTScheduler
+from flow_matching.path import AffineProbPath
+
 from ma_sh.Method.random_mash import sampleRandomMashParams
 
 from conditional_flow_matching.Dataset.mash import MashDataset
@@ -61,9 +64,9 @@ class Trainer(object):
         self.encoded_mash_channel = 25
         self.mask_degree = 3
         self.sh_degree = 2
-        self.embed_dim = 256
+        self.embed_dim = 512
         self.context_dim = 1024
-        self.n_heads = 4
+        self.n_heads = 8
         self.d_head = 64
         self.depth = 24
 
@@ -151,18 +154,22 @@ class Trainer(object):
             self.ema_model = deepcopy(self.model)
             self.ema_loss = None
 
+        self.model = DDP(self.model, device_ids=[self.local_rank], output_device=self.local_rank)
+
         if model_file_path is not None:
             self.loadModel(model_file_path)
-
-        self.model = DDP(self.model, device_ids=[self.local_rank], output_device=self.local_rank)
 
         self.optim = AdamW(self.model.parameters(), lr=self.lr)
         self.sched = LambdaLR(self.optim, lr_lambda=self.warmup_lr)
 
-        self.FM = BatchExactOptimalTransportConditionalFlowMatcher(
-            sigma=0.0,
-            target_dim=None)
-            #target_dim=[6, 7, 8])
+        mode_id = 2
+        if mode_id == 1:
+            self.FM = BatchExactOptimalTransportConditionalFlowMatcher(
+                sigma=0.0,
+                target_dim=None)
+                #target_dim=[6, 7, 8])
+        elif mode_id == 2:
+            self.FM = AffineProbPath(scheduler=CondOTScheduler())
 
         self.initRecords()
         return
@@ -193,8 +200,15 @@ class Trainer(object):
             return False
 
         model_state_dict = torch.load(model_file_path)
-        self.model.module.load_state_dict(model_state_dict["model"])
-        self.ema_model.load_state_dict(model_state_dict["ema_model"])
+        if 'model' in model_state_dict.keys():
+            self.model.module.load_state_dict(model_state_dict["model"])
+        if 'ema_model' in model_state_dict.keys():
+            self.ema_model.load_state_dict(model_state_dict["ema_model"])
+        if 'ema_loss' in model_state_dict.keys():
+            self.ema_loss = model_state_dict['ema_loss']
+        if 'step' in model_state_dict.keys():
+            self.step = model_state_dict['step']
+
         return True
 
     def getLr(self) -> float:
@@ -236,10 +250,22 @@ class Trainer(object):
             'randn',
             False).type(cfm_mash_params.dtype).to(self.device)
 
-        t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
+        if isinstance(self.FM, BatchExactOptimalTransportConditionalFlowMatcher):
+            t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
+        elif isinstance(self.FM, AffineProbPath):
+            t = torch.rand(cfm_mash_params.shape[0]).to(self.device) 
+            t = torch.pow(t, 1.0 / 2.0)
+            path_sample = self.FM.sample(t=t, x_0=init_cfm_mash_params, x_1=cfm_mash_params)
+            t = path_sample.t
+            xt = path_sample.x_t
+            ut = path_sample.dx_t
+        else:
+            print('[ERROR][Trainer::trainStep]')
+            print('\t FM not valid!')
+            exit()
 
         vt = self.model(xt, condition, t)
-        loss = torch.mean((vt - ut) ** 2)
+        loss = torch.pow(vt - ut, 2).mean()
 
         accum_loss = loss / self.accum_iter
 
@@ -281,7 +307,19 @@ class Trainer(object):
             'normal',
             False).type(cfm_mash_params.dtype).to(self.device)
 
-        t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
+        if isinstance(self.FM, BatchExactOptimalTransportConditionalFlowMatcher):
+            t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
+        elif isinstance(self.FM, AffineProbPath):
+            t = torch.rand(cfm_mash_params.shape[0]).to(self.device) 
+            t = torch.pow(t, 1.0 / 2.0)
+            path_sample = self.FM.sample(t=t, x_0=init_cfm_mash_params, x_1=cfm_mash_params)
+            t = path_sample.t
+            xt = path_sample.x_t
+            ut = path_sample.dx_t
+        else:
+            print('[ERROR][Trainer::trainStep]')
+            print('\t FM not valid!')
+            exit()
 
         with autocast('cuda'):
             vt = self.model(xt, condition, t)
@@ -416,6 +454,8 @@ class Trainer(object):
         model_state_dict = {
             "model": self.model.module.state_dict(),
             "ema_model": self.ema_model.state_dict(),
+            "ema_loss": self.ema_loss,
+            "step": self.step,
         }
 
         torch.save(model_state_dict, save_model_file_path)
