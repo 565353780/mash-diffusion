@@ -46,17 +46,17 @@ class Trainer(object):
     def __init__(
         self,
         dataset_root_folder_path: str,
-        batch_size: int = 24,
+        batch_size: int = 5,
         accum_iter: int = 10,
         num_workers: int = 16,
         model_file_path: Union[str, None] = None,
         device: str = "cuda:0",
         warm_step_num: int = 2000,
         finetune_step_num: int = -1,
-        lr: float = 2e-5,
+        lr: float = 2e-4,
         ema_start_step: int = 5000,
-        ema_decay_init: float = 0.999,
-        ema_decay: float = 0.9999,
+        ema_decay_init: float = 0.99,
+        ema_decay: float = 0.999,
         save_result_folder_path: Union[str, None] = None,
         save_log_folder_path: Union[str, None] = None,
     ) -> None:
@@ -67,10 +67,10 @@ class Trainer(object):
         self.encoded_mash_channel = 25
         self.mask_degree = 3
         self.sh_degree = 2
-        self.embed_dim = 512
+        self.embed_dim = 1024
         self.context_dim = 1024
-        self.n_heads = 8
-        self.d_head = 64
+        self.n_heads = 4
+        self.d_head = 256
         self.depth = 24
 
         self.accum_iter = accum_iter
@@ -80,7 +80,7 @@ class Trainer(object):
             self.device = device
         self.warm_step_num = warm_step_num / accum_iter
         self.finetune_step_num = finetune_step_num
-        self.lr = lr * self.accum_iter * dist.get_world_size()
+        self.lr = lr * batch_size / 256 * self.accum_iter * dist.get_world_size()
         self.ema_start_step = ema_start_step
         self.ema_decay_init = ema_decay_init
         self.ema_decay = ema_decay

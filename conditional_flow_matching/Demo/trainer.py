@@ -8,7 +8,7 @@ from conditional_flow_matching.Module.trainer import Trainer
 
 def demo():
     dataset_root_folder_path = os.environ['HOME'] + "/Dataset/"
-    batch_size = 24
+    batch_size = 5
     accum_iter = 10
     num_workers = 16
     # model_file_path = "./output/24d_1024c_latent-v2/total_model_last.pth"
@@ -16,7 +16,7 @@ def demo():
     device = "auto"
     warm_step_num = 2000
     finetune_step_num = -1
-    lr = 2e-5
+    lr = 2e-4
     ema_start_step = 5000
     ema_decay_init = 0.99
     ema_decay = 0.999

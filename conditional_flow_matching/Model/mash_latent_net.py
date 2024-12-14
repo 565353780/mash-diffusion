@@ -18,10 +18,10 @@ class MashLatentNet(torch.nn.Module):
         n_latents=400,
         mask_degree: int = 3,
         sh_degree: int = 2,
-        embed_dim: int = 512,
+        embed_dim: int = 1024,
         context_dim=1024,
         n_heads=8,
-        d_head=64,
+        d_head=128,
         depth=24,
         sigma_min=0,
         sigma_max=float("inf"),
@@ -64,14 +64,20 @@ class MashLatentNet(torch.nn.Module):
 
         self.model = LatentArrayTransformer(
             in_channels=self.channels,
-            t_channels=256,
+            t_channels=context_dim,
             n_heads=n_heads,
             d_head=d_head,
             depth=depth,
             context_dim=context_dim,
         )
 
-        self.to_outputs = nn.Linear(self.channels, 9 + self.mask_dim + self.sh_dim)
+        self.rotation_decoder = nn.Linear(self.per_embed_dim, 6)
+
+        self.position_decoder = nn.Linear(self.per_embed_dim, 3)
+
+        self.mask_decoder = nn.Linear(self.per_embed_dim, self.mask_dim)
+
+        self.sh_decoder = nn.Linear(self.per_embed_dim, self.sh_dim)
         return
 
     def emb_category(self, class_labels):
@@ -86,11 +92,20 @@ class MashLatentNet(torch.nn.Module):
         mash_feature = torch.cat([rotation_feature, position_feature, mask_feature, sh_feature], dim=2)
         return mash_feature
 
+    def decodeMash(self, delta_mash_feature: torch.Tensor) -> torch.Tensor:
+        delta_rotations = self.rotation_decoder(delta_mash_feature[:, :, :self.per_embed_dim])
+        delta_positions = self.position_decoder(delta_mash_feature[:, :, self.per_embed_dim:2*self.per_embed_dim])
+        delta_mask_params = self.mask_decoder(delta_mash_feature[:, :, 2*self.per_embed_dim:3*self.per_embed_dim])
+        delta_sh_params = self.sh_decoder(delta_mash_feature[:, :, 3*self.per_embed_dim:])
+
+        delta_mash_params = torch.cat([delta_rotations, delta_positions, delta_mask_params, delta_sh_params], dim=2)
+        return delta_mash_params
+
     def forwardCondition(self, mash_params, condition, t):
         mash_feature = self.encodeMash(mash_params)
-        mash_params_noise = self.model(mash_feature, t, cond=condition)
-        mash_params_noise = self.to_outputs(mash_params_noise)
-        return mash_params_noise
+        delta_mash_feature = self.model(mash_feature, t, cond=condition)
+        delta_mash_params = self.decodeMash(delta_mash_feature)
+        return delta_mash_params
 
     def forward(self, mash_params, condition, t, condition_drop_prob: float = 0.0):
         if condition.dtype == torch.float32:
