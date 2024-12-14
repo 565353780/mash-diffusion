@@ -23,9 +23,9 @@ class Sampler(object):
         self.encoded_mash_channel = 25
         self.mask_degree = 3
         self.sh_degree = 2
-        self.embed_dim = 256
+        self.embed_dim = 512
         self.context_dim = 1024
-        self.n_heads = 4
+        self.n_heads = 8
         self.d_head = 64
         self.depth = 24
 
@@ -115,17 +115,22 @@ class Sampler(object):
             print('\t condition type not valid!')
             return np.ndarray()
 
+        query_t = torch.linspace(0,1,timestamp_num).to(self.device)
+        query_t = torch.pow(query_t, 1.0 / 2.0)
+
+        x_init = sampleRandomMashParams(
+            self.mash_channel,
+            self.mask_degree,
+            self.sh_degree,
+            sample_num,
+            'cpu',
+            'randn',
+            False).type(torch.float32).to(self.device)
+
         traj = torchdiffeq.odeint(
             lambda t, x: self.model.forward(x, condition_tensor, t),
-            sampleRandomMashParams(
-                self.mash_channel,
-                self.mask_degree,
-                self.sh_degree,
-                sample_num,
-                'cpu',
-                'randn',
-                False).type(torch.float32).to(self.device),
-            torch.linspace(0, 1, timestamp_num, device=self.device),
+            x_init,
+            query_t,
             atol=1e-4,
             rtol=1e-4,
             method="dopri5",

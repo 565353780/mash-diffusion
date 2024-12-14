@@ -29,9 +29,9 @@ class FMSampler(object):
         self.encoded_mash_channel = 25
         self.mask_degree = 3
         self.sh_degree = 2
-        self.embed_dim = 256
+        self.embed_dim = 512
         self.context_dim = 1024
-        self.n_heads = 4
+        self.n_heads = 8
         self.d_head = 64
         self.depth = 24
 
@@ -123,9 +123,8 @@ class FMSampler(object):
             print('\t condition type not valid!')
             return np.ndarray()
 
-        step_size = 1.0 / timestamp_num
-
         T = torch.linspace(0,1,timestamp_num).to(self.device)
+        T = torch.pow(T, 1.0 / 2.0)
 
         x_init = sampleRandomMashParams(
             self.mash_channel,
@@ -140,8 +139,8 @@ class FMSampler(object):
         sol = solver.sample(
             time_grid=T,
             x_init=x_init,
-            method='midpoint',
-            step_size=step_size,
+            method='dopri5',
+            step_size=None,
             return_intermediates=True,
             condition=condition_tensor,
         )

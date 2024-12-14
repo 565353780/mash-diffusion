@@ -155,11 +155,11 @@ def demoCondition(
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
-    cfm_model_file_path = './output/20241213_19:37:20/total_model_last.pth'
+    cfm_model_file_path = './output/20241214_15:02:45/total_model_last.pth'
     use_ema = True
     sample_id_num = 1
-    sample_num = 2
-    timestamp_num = 10
+    sample_num = 4
+    timestamp_num = 20
     device = 'cpu'
     save_results_only = True
     sample_category = True

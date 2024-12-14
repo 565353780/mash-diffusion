@@ -64,9 +64,9 @@ class FMTrainer(object):
         self.encoded_mash_channel = 25
         self.mask_degree = 3
         self.sh_degree = 2
-        self.embed_dim = 256
+        self.embed_dim = 512
         self.context_dim = 1024
-        self.n_heads = 4
+        self.n_heads = 8
         self.d_head = 64
         self.depth = 24
 
@@ -193,8 +193,14 @@ class FMTrainer(object):
             return False
 
         model_state_dict = torch.load(model_file_path)
-        self.model.module.load_state_dict(model_state_dict["model"])
-        self.ema_model.load_state_dict(model_state_dict["ema_model"])
+        if 'model' in model_state_dict.keys():
+            self.model.load_state_dict(model_state_dict["model"])
+        if 'ema_model' in model_state_dict.keys():
+            self.ema_model.load_state_dict(model_state_dict["ema_model"])
+        if 'ema_loss' in model_state_dict.keys():
+            self.ema_loss = model_state_dict['ema_loss']
+        if 'step' in model_state_dict.keys():
+            self.step = model_state_dict['step']
         return True
 
     def getLr(self) -> float:
@@ -237,10 +243,11 @@ class FMTrainer(object):
             False).type(cfm_mash_params.dtype).to(self.device)
 
         t = torch.rand(cfm_mash_params.shape[0]).to(self.device) 
+        t = torch.pow(t, 1.0 / 2.0)
 
         path_sample = self.path.sample(t=t, x_0=init_cfm_mash_params, x_1=cfm_mash_params)
 
-        loss = torch.pow(self.model(path_sample.x_t, condition, path_sample.t) - path_sample.dx_t, 2).mean() 
+        loss = torch.pow(self.model(path_sample.x_t, condition, path_sample.t) - path_sample.dx_t, 2).mean()
 
         accum_loss = loss / self.accum_iter
 
@@ -418,6 +425,8 @@ class FMTrainer(object):
         model_state_dict = {
             "model": self.model.module.state_dict(),
             "ema_model": self.ema_model.state_dict(),
+            "ema_loss": self.ema_loss,
+            "step": self.step,
         }
 
         torch.save(model_state_dict, save_model_file_path)

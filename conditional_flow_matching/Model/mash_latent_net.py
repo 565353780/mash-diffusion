@@ -5,17 +5,24 @@ from conditional_flow_matching.Model.Layer.point_embed import PointEmbed
 from conditional_flow_matching.Model.Transformer.latent_array import LatentArrayTransformer
 
 
+class Swish(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.sigmoid(x) * x
+
 class MashLatentNet(torch.nn.Module):
     def __init__(
         self,
         n_latents=400,
         mask_degree: int = 3,
         sh_degree: int = 2,
-        embed_dim: int = 256,
-        context_dim=512,
-        n_heads=4,
+        embed_dim: int = 512,
+        context_dim=1024,
+        n_heads=8,
         d_head=64,
-        depth=48,
+        depth=24,
         sigma_min=0,
         sigma_max=float("inf"),
         sigma_data=1,
@@ -37,7 +44,7 @@ class MashLatentNet(torch.nn.Module):
 
         self.rotation_encoder = nn.Sequential(
             nn.Linear(6, self.per_embed_dim),
-            nn.ReLU(),
+            Swish(),
             nn.Linear(self.per_embed_dim, self.per_embed_dim)
         )
 
@@ -45,13 +52,13 @@ class MashLatentNet(torch.nn.Module):
 
         self.mask_encoder = nn.Sequential(
             nn.Linear(self.mask_dim, self.per_embed_dim),
-            nn.ReLU(),
+            Swish(),
             nn.Linear(self.per_embed_dim, self.per_embed_dim)
         )
 
         self.sh_encoder = nn.Sequential(
             nn.Linear(self.sh_dim, self.per_embed_dim),
-            nn.ReLU(),
+            Swish(),
             nn.Linear(self.per_embed_dim, self.per_embed_dim)
         )
 
