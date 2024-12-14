@@ -14,6 +14,8 @@ from torch.utils.data import DataLoader, DistributedSampler
 from flow_matching.path.scheduler import CondOTScheduler
 from flow_matching.path import AffineProbPath
 
+from torchcfm.conditional_flow_matching import ExactOptimalTransportConditionalFlowMatcher
+
 from ma_sh.Method.random_mash import sampleRandomMashParams
 
 from conditional_flow_matching.Dataset.mash import MashDataset
@@ -44,15 +46,16 @@ class Trainer(object):
     def __init__(
         self,
         dataset_root_folder_path: str,
-        batch_size: int = 12,
-        accum_iter: int = 1,
+        batch_size: int = 24,
+        accum_iter: int = 10,
         num_workers: int = 16,
         model_file_path: Union[str, None] = None,
         device: str = "cuda:0",
-        warm_step_num: int = 5000,
+        warm_step_num: int = 2000,
         finetune_step_num: int = -1,
-        lr: float = 2e-4,
+        lr: float = 2e-5,
         ema_start_step: int = 5000,
+        ema_decay_init: float = 0.999,
         ema_decay: float = 0.9999,
         save_result_folder_path: Union[str, None] = None,
         save_log_folder_path: Union[str, None] = None,
@@ -79,6 +82,7 @@ class Trainer(object):
         self.finetune_step_num = finetune_step_num
         self.lr = lr * self.accum_iter * dist.get_world_size()
         self.ema_start_step = ema_start_step
+        self.ema_decay_init = ema_decay_init
         self.ema_decay = ema_decay
 
         self.save_result_folder_path = save_result_folder_path
@@ -162,13 +166,14 @@ class Trainer(object):
         self.optim = AdamW(self.model.parameters(), lr=self.lr)
         self.sched = LambdaLR(self.optim, lr_lambda=self.warmup_lr)
 
-        mode_id = 2
-        if mode_id == 1:
+        fm_id = 3
+        if fm_id == 1:
+            self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
+        elif fm_id == 2:
             self.FM = BatchExactOptimalTransportConditionalFlowMatcher(
                 sigma=0.0,
-                target_dim=None)
-                #target_dim=[6, 7, 8])
-        elif mode_id == 2:
+                target_dim=[6, 7, 8])
+        elif fm_id == 3:
             self.FM = AffineProbPath(scheduler=CondOTScheduler())
 
         self.initRecords()
@@ -219,7 +224,7 @@ class Trainer(object):
 
     def toEMADecay(self) -> float:
         if self.step <= self.ema_start_step:
-            return self.step / self.ema_start_step * self.ema_decay
+            return self.ema_decay_init + self.step / self.ema_start_step * (self.ema_decay - self.ema_decay_init)
 
         return self.ema_decay
 
@@ -250,7 +255,9 @@ class Trainer(object):
             'randn',
             False).type(cfm_mash_params.dtype).to(self.device)
 
-        if isinstance(self.FM, BatchExactOptimalTransportConditionalFlowMatcher):
+        if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
+            t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
+        elif isinstance(self.FM, BatchExactOptimalTransportConditionalFlowMatcher):
             t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
         elif isinstance(self.FM, AffineProbPath):
             t = torch.rand(cfm_mash_params.shape[0]).to(self.device) 
