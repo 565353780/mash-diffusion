@@ -9,12 +9,12 @@ if __name__ == "__main__":
         sh_degree=2,
         embed_dim=1024,
         context_dim=1024,
-        n_heads=8,
-        d_head=128,
+        n_heads=4,
+        d_head=256,
         depth=24)
-    inputs = (torch.randn(3, 400, 25), torch.randn(3, 1, 1024), torch.randn(3))
+    inputs = (torch.randn(1, 400, 25), torch.randn(1, 1, 1024), torch.randn(1))
 
     flops, params = getModelFLOPSAndParamsNum(model, inputs)
 
-    print('model_FLOPS:', flops)
+    print('model_FLOPs:', flops)
     print('model_param_num:', params)
