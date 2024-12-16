@@ -70,11 +70,11 @@ class Trainer(object):
         self.encoded_mash_channel = 25
         self.mask_degree = 3
         self.sh_degree = 2
-        self.embed_dim = 1024
-        self.context_dim = 1024
-        self.n_heads = 4
-        self.d_head = 256
-        self.depth = 24
+        self.embed_dim = 1536
+        self.context_dim = 1536
+        self.n_heads = 12
+        self.d_head = 128
+        self.depth = 12
 
         self.accum_iter = accum_iter
         if device == 'auto':
@@ -99,15 +99,21 @@ class Trainer(object):
 
         self.dataloader_dict = {}
 
-        if True:
+        if False:
             self.dataloader_dict['mash'] =  {
                 'dataset': MashDataset(dataset_root_folder_path, 'train'),
                 'repeat_num': 1,
             }
 
-        if False:
+        if True:
             self.dataloader_dict['image'] =  {
-                'dataset': EmbeddingDataset(dataset_root_folder_path, 'ImageEmbedding_ulip', 'train'),
+                'dataset': EmbeddingDataset(
+                    dataset_root_folder_path,
+                    {
+                        'clip': 'Objaverse_82K/render_clip',
+                        'dino': 'Objaverse_82K/render_dino',
+                    },
+                    'train'),
                 'repeat_num': 1,
             }
 
@@ -249,7 +255,12 @@ class Trainer(object):
         self.model.train()
 
         cfm_mash_params = data['cfm_mash_params'].to(self.device)
-        condition = data['condition'].to(self.device)
+        condition = data['condition']
+        if isinstance(condition, torch.Tensor):
+            condition = condition.to(self.device)
+        else:
+            for key in condition.keys():
+                condition[key] = condition[key].to(self.device)
 
         init_cfm_mash_params = sampleRandomMashParams(
             self.mash_channel,

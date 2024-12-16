@@ -11,7 +11,7 @@ class EmbeddingDataset(Dataset):
     def __init__(
         self,
         dataset_root_folder_path: str,
-        embedding_folder_name: str,
+        embedding_folder_name_dict: dict,
         split: str = "train",
         preload: bool = False,
     ) -> None:
@@ -19,55 +19,57 @@ class EmbeddingDataset(Dataset):
         self.split = split
         self.preload = preload
 
-        self.mash_folder_path = self.dataset_root_folder_path + "MashV4/"
-        self.embedding_folder_path = self.dataset_root_folder_path + embedding_folder_name + "/"
+        self.mash_folder_path = self.dataset_root_folder_path + "Objaverse_82K/mash/"
+        self.embedding_folder_path_dict = {}
+        for key, embedding_folder_name in embedding_folder_name_dict.items():
+            self.embedding_folder_path_dict[key] = self.dataset_root_folder_path + embedding_folder_name + "/"
 
         assert os.path.exists(self.mash_folder_path)
-        assert os.path.exists(self.embedding_folder_path)
+        for embedding_folder_path in self.embedding_folder_path_dict.values():
+            assert os.path.exists(embedding_folder_path)
 
         self.path_dict_list = []
 
-        dataset_name_list = os.listdir(self.mash_folder_path)
+        collection_id_list = os.listdir(self.mash_folder_path)
 
-        for dataset_name in dataset_name_list:
-            dataset_folder_path = self.mash_folder_path + dataset_name + "/"
+        print("[INFO][EmbeddingDataset::__init__]")
+        print("\t start load dataset collections...")
+        for collection_id in tqdm(collection_id_list):
+            collection_folder_path = self.mash_folder_path + collection_id + "/"
 
-            categories = os.listdir(dataset_folder_path)
-            # FIXME: for detect test only
-            if self.split == "test":
-                # categories = ["02691156"]
-                categories = ["03001627"]
+            mash_filename_list = os.listdir(collection_folder_path)
 
-            print("[INFO][EmbeddingDataset::__init__]")
-            print("\t start load dataset [" + dataset_name + "]...")
-            for category in tqdm(categories):
-                class_folder_path = dataset_folder_path + category + "/"
+            for mash_filename in mash_filename_list:
+                path_dict = {
+                    'embedding': {},
+                }
+                mash_file_path = collection_folder_path + mash_filename
 
-                mash_filename_list = os.listdir(class_folder_path)
+                if not os.path.exists(mash_file_path):
+                    continue
 
-                for mash_filename in mash_filename_list:
-                    path_dict = {}
-                    mash_file_path = class_folder_path + mash_filename
+                all_embedding_exist = True
 
-                    if not os.path.exists(mash_file_path):
-                        continue
-
-                    embedding_file_path = self.embedding_folder_path + dataset_name + '/' + \
-                        category + '/' + mash_filename
+                for key, embedding_folder_path in self.embedding_folder_path_dict.items():
+                    embedding_file_path = embedding_folder_path + collection_id + '/' + mash_filename
 
                     if not os.path.exists(embedding_file_path):
-                        continue
+                        all_embedding_exist = False
+                        break
 
                     if self.preload:
                         mash_params = np.load(mash_file_path, allow_pickle=True).item()
                         embedding = np.load(embedding_file_path, allow_pickle=True).item()
                         path_dict['mash'] = mash_params
-                        path_dict['embedding'] = embedding
+                        path_dict['embedding'][key] = embedding
                     else:
                         path_dict['mash'] = mash_file_path
-                        path_dict['embedding'] = embedding_file_path
+                        path_dict['embedding'][key] = embedding_file_path
 
-                    self.path_dict_list.append(path_dict)
+                if not all_embedding_exist:
+                    continue
+
+                self.path_dict_list.append(path_dict)
         return
 
     def __len__(self):
@@ -82,19 +84,23 @@ class EmbeddingDataset(Dataset):
 
         if self.preload:
             mash_params = path_dict['mash']
-            embedding = path_dict['embedding']
+            embedding_dict = path_dict['embedding']
         else:
             mash_file_path = path_dict['mash']
-            embedding_file_path = path_dict['embedding']
+            embedding_file_path_dict = path_dict['embedding']
             mash_params = np.load(mash_file_path, allow_pickle=True).item()
-            embedding = np.load(embedding_file_path, allow_pickle=True).item()
+            embedding_dict = {}
+            for key, embedding_file_path in embedding_file_path_dict.items():
+                embedding = np.load(embedding_file_path, allow_pickle=True).item()
+                embedding_dict[key] = embedding
 
         rotate_vectors = mash_params["rotate_vectors"]
         positions = mash_params["positions"]
         mask_params = mash_params["mask_params"]
         sh_params = mash_params["sh_params"]
 
-        if self.split == "train" and False:
+        '''
+        if self.split == "train":
             scale_range = [0.8, 1.2]
             move_range = [-0.2, 0.2]
 
@@ -107,6 +113,7 @@ class EmbeddingDataset(Dataset):
 
             positions = positions * random_scale + random_translate
             sh_params = sh_params * random_scale
+        '''
 
         permute_idxs = np.random.permutation(rotate_vectors.shape[0])
 
@@ -127,11 +134,12 @@ class EmbeddingDataset(Dataset):
 
         data['cfm_mash_params'] = cfm_mash_params
 
-        key_idx = np.random.choice(len(embedding.keys()))
-        key = list(embedding.keys())[key_idx]
-        condition = embedding[key]
+        random_embedding_tensor_dict = {}
 
-        embedding_tensor = torch.from_numpy(condition).float()
+        for key, embedding in embedding_dict.items():
+            embedding_key_idx = np.random.choice(len(embedding.keys()))
+            embedding_key = list(embedding.keys())[embedding_key_idx]
+            random_embedding_tensor_dict[key] = torch.from_numpy(embedding[embedding_key]).float()
 
-        data['embedding'] = embedding_tensor
+        data['embedding'] = random_embedding_tensor_dict
         return data
