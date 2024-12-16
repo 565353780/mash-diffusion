@@ -20,8 +20,8 @@ class MashLatentNet(torch.nn.Module):
         sh_degree: int = 2,
         embed_dim: int = 1536,
         context_dim=1536,
-        n_heads=12,
-        d_head=128,
+        n_heads=8,
+        d_head=64,
         depth=24,
         sigma_min=0,
         sigma_max=float("inf"),
@@ -43,7 +43,7 @@ class MashLatentNet(torch.nn.Module):
 
         self.channels = embed_dim
 
-        self.category_emb = nn.Embedding(55, context_dim)
+        # self.category_emb = nn.Embedding(55, context_dim)
 
         self.clip_emb = nn.Linear(clip_dim, dino_dim)
 
@@ -85,8 +85,10 @@ class MashLatentNet(torch.nn.Module):
         self.sh_decoder = nn.Linear(self.per_embed_dim, self.sh_dim)
         return
 
+    '''
     def emb_category(self, class_labels):
         return self.category_emb(class_labels).unsqueeze(1)
+    '''
 
     def encodeMash(self, mash_params: torch.Tensor) -> torch.Tensor:
         rotation_feature = self.rotation_encoder(mash_params[:, :, :6])
@@ -122,10 +124,12 @@ class MashLatentNet(torch.nn.Module):
 
             condition = torch.cat([clip_condition, dino_condition], dim=1)
 
+        '''
         if condition.dtype == torch.float32:
             condition = condition + 0.0 * self.emb_category(torch.zeros([mash_params.shape[0]], dtype=torch.long, device=mash_params.device))
         else:
             condition = self.emb_category(condition)
+        '''
 
         if len(t.shape) == 0:
             t = t.unsqueeze(0)

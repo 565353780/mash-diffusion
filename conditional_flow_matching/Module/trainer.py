@@ -72,9 +72,9 @@ class Trainer(object):
         self.sh_degree = 2
         self.embed_dim = 1536
         self.context_dim = 1536
-        self.n_heads = 12
-        self.d_head = 128
-        self.depth = 12
+        self.n_heads = 8
+        self.d_head = 64
+        self.depth = 24
 
         self.accum_iter = accum_iter
         if device == 'auto':
@@ -186,6 +186,8 @@ class Trainer(object):
             self.FM = AffineProbPath(scheduler=CondOTScheduler())
 
         self.initRecords()
+
+        self.gt_sample_added_to_logger = False
         return
 
     def initRecords(self) -> bool:
@@ -382,9 +384,12 @@ class Trainer(object):
 
         model.eval()
 
-        sample_num = 4
+        sample_num = 3
         timestamp_num = 2
-        condition = 18
+        # condition = 18
+        data = self.dataloader_dict['image']['dataset'].__getitem__(0)
+        gt_mash = data['cfm_mash_params']
+        condition = data['embedding']
 
         print('[INFO][Trainer::sampleModelStep]')
         print("\t start diffuse", sample_num, "mashs....")
@@ -393,6 +398,10 @@ class Trainer(object):
         elif isinstance(condition, np.ndarray):
             # condition dim: 1x768
             condition_tensor = torch.from_numpy(condition).type(torch.float32).to(self.device).repeat(sample_num, 1)
+        elif isinstance(condition, dict):
+            condition_tensor = {}
+            for key in condition.keys():
+                condition_tensor[key] = condition[key].type(torch.float32).to(self.device).unsqueeze(0).repeat(sample_num, *([1] * condition[key].dim()))
         else:
             print('[ERROR][Trainer::sampleModelStep]')
             print('\t condition type not valid!')
@@ -432,6 +441,26 @@ class Trainer(object):
             device=self.device,
         )
 
+        if not self.gt_sample_added_to_logger:
+            sh2d = 2 * self.mask_degree + 1
+            ortho_poses = gt_mash[:, :6]
+            positions = gt_mash[:, 6:9]
+            mask_params = gt_mash[:, 9 : 9 + sh2d]
+            sh_params = gt_mash[:, 9 + sh2d :]
+
+            mash_model.loadParams(
+                mask_params=mask_params,
+                sh_params=sh_params,
+                positions=positions,
+                ortho6d_poses=ortho_poses
+            )
+
+            pcd = mash_model.toSamplePcd()
+
+            self.logger.addPointCloud('GT_MASH', pcd, self.step)
+
+            self.gt_sample_added_to_logger = True
+
         for i in trange(sample_num):
             mash_params = sampled_array[i]
 
@@ -450,7 +479,7 @@ class Trainer(object):
 
             pcd = mash_model.toSamplePcd()
 
-            self.logger.addPointCloud(model_name + '/pcd_' + str(i), pcd, self.step)
+            self.logger.addPointCloud(model_name, pcd, self.step)
 
         return True
 
@@ -559,8 +588,9 @@ class Trainer(object):
                     self.autoSaveModel("total")
 
                 if self.local_rank == 0:
-                    self.sampleStep()
-                    self.sampleEMAStep()
+                    if epoch_idx % 100 == 0:
+                        self.sampleStep()
+                        self.sampleEMAStep()
 
                 epoch_idx += 1
 

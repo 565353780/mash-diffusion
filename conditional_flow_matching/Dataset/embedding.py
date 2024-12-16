@@ -57,6 +57,12 @@ class EmbeddingDataset(Dataset):
                         all_embedding_exist = False
                         break
 
+                if not all_embedding_exist:
+                    continue
+
+                for key, embedding_folder_path in self.embedding_folder_path_dict.items():
+                    embedding_file_path = embedding_folder_path + collection_id + '/' + mash_filename
+
                     if self.preload:
                         mash_params = np.load(mash_file_path, allow_pickle=True).item()
                         embedding = np.load(embedding_file_path, allow_pickle=True).item()
@@ -66,8 +72,6 @@ class EmbeddingDataset(Dataset):
                         path_dict['mash'] = mash_file_path
                         path_dict['embedding'][key] = embedding_file_path
 
-                if not all_embedding_exist:
-                    continue
 
                 self.path_dict_list.append(path_dict)
         return
