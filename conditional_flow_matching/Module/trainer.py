@@ -457,7 +457,7 @@ class Trainer(object):
 
             pcd = mash_model.toSamplePcd()
 
-            self.logger.addPointCloud('GT_MASH', pcd, self.step)
+            self.logger.addPointCloud('GT_MASH/gt_mash', pcd, self.step)
 
             self.gt_sample_added_to_logger = True
 
@@ -479,7 +479,7 @@ class Trainer(object):
 
             pcd = mash_model.toSamplePcd()
 
-            self.logger.addPointCloud(model_name, pcd, self.step)
+            self.logger.addPointCloud(model_name + '/pcd_' + str(i), pcd, self.step)
 
         return True
 
