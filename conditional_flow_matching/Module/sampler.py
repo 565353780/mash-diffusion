@@ -28,12 +28,12 @@ class Sampler(object):
         self.context_dim = 512
         self.n_heads = 8
         self.d_head = 64
-        self.depth = 24
+        self.depth = 48
 
         self.use_ema = use_ema
         self.device = device
 
-        model_id = 3
+        model_id = 2
         if model_id == 1:
             self.model = MashUNet(self.context_dim).to(self.device)
         elif model_id == 2:
