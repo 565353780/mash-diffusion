@@ -26,6 +26,7 @@ from conditional_flow_matching.Dataset.embedding import EmbeddingDataset
 from conditional_flow_matching.Model.unet2d import MashUNet
 from conditional_flow_matching.Model.mash_net import MashNet
 from conditional_flow_matching.Model.mash_latent_net import MashLatentNet
+from conditional_flow_matching.Model.image2mash_latent_net import Image2MashLatentNet
 from conditional_flow_matching.Method.time import getCurrentTime
 from conditional_flow_matching.Method.path import createFileFolder, removeFile, renameFile
 from conditional_flow_matching.Module.batch_ot_cfm import BatchExactOptimalTransportConditionalFlowMatcher
@@ -67,7 +68,6 @@ class Trainer(object):
         self.scaler = GradScaler()
 
         self.mash_channel = 400
-        self.encoded_mash_channel = 25
         self.mask_degree = 3
         self.sh_degree = 2
         self.embed_dim = 1536
@@ -138,7 +138,7 @@ class Trainer(object):
                 num_workers=num_workers,
             )
 
-        model_id = 3
+        model_id = 4
         if model_id == 1:
             self.model = MashUNet(self.context_dim).to(self.device)
         elif model_id == 2:
@@ -153,6 +153,16 @@ class Trainer(object):
             ).to(self.device)
         elif model_id == 3:
             self.model = MashLatentNet(
+                n_latents=self.mash_channel,
+                mask_degree=self.mask_degree,
+                sh_degree=self.sh_degree,
+                context_dim=self.context_dim,
+                n_heads=self.n_heads,
+                d_head=self.d_head,
+                depth=self.depth
+            ).to(self.device)
+        elif model_id == 4:
+            self.model = Image2MashLatentNet(
                 n_latents=self.mash_channel,
                 mask_degree=self.mask_degree,
                 sh_degree=self.sh_degree,

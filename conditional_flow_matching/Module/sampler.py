@@ -10,6 +10,7 @@ from ma_sh.Method.random_mash import sampleRandomMashParams
 from conditional_flow_matching.Model.unet2d import MashUNet
 from conditional_flow_matching.Model.mash_net import MashNet
 from conditional_flow_matching.Model.mash_latent_net import MashLatentNet
+from conditional_flow_matching.Model.image2mash_latent_net import Image2MashLatentNet
 
 
 class Sampler(object):
@@ -24,9 +25,9 @@ class Sampler(object):
         self.mask_degree = 3
         self.sh_degree = 2
         self.embed_dim = 1024
-        self.context_dim = 1024
-        self.n_heads = 4
-        self.d_head = 256
+        self.context_dim = 512
+        self.n_heads = 8
+        self.d_head = 64
         self.depth = 24
 
         self.use_ema = use_ema
@@ -47,6 +48,16 @@ class Sampler(object):
             ).to(self.device)
         elif model_id == 3:
             self.model = MashLatentNet(
+                n_latents=self.mash_channel,
+                mask_degree=self.mask_degree,
+                sh_degree=self.sh_degree,
+                context_dim=self.context_dim,
+                n_heads=self.n_heads,
+                d_head=self.d_head,
+                depth=self.depth
+            ).to(self.device)
+        elif model_id == 4:
+            self.model = Image2MashLatentNet(
                 n_latents=self.mash_channel,
                 mask_degree=self.mask_degree,
                 sh_degree=self.sh_degree,

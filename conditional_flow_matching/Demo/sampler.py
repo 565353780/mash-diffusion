@@ -155,12 +155,12 @@ def demoCondition(
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
-    cfm_model_file_path = "../../output/20241214_19:53:00/total_model_last.pth".replace('../../', './')
-    use_ema = False
+    cfm_model_file_path = "../../output/24depth_512cond_2000epoch/total_model_last.pth".replace('../../', './')
+    use_ema = True
     sample_id_num = 1
-    sample_num = 2
+    sample_num = 10
     timestamp_num = 2
-    device = 'cpu'
+    device = 'cuda'
     save_results_only = True
     sample_category = True
     sample_image = False

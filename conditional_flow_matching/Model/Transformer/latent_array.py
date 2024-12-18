@@ -60,7 +60,8 @@ class LatentArrayTransformer(nn.Module):
             self.num_cls = out_channels
             self.proj_out = zero_module(nn.Linear(inner_dim, out_channels, bias=False))
 
-        self.map_noise = PositionalEncoding(t_channels)
+        # self.map_noise = PositionalEncoding(t_channels)
+        self.map_noise = PositionalEmbedding(t_channels)
 
         self.map_layer0 = nn.Linear(in_features=t_channels, out_features=inner_dim)
         self.map_layer1 = nn.Linear(in_features=inner_dim, out_features=inner_dim)
