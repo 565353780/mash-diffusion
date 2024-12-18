@@ -17,7 +17,8 @@ from ulip_manage.Module.detector import Detector
 
 from conditional_flow_matching.Config.shapenet import CATEGORY_IDS
 from conditional_flow_matching.Method.time import getCurrentTime
-from conditional_flow_matching.Module.sampler import Sampler
+# from conditional_flow_matching.Module.sampler import Sampler
+from conditional_flow_matching.Module.sampler_archive import Sampler
 
 
 def toRandomIdList(dataset_folder_path: str, valid_category_id_list: Union[list, None]=None, sample_id_num: int=100) -> list:
@@ -155,7 +156,7 @@ def demoCondition(
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
-    cfm_model_file_path = "../../output/8gpu-v1/total_model_last.pth".replace('../../', './')
+    cfm_model_file_path = "../../output/24depth_512cond_2000epoch/total_model_last.pth".replace('../../', './')
     use_ema = True
     sample_id_num = 1
     sample_num = 10
