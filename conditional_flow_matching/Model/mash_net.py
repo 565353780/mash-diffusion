@@ -65,3 +65,38 @@ class MashNet(torch.nn.Module):
         condition = condition * context_mask
 
         return self.forwardCondition(mash_params, condition, t)
+
+    def forwardWithFixedAnchors(
+        self,
+        mash_params: torch.Tensor,
+        condition: torch.Tensor,
+        t: torch.Tensor,
+        fixed_anchor_idxs: torch.Tensor,
+        condition_drop_prob: float = 0.0
+    ):
+        if condition.dtype == torch.float32:
+            condition = condition + 0.0 * self.emb_category(torch.zeros([mash_params.shape[0]], dtype=torch.long, device=mash_params.device))
+        else:
+            condition = self.emb_category(condition)
+
+        if len(t.shape) == 0:
+            t = t.unsqueeze(0)
+
+        # dropout context with some probability
+        context_mask = torch.bernoulli(torch.ones_like(condition)-condition_drop_prob).to(mash_params.device)
+        condition = condition * context_mask
+
+        mash_params_noise = self.forwardCondition(mash_params, condition, t)
+
+        mash_params_noise[:, fixed_anchor_idxs, :] = 0.0
+
+        '''
+        sum_data = torch.sum(torch.sum(mash_params_noise, dim=2), dim=0)
+        valid_tag = torch.where(sum_data == 0.0)[0] == fixed_anchor_idxs
+        is_valid = torch.all(valid_tag)
+        print(valid_tag)
+        print(is_valid)
+        assert is_valid
+        '''
+
+        return mash_params_noise

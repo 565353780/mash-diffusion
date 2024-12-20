@@ -17,8 +17,7 @@ from ulip_manage.Module.detector import Detector
 
 from conditional_flow_matching.Config.shapenet import CATEGORY_IDS
 from conditional_flow_matching.Method.time import getCurrentTime
-# from conditional_flow_matching.Module.sampler import Sampler
-from conditional_flow_matching.Module.sampler_archive import Sampler
+from conditional_flow_matching.Module.sampler import Sampler
 
 
 def toRandomIdList(dataset_folder_path: str, valid_category_id_list: Union[list, None]=None, sample_id_num: int=100) -> list:
@@ -54,7 +53,9 @@ def demoCondition(
     save_folder_path: Union[str, None] = None,
     condition_type: str = 'category',
     condition_name: str = '0',
-    save_results_only: bool = True):
+    save_results_only: bool = True,
+    mash_file_path_list: Union[list, None]=None,
+) -> bool:
     assert condition_type in ['category', 'image', 'points', 'text']
 
     if condition_type == 'category':
@@ -95,7 +96,10 @@ def demoCondition(
     condition_info = condition_type + '/' + condition_name
 
     print("start diffuse", sample_num, "mashs....")
-    sampled_array = sampler.sample(sample_num, condition, timestamp_num)
+    if mash_file_path_list is None:
+        sampled_array = sampler.sample(sample_num, condition, timestamp_num)
+    else:
+        sampled_array = sampler.sampleWithFixedAnchors(mash_file_path_list, sample_num, condition, timestamp_num)
 
     object_dist = [0, 0, 0]
 
@@ -163,10 +167,11 @@ def demo(save_folder_path: Union[str, None] = None):
     timestamp_num = 2
     device = 'cuda'
     save_results_only = True
-    sample_category = True
+    sample_category = False
     sample_image = False
     sample_points = False
     sample_text = False
+    sample_fixed_anchor = True
 
     ulip_model_file_path = '/home/chli/chLi/Model/ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
     open_clip_model_file_path = '/home/chli/Model/CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
@@ -279,5 +284,26 @@ def demo(save_folder_path: Union[str, None] = None):
         for i, text in enumerate(text_list):
             print('start sample for text [' + text + ']...')
             demoCondition(sampler, detector, time_stamp, text, sample_num, timestamp_num, save_folder_path, 'text', str(i), save_results_only)
+
+    if sample_fixed_anchor:
+        mash_file_path_list = [
+            '/home/chli/github/ASDF/ma-sh/output/combined_mash.npy',
+        ]
+        categoty_id = '03001627'
+        print('start sample for category ' + categoty_id + '...')
+        category_idx = CATEGORY_IDS[categoty_id]
+        demoCondition(
+            sampler,
+            detector,
+            time_stamp,
+            category_idx,
+            sample_num,
+            timestamp_num,
+            save_folder_path,
+            'category',
+            str(categoty_id),
+            save_results_only,
+            mash_file_path_list,
+        )
 
     return True

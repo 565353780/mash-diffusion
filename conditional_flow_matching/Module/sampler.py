@@ -6,6 +6,7 @@ from typing import Union
 
 from ma_sh.Model.mash import Mash
 from ma_sh.Method.random_mash import sampleRandomMashParams
+from ma_sh.Module.local_editor import LocalEditor
 
 from conditional_flow_matching.Model.unet2d import MashUNet
 from conditional_flow_matching.Model.mash_net import MashNet
@@ -28,7 +29,7 @@ class Sampler(object):
         self.context_dim = 512
         self.n_heads = 8
         self.d_head = 64
-        self.depth = 48
+        self.depth = 24
 
         self.use_ema = use_ema
         self.device = device
@@ -129,6 +130,7 @@ class Sampler(object):
         query_t = torch.linspace(0,1,timestamp_num).to(self.device)
         query_t = torch.pow(query_t, 1.0 / 2.0)
 
+        #FIXME: need to not pass random params to Mash module, it will convert noise to valid data!
         x_init = sampleRandomMashParams(
             self.mash_channel,
             self.mask_degree,
@@ -138,8 +140,88 @@ class Sampler(object):
             'randn',
             False).type(torch.float32).to(self.device)
 
+        x_init = torch.randn(condition_tensor.shape[0], 400, 25, device=self.device)
+
         traj = torchdiffeq.odeint(
             lambda t, x: self.model.forward(x, condition_tensor, t),
+            x_init,
+            query_t,
+            atol=1e-4,
+            rtol=1e-4,
+            method="dopri5",
+        )
+
+        return traj.cpu().numpy()
+
+    @torch.no_grad()
+    def sampleWithFixedAnchors(
+        self,
+        mash_file_path_list: list,
+        sample_num: int,
+        condition: Union[int, np.ndarray] = 0,
+        timestamp_num: int = 10,
+    ) -> Union[np.ndarray, None]:
+        self.model.eval()
+
+        if isinstance(condition, int):
+            condition_tensor = torch.ones([sample_num]).long().to(self.device) * condition
+        elif isinstance(condition, np.ndarray):
+            # condition dim: 1x768
+            condition_tensor = torch.from_numpy(condition).type(torch.float32).to(self.device).repeat(sample_num, 1)
+        else:
+            print('[ERROR][Sampler::sample]')
+            print('\t condition type not valid!')
+            return np.ndarray()
+
+        query_t = torch.linspace(0,1,timestamp_num).to(self.device)
+        query_t = torch.pow(query_t, 1.0 / 2.0)
+
+        '''
+        local_editor = LocalEditor(self.device)
+        if not local_editor.loadMashFiles(mash_file_path_list):
+            print('[ERROR][Sampler::sampleWithFixedAnchors]')
+            print('\t loadMashFiles failed!')
+            return None
+
+        combined_mash = local_editor.toCombinedMash()
+        if combined_mash is None:
+            print('[ERROR][Sampler::sampleWithFixedAnchors]')
+            print('\t toCombinedMash failed!')
+            return None
+        '''
+        combined_mash = Mash.fromParamsFile(
+            mash_file_path_list[0],
+            10,
+            10,
+            1.0,
+            torch.int64,
+            torch.float64,
+            self.device,
+        )
+
+        fixed_ortho_poses = combined_mash.toOrtho6DPoses().detach().clone().float()
+        fixed_positions = combined_mash.positions.detach().clone().float()
+        fixed_mask_params = combined_mash.mask_params.detach().clone().float()
+        fixed_sh_params = combined_mash.sh_params.detach().clone().float()
+
+        fixed_x_init = torch.cat((
+            fixed_ortho_poses,
+            fixed_positions,
+            fixed_mask_params,
+            fixed_sh_params,
+        ), dim=1).view(1, combined_mash.anchor_num, 25).expand(condition_tensor.shape[0], combined_mash.anchor_num, 25)
+
+        random_x_init = torch.randn(condition_tensor.shape[0], 400 - combined_mash.anchor_num, 25, device=self.device)
+
+        x_init = torch.cat((fixed_x_init, random_x_init), dim=1)
+
+        fixed_anchor_mask = torch.zeros([400], dtype=torch.long, device=self.device)
+        fixed_anchor_mask[:combined_mash.anchor_num] = True
+
+        fixed_anchor_idxs = torch.where(fixed_anchor_mask)[0]
+
+        traj = torchdiffeq.odeint(
+            lambda t, x: self.model.forwardWithFixedAnchors(x, condition_tensor, t, fixed_anchor_idxs),
             x_init,
             query_t,
             atol=1e-4,
