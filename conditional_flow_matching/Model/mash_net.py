@@ -39,8 +39,6 @@ class MashNet(torch.nn.Module):
             depth=depth,
             context_dim=context_dim,
         )
-
-        self.to_outputs = nn.Linear(self.channels, 9 + self.mask_dim + self.sh_dim)
         return
 
     def emb_category(self, class_labels):
@@ -48,7 +46,6 @@ class MashNet(torch.nn.Module):
 
     def forwardCondition(self, mash_params, condition, t):
         mash_params_noise = self.model(mash_params, t, cond=condition)
-        mash_params_noise = self.to_outputs(mash_params_noise)
         return mash_params_noise
 
     def forward(self, mash_params, condition, t, condition_drop_prob: float = 0.0):

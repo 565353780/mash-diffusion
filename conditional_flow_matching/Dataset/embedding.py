@@ -134,9 +134,9 @@ class EmbeddingDataset(Dataset):
         mask_params_tesnor = torch.tensor(mask_params).float()
         sh_params_tensor = torch.tensor(sh_params).float()
 
-        cfm_mash_params = torch.cat((ortho_poses_tensor, positions_tensor, mask_params_tesnor, sh_params_tensor), dim=1)
+        mash_params = torch.cat((ortho_poses_tensor, positions_tensor, mask_params_tesnor, sh_params_tensor), dim=1)
 
-        data['cfm_mash_params'] = cfm_mash_params
+        data['mash_params'] = mash_params
 
         random_embedding_tensor_dict = {}
 

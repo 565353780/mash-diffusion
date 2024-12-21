@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader, DistributedSampler
 from flow_matching.path.scheduler import CondOTScheduler
 from flow_matching.path import AffineProbPath
 
+from conditional_flow_matching.Dataset.single_shape import SingleShapeDataset
 from torchcfm.conditional_flow_matching import ExactOptimalTransportConditionalFlowMatcher
 
 from ma_sh.Model.mash import Mash
@@ -70,8 +71,8 @@ class Trainer(object):
         self.mash_channel = 400
         self.mask_degree = 3
         self.sh_degree = 2
-        self.embed_dim = 1536
-        self.context_dim = 1536
+        self.embed_dim = 512
+        self.context_dim = 512
         self.n_heads = 8
         self.d_head = 64
         self.depth = 24
@@ -99,13 +100,20 @@ class Trainer(object):
 
         self.dataloader_dict = {}
 
-        if False:
-            self.dataloader_dict['mash'] =  {
-                'dataset': MashDataset(dataset_root_folder_path, 'train'),
+        if True:
+            mash_file_path = os.environ['HOME'] + '/Dataset/MashV4/ShapeNet/03636649/583a5a163e59e16da523f74182db8f2.npy'
+            self.dataloader_dict['single_shape'] =  {
+                'dataset': SingleShapeDataset(mash_file_path),
                 'repeat_num': 1,
             }
 
-        if True:
+        if False:
+            self.dataloader_dict['mash'] =  {
+                'dataset': MashDataset(dataset_root_folder_path, 'train', True),
+                'repeat_num': 1,
+            }
+
+        if False:
             self.dataloader_dict['image'] =  {
                 'dataset': EmbeddingDataset(
                     dataset_root_folder_path,
@@ -138,7 +146,7 @@ class Trainer(object):
                 num_workers=num_workers,
             )
 
-        model_id = 4
+        model_id = 2
         if model_id == 1:
             self.model = MashUNet(self.context_dim).to(self.device)
         elif model_id == 2:
@@ -266,7 +274,7 @@ class Trainer(object):
     ) -> dict:
         self.model.train()
 
-        cfm_mash_params = data['cfm_mash_params'].to(self.device)
+        mash_params = data['mash_params'].to(self.device)
         condition = data['condition']
         if isinstance(condition, torch.Tensor):
             condition = condition.to(self.device)
@@ -274,23 +282,23 @@ class Trainer(object):
             for key in condition.keys():
                 condition[key] = condition[key].to(self.device)
 
-        init_cfm_mash_params = sampleRandomMashParams(
+        init_mash_params = sampleRandomMashParams(
             self.mash_channel,
             self.mask_degree,
             self.sh_degree,
-            cfm_mash_params.shape[0],
+            mash_params.shape[0],
             'cpu',
             'randn',
-            False).type(cfm_mash_params.dtype).to(self.device)
+            False).type(mash_params.dtype).to(self.device)
 
         if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
-            t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
+            t, xt, ut = self.FM.sample_location_and_conditional_flow(init_mash_params, mash_params)
         elif isinstance(self.FM, BatchExactOptimalTransportConditionalFlowMatcher):
-            t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
+            t, xt, ut = self.FM.sample_location_and_conditional_flow(init_mash_params, mash_params)
         elif isinstance(self.FM, AffineProbPath):
-            t = torch.rand(cfm_mash_params.shape[0]).to(self.device) 
+            t = torch.rand(mash_params.shape[0]).to(self.device) 
             t = torch.pow(t, 1.0 / 2.0)
-            path_sample = self.FM.sample(t=t, x_0=init_cfm_mash_params, x_1=cfm_mash_params)
+            path_sample = self.FM.sample(t=t, x_0=init_mash_params, x_1=mash_params)
             t = path_sample.t
             xt = path_sample.x_t
             ut = path_sample.dx_t
@@ -332,24 +340,24 @@ class Trainer(object):
     ) -> dict:
         self.model.train()
 
-        cfm_mash_params = data['cfm_mash_params'].to(self.device)
+        mash_params = data['mash_params'].to(self.device)
         condition = data['condition'].to(self.device)
 
-        init_cfm_mash_params = sampleRandomMashParams(
+        init_mash_params = sampleRandomMashParams(
             self.mash_channel,
             self.mask_degree,
             self.sh_degree,
-            cfm_mash_params.shape[0],
+            mash_params.shape[0],
             'cpu',
             'normal',
-            False).type(cfm_mash_params.dtype).to(self.device)
+            False).type(mash_params.dtype).to(self.device)
 
         if isinstance(self.FM, BatchExactOptimalTransportConditionalFlowMatcher):
-            t, xt, ut = self.FM.sample_location_and_conditional_flow(init_cfm_mash_params, cfm_mash_params)
+            t, xt, ut = self.FM.sample_location_and_conditional_flow(init_mash_params, mash_params)
         elif isinstance(self.FM, AffineProbPath):
-            t = torch.rand(cfm_mash_params.shape[0]).to(self.device) 
+            t = torch.rand(mash_params.shape[0]).to(self.device) 
             t = torch.pow(t, 1.0 / 2.0)
-            path_sample = self.FM.sample(t=t, x_0=init_cfm_mash_params, x_1=cfm_mash_params)
+            path_sample = self.FM.sample(t=t, x_0=init_mash_params, x_1=mash_params)
             t = path_sample.t
             xt = path_sample.x_t
             ut = path_sample.dx_t
@@ -396,10 +404,9 @@ class Trainer(object):
 
         sample_num = 3
         timestamp_num = 2
-        # condition = 18
-        data = self.dataloader_dict['image']['dataset'].__getitem__(0)
-        gt_mash = data['cfm_mash_params']
-        condition = data['embedding']
+        data = self.dataloader_dict['single_shape']['dataset'].__getitem__(0)
+        gt_mash = data['mash_params']
+        condition = data['category_id']
 
         print('[INFO][Trainer::sampleModelStep]')
         print("\t start diffuse", sample_num, "mashs....")
@@ -548,7 +555,7 @@ class Trainer(object):
                             continue
 
                         conditional_data = {
-                            'cfm_mash_params': data['cfm_mash_params'],
+                            'mash_params': data['mash_params'],
                             'condition': condition,
                         }
 
@@ -598,7 +605,7 @@ class Trainer(object):
                     self.autoSaveModel("total")
 
                 if self.local_rank == 0:
-                    if epoch_idx % 100 == 0:
+                    if epoch_idx % 1 == 0:
                         self.sampleStep()
                         self.sampleEMAStep()
 
