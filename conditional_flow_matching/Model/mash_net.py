@@ -45,8 +45,13 @@ class MashNet(torch.nn.Module):
         return self.category_emb(class_labels).unsqueeze(1)
 
     def forwardCondition(self, mash_params, condition, t):
-        mash_params_noise = self.model(mash_params, t, cond=condition)
-        return mash_params_noise
+        min = torch.min(mash_params, dim=1, keepdim=True)[0]
+        max = torch.max(mash_params, dim=1, keepdim=True)[0]
+        normalized_mash_params = (mash_params - min) / (max - min)
+
+        mash_params_noise = self.model(normalized_mash_params, t, cond=condition)
+        real_mash_params_noise = mash_params_noise * (max - min) + min
+        return real_mash_params_noise
 
     def forward(self, mash_params, condition, t, condition_drop_prob: float = 0.0):
         if condition.dtype == torch.float32:

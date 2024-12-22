@@ -249,6 +249,9 @@ class Trainer(object):
         return self.optim.state_dict()["param_groups"][0]["lr"]
 
     def warmup_lr(self, step: int) -> float:
+        if self.warm_step_num == 0:
+            return 1.0
+
         return min(step, self.warm_step_num) / self.warm_step_num
 
     def toEMADecay(self) -> float:
@@ -402,7 +405,7 @@ class Trainer(object):
 
         model.eval()
 
-        sample_num = 3
+        sample_num = 1
         timestamp_num = 2
         data = self.dataloader_dict['single_shape']['dataset'].__getitem__(0)
         gt_mash = data['mash_params']
@@ -445,7 +448,7 @@ class Trainer(object):
             method="dopri5",
         )
 
-        sampled_array = traj.cpu().numpy()[-1]
+        sampled_array = traj.cpu()[-1]
 
         mash_model = Mash(
             self.mash_channel,
@@ -607,7 +610,7 @@ class Trainer(object):
                 if self.local_rank == 0:
                     if epoch_idx % 1 == 0:
                         self.sampleStep()
-                        self.sampleEMAStep()
+                        # self.sampleEMAStep()
 
                 epoch_idx += 1
 
