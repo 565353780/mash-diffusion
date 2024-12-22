@@ -285,6 +285,8 @@ class Trainer(object):
             for key in condition.keys():
                 condition[key] = condition[key].to(self.device)
 
+        #FIXME: need to update
+        '''
         init_mash_params = sampleRandomMashParams(
             self.mash_channel,
             self.mask_degree,
@@ -293,6 +295,9 @@ class Trainer(object):
             'cpu',
             'randn',
             False).type(mash_params.dtype).to(self.device)
+        '''
+
+        init_mash_params = torch.randn_like(mash_params)
 
         if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
             t, xt, ut = self.FM.sample_location_and_conditional_flow(init_mash_params, mash_params)
@@ -345,17 +350,29 @@ class Trainer(object):
 
         mash_params = data['mash_params'].to(self.device)
         condition = data['condition'].to(self.device)
+        if isinstance(condition, torch.Tensor):
+            condition = condition.to(self.device)
+        else:
+            for key in condition.keys():
+                condition[key] = condition[key].to(self.device)
 
+        #FIXME: need to update
+        '''
         init_mash_params = sampleRandomMashParams(
             self.mash_channel,
             self.mask_degree,
             self.sh_degree,
             mash_params.shape[0],
             'cpu',
-            'normal',
+            'randn',
             False).type(mash_params.dtype).to(self.device)
+        '''
 
-        if isinstance(self.FM, BatchExactOptimalTransportConditionalFlowMatcher):
+        init_mash_params = torch.randn_like(mash_params)
+
+        if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
+            t, xt, ut = self.FM.sample_location_and_conditional_flow(init_mash_params, mash_params)
+        elif isinstance(self.FM, BatchExactOptimalTransportConditionalFlowMatcher):
             t, xt, ut = self.FM.sample_location_and_conditional_flow(init_mash_params, mash_params)
         elif isinstance(self.FM, AffineProbPath):
             t = torch.rand(mash_params.shape[0]).to(self.device) 
@@ -371,7 +388,7 @@ class Trainer(object):
 
         with autocast('cuda'):
             vt = self.model(xt, condition, t)
-            loss = torch.mean((vt - ut) ** 2)
+            loss = torch.pow(vt - ut, 2).mean()
 
         accum_loss = loss / self.accum_iter
 
@@ -403,13 +420,17 @@ class Trainer(object):
         if self.local_rank != 0:
             return True
 
-        model.eval()
-
         sample_num = 1
         timestamp_num = 2
-        data = self.dataloader_dict['single_shape']['dataset'].__getitem__(0)
+        dataset = self.dataloader_dict['single_shape']['dataset']
+
+        model.eval()
+
+        data = dataset.__getitem__(0)
         gt_mash = data['mash_params']
         condition = data['category_id']
+
+        gt_mash = dataset.normalizeInverse(gt_mash)
 
         print('[INFO][Trainer::sampleModelStep]')
         print("\t start diffuse", sample_num, "mashs....")
@@ -430,6 +451,8 @@ class Trainer(object):
         query_t = torch.linspace(0,1,timestamp_num).to(self.device)
         query_t = torch.pow(query_t, 1.0 / 2.0)
 
+        #FIXME: need to update
+        '''
         x_init = sampleRandomMashParams(
             self.mash_channel,
             self.mask_degree,
@@ -438,6 +461,9 @@ class Trainer(object):
             'cpu',
             'randn',
             False).type(torch.float32).to(self.device)
+        '''
+
+        x_init = torch.randn(sample_num, 400, 25, device=self.device)
 
         traj = torchdiffeq.odeint(
             lambda t, x: model.forward(x, condition_tensor, t),
@@ -483,6 +509,8 @@ class Trainer(object):
 
         for i in trange(sample_num):
             mash_params = sampled_array[i]
+
+            mash_params = dataset.normalizeInverse(mash_params)
 
             sh2d = 2 * self.mask_degree + 1
             ortho_poses = mash_params[:, :6]

@@ -33,7 +33,17 @@ class SingleShapeDataset(Dataset):
 
         self.mash_params = torch.cat((ortho_poses_tensor, positions_tensor, mask_params_tesnor, sh_params_tensor), dim=1)
 
+        self.mash_params = self.normalize(self.mash_params)
         return
+
+    def normalize(self, mash_params: torch.Tensor) -> torch.Tensor:
+        self.min = torch.min(mash_params, dim=0, keepdim=True)[0]
+        self.max = torch.max(mash_params, dim=0, keepdim=True)[0]
+
+        return (mash_params - self.min) / (self.max - self.min)
+
+    def normalizeInverse(self, mash_params: torch.Tensor) -> torch.Tensor:
+        return mash_params * (self.max - self.min) + self.min
 
     def __len__(self):
         return 10000
