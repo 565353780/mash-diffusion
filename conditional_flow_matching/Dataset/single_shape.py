@@ -3,7 +3,7 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset
 
-from ma_sh.Model.mash import Mash
+from ma_sh.Method.io import loadMashFileParamsTensor
 
 from conditional_flow_matching.Config.shapenet import CATEGORY_IDS
 
@@ -16,22 +16,8 @@ class SingleShapeDataset(Dataset):
         assert os.path.exists(mash_file_path)
 
         self.category_id = CATEGORY_IDS['03636649']
-        mash_params = np.load(mash_file_path, allow_pickle=True).item()
 
-        rotate_vectors = mash_params["rotate_vectors"]
-        positions = mash_params["positions"]
-        mask_params = mash_params["mask_params"]
-        sh_params = mash_params["sh_params"]
-
-        mash = Mash(400, 3, 2, 0, 1, 1.0, True, torch.int64, torch.float64, 'cpu')
-        mash.loadParams(mask_params, sh_params, rotate_vectors, positions)
-
-        ortho_poses_tensor = mash.toOrtho6DPoses().float()
-        positions_tensor = torch.tensor(positions).float()
-        mask_params_tesnor = torch.tensor(mask_params).float()
-        sh_params_tensor = torch.tensor(sh_params).float()
-
-        self.mash_params = torch.cat((ortho_poses_tensor, positions_tensor, mask_params_tesnor, sh_params_tensor), dim=1)
+        self.mash_params = loadMashFileParamsTensor(mash_file_path, torch.float32, 'cpu')
 
         self.mash_params = self.normalize(self.mash_params)
         return

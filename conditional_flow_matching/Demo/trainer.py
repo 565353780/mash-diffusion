@@ -11,10 +11,11 @@ def demo():
     batch_size = 20
     accum_iter = 10
     num_workers = 16
-    # model_file_path = "../../output/20241220_17:55:07/total_model_last.pth".replace('../../', './')
     model_file_path = None
+    # model_file_path = "../../output/20241220_17:55:07/total_model_last.pth".replace('../../', './')
     device = "auto"
     warm_step_num = 2000
+    warm_step_num = 0
     finetune_step_num = -1
     lr = 2e-4
     ema_start_step = 5000
