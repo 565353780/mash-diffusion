@@ -6,6 +6,8 @@ from torch.utils.data import Dataset
 
 from ma_sh.Method.io import loadMashFileParamsTensor
 
+from distribution_manage.Module.transformer import Transformer
+
 
 class EmbeddingDataset(Dataset):
     def __init__(
@@ -66,7 +68,15 @@ class EmbeddingDataset(Dataset):
 
 
                 self.path_dict_list.append(path_dict)
+
+        self.transformer = Transformer('../ma-sh/output/multi_linear_transformers.pkl')
         return
+
+    def normalize(self, mash_params: torch.Tensor) -> torch.Tensor:
+        return self.transformer.transform(mash_params, False)
+
+    def normalizeInverse(self, mash_params: torch.Tensor) -> torch.Tensor:
+        return self.transformer.inverse_transform(mash_params, False)
 
     def __len__(self):
         return len(self.path_dict_list)
@@ -90,6 +100,8 @@ class EmbeddingDataset(Dataset):
         permute_idxs = np.random.permutation(mash_params.shape[0])
 
         mash_params = mash_params[permute_idxs]
+
+        mash_params = self.normalize(mash_params)
 
         data['mash_params'] = mash_params
 

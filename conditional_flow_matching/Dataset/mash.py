@@ -6,6 +6,8 @@ from torch.utils.data import Dataset
 
 from ma_sh.Method.io import loadMashFileParamsTensor
 
+from distribution_manage.Module.transformer import Transformer
+
 from conditional_flow_matching.Config.shapenet import CATEGORY_IDS
 
 
@@ -34,6 +36,8 @@ class MashDataset(Dataset):
                 # categories = ["02691156"]
                 categories = ["03001627"]
 
+            categories = ["03001627"]
+
             print("[INFO][MashDataset::__init__]")
             print("\t start load dataset [" + dataset_name + "]...")
             for category in tqdm(categories):
@@ -47,7 +51,15 @@ class MashDataset(Dataset):
                     mash_file_path = class_folder_path + mash_filename
 
                     self.paths_list.append([mash_file_path, category_id])
+
+        self.transformer = Transformer('../ma-sh/output/multi_linear_transformers.pkl')
         return
+
+    def normalize(self, mash_params: torch.Tensor) -> torch.Tensor:
+        return self.transformer.transform(mash_params, False)
+
+    def normalizeInverse(self, mash_params: torch.Tensor) -> torch.Tensor:
+        return self.transformer.inverse_transform(mash_params, False)
 
     def __len__(self):
         return len(self.paths_list)
@@ -63,6 +75,8 @@ class MashDataset(Dataset):
         mash_file_path, category_id = self.paths_list[index]
 
         mash_params = loadMashFileParamsTensor(mash_file_path, torch.float32, 'cpu')
+
+        mash_params = self.normalize(mash_params)
 
         permute_idxs = np.random.permutation(mash_params.shape[0])
 

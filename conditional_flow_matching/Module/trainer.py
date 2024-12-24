@@ -100,16 +100,16 @@ class Trainer(object):
 
         self.dataloader_dict = {}
 
-        if True:
+        if False:
             mash_file_path = os.environ['HOME'] + '/Dataset/MashV4/ShapeNet/03636649/583a5a163e59e16da523f74182db8f2.npy'
             self.dataloader_dict['single_shape'] =  {
                 'dataset': SingleShapeDataset(mash_file_path),
                 'repeat_num': 1,
             }
 
-        if False:
+        if True:
             self.dataloader_dict['mash'] =  {
-                'dataset': MashDataset(dataset_root_folder_path, 'train', True),
+                'dataset': MashDataset(dataset_root_folder_path, 'train'),
                 'repeat_num': 1,
             }
 
@@ -420,9 +420,10 @@ class Trainer(object):
         if self.local_rank != 0:
             return True
 
+        sample_gt = False
         sample_num = 1
         timestamp_num = 2
-        dataset = self.dataloader_dict['single_shape']['dataset']
+        dataset = self.dataloader_dict['mash']['dataset']
 
         model.eval()
 
@@ -430,7 +431,8 @@ class Trainer(object):
         gt_mash = data['mash_params']
         condition = data['category_id']
 
-        gt_mash = dataset.normalizeInverse(gt_mash)
+        if sample_gt:
+            gt_mash = dataset.normalizeInverse(gt_mash)
 
         print('[INFO][Trainer::sampleModelStep]')
         print("\t start diffuse", sample_num, "mashs....")
@@ -487,7 +489,7 @@ class Trainer(object):
             device=self.device,
         )
 
-        if not self.gt_sample_added_to_logger:
+        if sample_gt and not self.gt_sample_added_to_logger:
             sh2d = 2 * self.mask_degree + 1
             ortho_poses = gt_mash[:, :6]
             positions = gt_mash[:, 6:9]
@@ -638,7 +640,7 @@ class Trainer(object):
                 if self.local_rank == 0:
                     if epoch_idx % 1 == 0:
                         self.sampleStep()
-                        # self.sampleEMAStep()
+                        self.sampleEMAStep()
 
                 epoch_idx += 1
 

@@ -5,6 +5,8 @@ from torch.utils.data import Dataset
 
 from ma_sh.Method.io import loadMashFileParamsTensor
 
+from distribution_manage.Module.transformer import Transformer
+
 from conditional_flow_matching.Config.shapenet import CATEGORY_IDS
 
 
@@ -19,17 +21,16 @@ class SingleShapeDataset(Dataset):
 
         self.mash_params = loadMashFileParamsTensor(mash_file_path, torch.float32, 'cpu')
 
+        self.transformer = Transformer('../ma-sh/output/multi_linear_transformers.pkl')
+
         self.mash_params = self.normalize(self.mash_params)
         return
 
     def normalize(self, mash_params: torch.Tensor) -> torch.Tensor:
-        self.min = torch.min(mash_params, dim=0, keepdim=True)[0]
-        self.max = torch.max(mash_params, dim=0, keepdim=True)[0]
-
-        return (mash_params - self.min) / (self.max - self.min)
+        return self.transformer.transform(mash_params, False)
 
     def normalizeInverse(self, mash_params: torch.Tensor) -> torch.Tensor:
-        return mash_params * (self.max - self.min) + self.min
+        return self.transformer.inverse_transform(mash_params, False)
 
     def __len__(self):
         return 10000

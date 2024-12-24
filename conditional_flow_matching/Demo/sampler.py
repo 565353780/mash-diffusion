@@ -2,6 +2,7 @@ import sys
 
 sys.path.append("../ma-sh/")
 sys.path.append("../ulip-manage/")
+sys.path.append('../distribution-manage/')
 
 import os
 import random

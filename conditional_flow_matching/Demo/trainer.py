@@ -1,5 +1,6 @@
 import sys
 sys.path.append('../ma-sh/')
+sys.path.append('../distribution-manage/')
 
 import os
 
@@ -8,14 +9,13 @@ from conditional_flow_matching.Module.trainer import Trainer
 
 def demo():
     dataset_root_folder_path = os.environ['HOME'] + "/Dataset/"
-    batch_size = 20
-    accum_iter = 10
+    batch_size = 8
+    accum_iter = 20
     num_workers = 16
     model_file_path = None
     # model_file_path = "../../output/20241220_17:55:07/total_model_last.pth".replace('../../', './')
     device = "auto"
     warm_step_num = 2000
-    warm_step_num = 0
     finetune_step_num = -1
     lr = 2e-4
     ema_start_step = 5000
