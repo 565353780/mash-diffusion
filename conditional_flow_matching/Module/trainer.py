@@ -16,7 +16,6 @@ from torch.utils.data import DataLoader, DistributedSampler
 from flow_matching.path.scheduler import CondOTScheduler
 from flow_matching.path import AffineProbPath
 
-from conditional_flow_matching.Dataset.single_shape import SingleShapeDataset
 from torchcfm.conditional_flow_matching import ExactOptimalTransportConditionalFlowMatcher
 
 from ma_sh.Model.mash import Mash
@@ -24,6 +23,7 @@ from ma_sh.Method.random_mash import sampleRandomMashParams
 
 from conditional_flow_matching.Dataset.mash import MashDataset
 from conditional_flow_matching.Dataset.embedding import EmbeddingDataset
+from conditional_flow_matching.Dataset.single_shape import SingleShapeDataset
 from conditional_flow_matching.Model.unet2d import MashUNet
 from conditional_flow_matching.Model.mash_net import MashNet
 from conditional_flow_matching.Model.mash_latent_net import MashLatentNet
@@ -31,6 +31,7 @@ from conditional_flow_matching.Model.image2mash_latent_net import Image2MashLate
 from conditional_flow_matching.Method.time import getCurrentTime
 from conditional_flow_matching.Method.path import createFileFolder, removeFile, renameFile
 from conditional_flow_matching.Module.batch_ot_cfm import BatchExactOptimalTransportConditionalFlowMatcher
+from conditional_flow_matching.Module.stacked_random_generator import StackedRandomGenerator
 from conditional_flow_matching.Module.logger import Logger
 
 
@@ -465,7 +466,11 @@ class Trainer(object):
             False).type(torch.float32).to(self.device)
         '''
 
-        x_init = torch.randn(sample_num, 400, 25, device=self.device)
+        # x_init = torch.randn(sample_num, 400, 25, device=self.device)
+
+        batch_seeds = torch.arange(sample_num)
+        rnd = StackedRandomGenerator(self.device, batch_seeds)
+        x_init = rnd.randn([sample_num, self.mash_channel, 25], device=self.device)
 
         traj = torchdiffeq.odeint(
             lambda t, x: model.forward(x, condition_tensor, t),
