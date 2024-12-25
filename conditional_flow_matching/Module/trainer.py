@@ -421,7 +421,7 @@ class Trainer(object):
             return True
 
         sample_gt = False
-        sample_num = 1
+        sample_num = 3
         timestamp_num = 2
         dataset = self.dataloader_dict['mash']['dataset']
 
@@ -565,7 +565,6 @@ class Trainer(object):
 
         epoch_idx = 1
         while self.step < final_step or self.finetune_step_num < 0:
-            self.model.train()
 
             for data_name, dataloader_dict in self.dataloader_dict.items():
                 dataloader_dict['sampler'].set_epoch(epoch_idx)
