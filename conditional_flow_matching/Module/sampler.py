@@ -89,7 +89,7 @@ class Sampler(object):
         )
         return mash_model
 
-    def loadModel(self, model_file_path):
+    def loadModel(self, model_file_path: str) -> bool:
         if not os.path.exists(model_file_path):
             print("[ERROR][Sampler::loadModel]")
             print("\t model_file not exist!")
