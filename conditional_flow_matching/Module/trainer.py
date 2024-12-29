@@ -99,20 +99,18 @@ class Trainer(BaseTrainer):
                 'repeat_num': 1,
             }
 
-        if True:
+        if False:
             self.dataloader_dict['mash'] =  {
                 'dataset': MashDataset(self.dataset_root_folder_path, 'train'),
                 'repeat_num': 1,
             }
 
-        if False:
-            self.dataloader_dict['image'] =  {
+        if True:
+            self.dataloader_dict['dino'] =  {
                 'dataset': EmbeddingDataset(
                     self.dataset_root_folder_path,
-                    {
-                        'clip': 'Objaverse_82K/render_clip',
-                        'dino': 'Objaverse_82K/render_dino',
-                    },
+                    'Objaverse_82K/render_dino',
+                    'dino',
                     'train'),
                 'repeat_num': 1,
             }
@@ -131,7 +129,12 @@ class Trainer(BaseTrainer):
 
         if True:
             self.dataloader_dict['eval'] =  {
-                'dataset': MashDataset(self.dataset_root_folder_path, 'eval'),
+                'dataset': EmbeddingDataset(
+                    self.dataset_root_folder_path,
+                    'Objaverse_82K/render_dino',
+                    'dino',
+                    'eval'
+                ),
             }
 
             self.dataloader_dict['eval']['dataset'].paths_list = self.dataloader_dict['eval']['dataset'].paths_list[:64]

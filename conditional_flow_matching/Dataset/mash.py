@@ -5,8 +5,7 @@ from tqdm import tqdm
 from torch.utils.data import Dataset
 
 from ma_sh.Method.io import loadMashFileParamsTensor
-
-from distribution_manage.Module.transformer import Transformer
+from ma_sh.Method.transformer import getTransformer
 
 from conditional_flow_matching.Config.shapenet import CATEGORY_IDS
 
@@ -52,7 +51,10 @@ class MashDataset(Dataset):
 
                     self.paths_list.append([mash_file_path, category_id])
 
-        self.transformer = Transformer('../ma-sh/output/multi_linear_transformers.pkl')
+        self.paths_list.sort(key=lambda x: x[0])
+
+        self.transformer = getTransformer('Objaverse_82K')
+        assert self.transformer is not None
         return
 
     def normalize(self, mash_params: torch.Tensor) -> torch.Tensor:
