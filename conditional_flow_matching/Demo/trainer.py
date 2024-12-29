@@ -12,8 +12,8 @@ def demo():
     dataset_root_folder_path = toDatasetRootPath()
     assert dataset_root_folder_path is not None
 
-    batch_size = 8
-    accum_iter = 20
+    batch_size = 12
+    accum_iter = 10
     num_workers = 16
     model_file_path = None
     # model_file_path = "../../output/20241225_15:14:36/total_model_last.pth".replace('../../', './')

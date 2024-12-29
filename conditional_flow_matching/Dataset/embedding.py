@@ -1,5 +1,6 @@
 import os
 import torch
+import random
 import numpy as np
 from torch.utils.data import Dataset
 
@@ -29,47 +30,39 @@ class EmbeddingDataset(Dataset):
 
         print("[INFO][EmbeddingDataset::__init__]")
         print("\t start load mash and embedding datasets...")
-        for root, _, files in os.walk(self.mash_folder_path):
-            rel_folder_path = os.path.relpath(root, self.mash_folder_path)
+        for root, _, files in os.walk(self.embedding_root_folder_path):
+            if len(files) == 0:
+                continue
 
+            rel_folder_path = os.path.relpath(root, self.embedding_root_folder_path)
+
+            mash_file_path = self.mash_folder_path + rel_folder_path + '.npy'
+
+            if not os.path.exists(mash_file_path):
+                continue
+
+            embedding_file_path_list = []
             for file in files:
-                if not file.endswith('.npy'):
+                if not file.endswith('.npy') or file.endswith('_tmp.npy'):
                     continue
 
-                mash_file_path = root + '/' + file
+                embedding_file_path_list.append(root + '/' + file)
 
-                embedding_folder_path = self.embedding_root_folder_path + rel_folder_path + '/' + file[:-4] + '/'
+            if len(embedding_file_path_list) == 0:
+                continue
 
-                if not os.path.exists(embedding_folder_path):
-                    continue
+            # embedding_file_path_list.sort()
 
-                embedding_filename_list = os.listdir(embedding_folder_path)
-
-                if len(embedding_filename_list) == 0:
-                    continue
-
-                embedding_file_path_list = []
-                for embedding_filename in embedding_filename_list:
-                    if not embedding_filename.endswith('.npy'):
-                        continue
-
-                    embedding_file_path = embedding_folder_path + embedding_filename
-
-                    embedding_file_path_list.append(embedding_file_path)
-
-                if len(embedding_file_path_list) == 0:
-                    continue
-
-                embedding_file_path_list.sort()
-
-                self.paths_list.append([
-                    mash_file_path, embedding_file_path_list
-                ])
+            self.paths_list.append([
+                mash_file_path, embedding_file_path_list
+            ])
 
         self.paths_list.sort(key=lambda x: x[0])
 
         self.transformer = getTransformer('Objaverse_82K')
         assert self.transformer is not None
+
+        self.invalid_embedding_file_path_list = []
         return
 
     def normalize(self, mash_params: torch.Tensor) -> torch.Tensor:
@@ -79,7 +72,7 @@ class EmbeddingDataset(Dataset):
         return self.transformer.inverse_transform(mash_params, False)
 
     def __len__(self):
-        return len(self.paths_list)
+        return len(self.paths_list) * 100
 
     def __getitem__(self, index):
         index = index % len(self.paths_list)
@@ -91,6 +84,33 @@ class EmbeddingDataset(Dataset):
 
         mash_file_path, embedding_file_path_list = self.paths_list[index]
 
+        embedding_file_idx = np.random.choice(len(embedding_file_path_list))
+
+        embedding_file_path = embedding_file_path_list[embedding_file_idx]
+
+        if embedding_file_path in self.invalid_embedding_file_path_list:
+            new_idx = random.randint(0, len(self.paths_list) - 1)
+
+            return self.__getitem__(new_idx)
+
+        try:
+            embedding = np.load(embedding_file_path, allow_pickle=True).item()[self.embedding_key]
+        except Exception as e:
+            '''
+            print("[ERROR][EmbeddingDataset::__getitem__]")
+            print('\t this npy file is not valid!')
+            print('\t embedding_file_path:', embedding_file_path)
+            print('\t error info:', e)
+            '''
+
+            self.invalid_embedding_file_path_list.append(embedding_file_path)
+
+            new_idx = random.randint(0, len(self.paths_list) - 1)
+
+            return self.__getitem__(new_idx)
+
+        embedding = torch.from_numpy(embedding).float()
+
         mash_params = loadMashFileParamsTensor(mash_file_path, torch.float32, 'cpu')
 
         mash_params = self.normalize(mash_params)
@@ -98,14 +118,6 @@ class EmbeddingDataset(Dataset):
         permute_idxs = np.random.permutation(mash_params.shape[0])
 
         mash_params = mash_params[permute_idxs]
-
-        embedding_file_idx = np.random.choice(len(embedding_file_path_list))
-
-        embedding_file_path = embedding_file_path_list[embedding_file_idx]
-
-        embedding = np.load(embedding_file_path, allow_pickle=True).item()[self.embedding_key]
-
-        embedding = torch.from_numpy(embedding).float()
 
         data = {
             'mash_params': mash_params,
