@@ -1,7 +1,6 @@
 import os
 import torch
 import torchdiffeq
-import numpy as np
 from tqdm import trange
 from typing import Union
 
@@ -54,8 +53,8 @@ class Trainer(BaseTrainer):
         self.mash_channel = 400
         self.mask_degree = 3
         self.sh_degree = 2
-        self.embed_dim = 512
-        self.context_dim = 512
+        self.embed_dim = 1024
+        self.context_dim = 1024
         self.n_heads = 8
         self.d_head = 64
         self.depth = 24
@@ -179,19 +178,31 @@ class Trainer(BaseTrainer):
 
         return True
 
+    def getCondition(self, data_dict: dict) -> dict:
+        if 'category_id' in data_dict.keys():
+            data_dict['condition'] = data_dict['category_id']
+        elif 'embedding' in data_dict.keys():
+            embedding = data_dict['embedding']
+
+            if embedding.ndim == 2:
+                embedding = embedding.unsqueeze(1)
+            elif embedding.ndim == 4:
+                embedding = torch.squeeze(embedding, dim=1)
+
+            data_dict['condition'] = embedding.to(self.device)
+        else:
+            print('[ERROR][Trainer::toCondition]')
+            print('\t valid condition type not found!')
+            exit()
+
+        return data_dict
+
     def preProcessData(self, data_dict: dict, is_training: bool = False) -> dict:
         mash_params = data_dict['mash_params']
 
         init_mash_params = torch.randn_like(mash_params)
 
-        if 'category_id' in data_dict.keys():
-            data_dict['condition'] = data_dict['category_id']
-        elif 'embedding' in data_dict.keys():
-            data_dict['condition'] = data_dict['embedding']
-        else:
-            print('[ERROR][Trainer::toCondition]')
-            print('\t valid condition type not found!')
-            exit()
+        data_dict = self.getCondition(data_dict)
 
         if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
             t, xt, ut = self.FM.sample_location_and_conditional_flow(init_mash_params, mash_params)
@@ -240,32 +251,21 @@ class Trainer(BaseTrainer):
         sample_gt = False
         sample_num = 3
         timestamp_num = 2
-        dataset = self.dataloader_dict['mash']['dataset']
+        dataset = self.dataloader_dict['dino']['dataset']
 
         model.eval()
 
         data = dataset.__getitem__(0)
         gt_mash = data['mash_params']
-        condition = data['category_id']
+
+        data = self.getCondition(data)
+        condition = data['condition']
 
         if sample_gt:
             gt_mash = dataset.normalizeInverse(gt_mash)
 
         print('[INFO][Trainer::sampleModelStep]')
         print("\t start diffuse", sample_num, "mashs....")
-        if isinstance(condition, int):
-            condition_tensor = torch.ones([sample_num]).long().to(self.device) * condition
-        elif isinstance(condition, np.ndarray):
-            # condition dim: 1x768
-            condition_tensor = torch.from_numpy(condition).type(torch.float32).to(self.device).repeat(sample_num, 1)
-        elif isinstance(condition, dict):
-            condition_tensor = {}
-            for key in condition.keys():
-                condition_tensor[key] = condition[key].type(torch.float32).to(self.device).unsqueeze(0).repeat(sample_num, *([1] * condition[key].dim()))
-        else:
-            print('[ERROR][Trainer::sampleModelStep]')
-            print('\t condition type not valid!')
-            return False
 
         query_t = torch.linspace(0,1,timestamp_num).to(self.device)
         query_t = torch.pow(query_t, 1.0 / 2.0)
@@ -277,7 +277,7 @@ class Trainer(BaseTrainer):
         x_init = rnd.randn([sample_num, self.mash_channel, 25], device=self.device)
 
         traj = torchdiffeq.odeint(
-            lambda t, x: model.forwardData(x, condition_tensor, t),
+            lambda t, x: model.forwardData(x, condition, t),
             x_init,
             query_t,
             atol=1e-4,

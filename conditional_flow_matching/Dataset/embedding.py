@@ -38,7 +38,7 @@ class EmbeddingDataset(Dataset):
 
                 mash_file_path = root + '/' + file
 
-                embedding_folder_path = self.embedding_root_folder_path + rel_folder_path + file[:-4] + '/'
+                embedding_folder_path = self.embedding_root_folder_path + rel_folder_path + '/' + file[:-4] + '/'
 
                 if not os.path.exists(embedding_folder_path):
                     continue
@@ -67,10 +67,6 @@ class EmbeddingDataset(Dataset):
                 ])
 
         self.paths_list.sort(key=lambda x: x[0])
-
-        print(self.paths_list)
-        print(len(self.paths_list))
-        exit()
 
         self.transformer = getTransformer('Objaverse_82K')
         assert self.transformer is not None
