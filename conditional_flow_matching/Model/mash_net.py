@@ -44,11 +44,38 @@ class MashNet(torch.nn.Module):
     def emb_category(self, class_labels):
         return self.category_emb(class_labels).unsqueeze(1)
 
-    def forwardCondition(self, mash_params, condition, t):
+    def forwardCondition(self, mash_params: torch.Tensor, condition: torch.Tensor, t: torch.Tensor) -> dict:
         mash_params_noise = self.model(mash_params, t, cond=condition)
-        return mash_params_noise
 
-    def forward(self, mash_params, condition, t, condition_drop_prob: float = 0.0):
+        result_dict = {
+            'vt': mash_params_noise
+        }
+
+        return result_dict
+
+    def forwardData(self, mash_params: torch.Tensor, condition: torch.Tensor, t: torch.Tensor, condition_drop_prob: float = 0.0) -> torch.Tensor:
+        if condition.dtype == torch.float32:
+            condition = condition + 0.0 * self.emb_category(torch.zeros([mash_params.shape[0]], dtype=torch.long, device=mash_params.device))
+        else:
+            condition = self.emb_category(condition)
+
+        if len(t.shape) == 0:
+            t = t.unsqueeze(0)
+
+        # dropout context with some probability
+        context_mask = torch.bernoulli(torch.ones_like(condition)-condition_drop_prob).to(mash_params.device)
+        condition = condition * context_mask
+
+        result_dict = self.forwardCondition(mash_params, condition, t)
+
+        return result_dict['vt']
+
+    def forward(self, data_dict: dict) -> dict:
+        mash_params = data_dict['mash_params']
+        condition = data_dict['condition']
+        t = data_dict['t']
+        condition_drop_prob = data_dict['drop_prob']
+
         if condition.dtype == torch.float32:
             condition = condition + 0.0 * self.emb_category(torch.zeros([mash_params.shape[0]], dtype=torch.long, device=mash_params.device))
         else:

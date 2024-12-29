@@ -110,7 +110,7 @@ def demoCondition(
 
     for j in range(sampled_array.shape[0]):
         if save_results_only:
-            if j != sampled_array.shape[0] -  1:
+            if j != sampled_array.shape[0] - 1:
                 continue
 
         if save_folder_path is None:
