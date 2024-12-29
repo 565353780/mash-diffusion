@@ -1,6 +1,7 @@
 cd ..
 git clone https://github.com/565353780/ma-sh.git
 git clone https://github.com/565353780/ulip-manage.git
+git clone https://github.com/565353780/base-trainer.git
 git clone https://github.com/atong01/conditional-flow-matching.git CFM
 
 cd ma-sh
@@ -9,9 +10,10 @@ cd ma-sh
 cd ../ulip-manage
 ./setup.sh
 
-cd ../CFM
-pip install -U torch torchvision torchaudio
+cd ../base-trainer
+./setup.sh
 
+cd ../CFM
 pip install -r requirements.txt
 pip install -e .
 
