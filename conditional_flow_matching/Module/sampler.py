@@ -143,7 +143,7 @@ class Sampler(object):
         x_init = torch.randn(condition_tensor.shape[0], 400, 25, device=self.device)
 
         traj = torchdiffeq.odeint(
-            lambda t, x: self.model.forward(x, condition_tensor, t),
+            lambda t, x: self.model.forwardData(x, condition_tensor, t),
             x_init,
             query_t,
             atol=1e-4,
@@ -215,13 +215,11 @@ class Sampler(object):
 
         x_init = torch.cat((fixed_x_init, random_x_init), dim=1)
 
-        fixed_anchor_mask = torch.zeros([400], dtype=torch.long, device=self.device)
-        fixed_anchor_mask[:combined_mash.anchor_num] = True
-
-        fixed_anchor_idxs = torch.where(fixed_anchor_mask)[0]
+        fixed_anchor_mask = torch.zeros_like(x_init, dtype=torch.bool)
+        fixed_anchor_mask[:, :combined_mash.anchor_num, :] = True
 
         traj = torchdiffeq.odeint(
-            lambda t, x: self.model.forwardWithFixedAnchors(x, condition_tensor, t, fixed_anchor_idxs),
+            lambda t, x: self.model.forwardWithFixedAnchors(x, condition_tensor, t, fixed_anchor_mask),
             x_init,
             query_t,
             atol=1e-4,

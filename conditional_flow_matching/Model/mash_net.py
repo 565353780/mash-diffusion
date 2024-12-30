@@ -39,6 +39,11 @@ class MashNet(torch.nn.Module):
             depth=depth,
             context_dim=context_dim,
         )
+
+        self.final_linear = True
+
+        if self.final_linear:
+            self.to_outputs = nn.Linear(self.channels, self.channels)
         return
 
     def emb_category(self, class_labels):
@@ -46,6 +51,9 @@ class MashNet(torch.nn.Module):
 
     def forwardCondition(self, mash_params: torch.Tensor, condition: torch.Tensor, t: torch.Tensor) -> dict:
         mash_params_noise = self.model(mash_params, t, cond=condition)
+
+        if self.final_linear:
+            mash_params_noise = self.to_outputs(mash_params_noise)
 
         result_dict = {
             'vt': mash_params_noise
@@ -95,7 +103,7 @@ class MashNet(torch.nn.Module):
         mash_params: torch.Tensor,
         condition: torch.Tensor,
         t: torch.Tensor,
-        fixed_anchor_idxs: torch.Tensor,
+        fixed_anchor_mask: torch.Tensor,
         condition_drop_prob: float = 0.0
     ):
         if condition.dtype == torch.float32:
@@ -110,9 +118,11 @@ class MashNet(torch.nn.Module):
         context_mask = torch.bernoulli(torch.ones_like(condition)-condition_drop_prob).to(mash_params.device)
         condition = condition * context_mask
 
-        mash_params_noise = self.forwardCondition(mash_params, condition, t)
+        result_dict = self.forwardCondition(mash_params, condition, t)
 
-        mash_params_noise[:, fixed_anchor_idxs, :] = 0.0
+        mash_params_noise = result_dict['vt']
+
+        mash_params_noise[fixed_anchor_mask] = 0.0
 
         '''
         sum_data = torch.sum(torch.sum(mash_params_noise, dim=2), dim=0)

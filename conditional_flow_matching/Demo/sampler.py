@@ -166,9 +166,9 @@ def demo(save_folder_path: Union[str, None] = None):
     sample_id_num = 1
     sample_num = 10
     timestamp_num = 2
-    device = 'cuda'
+    device = 'cuda:0'
     save_results_only = True
-    sample_category = False
+    sample_category = True
     sample_image = False
     sample_points = False
     sample_text = False
@@ -291,7 +291,7 @@ def demo(save_folder_path: Union[str, None] = None):
             '/home/chli/github/ASDF/ma-sh/output/combined_mash.npy',
         ]
         categoty_id = '03001627'
-        print('start sample for category ' + categoty_id + '...')
+        print('start sample for fixed anchor category ' + categoty_id + '...')
         category_idx = CATEGORY_IDS[categoty_id]
         demoCondition(
             sampler,
@@ -302,7 +302,7 @@ def demo(save_folder_path: Union[str, None] = None):
             timestamp_num,
             save_folder_path,
             'category',
-            str(categoty_id),
+            'fixed_anchor',
             save_results_only,
             mash_file_path_list,
         )
