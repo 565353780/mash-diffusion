@@ -1,7 +1,8 @@
 import sys
-sys.path.append('../ma-sh/')
-sys.path.append('../distribution-manage/')
-sys.path.append('../base-trainer/')
+
+sys.path.append("../ma-sh/")
+sys.path.append("../distribution-manage/")
+sys.path.append("../base-trainer/")
 
 from ma_sh.Config.custom_path import toDatasetRootPath
 
@@ -13,10 +14,10 @@ def demo():
     assert dataset_root_folder_path is not None
 
     dataset_json_file_path_dict = {
-        'dino': dataset_root_folder_path + 'Objaverse_82K/render_dino.pkl',
+        "dino": dataset_root_folder_path + "Objaverse_82K/render_dino.pkl",
     }
     batch_size = 12
-    accum_iter = 10
+    accum_iter = 3
     num_workers = 16
     model_file_path = None
     # model_file_path = "../../output/20241225_15:14:36/total_model_last.pth".replace('../../', './')

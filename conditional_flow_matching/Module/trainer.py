@@ -7,7 +7,9 @@ from typing import Union
 from flow_matching.path.scheduler import CondOTScheduler
 from flow_matching.path import AffineProbPath
 
-from torchcfm.conditional_flow_matching import ExactOptimalTransportConditionalFlowMatcher
+from torchcfm.conditional_flow_matching import (
+    ExactOptimalTransportConditionalFlowMatcher,
+)
 
 from ma_sh.Model.mash import Mash
 
@@ -20,8 +22,12 @@ from conditional_flow_matching.Model.unet2d import MashUNet
 from conditional_flow_matching.Model.mash_net import MashNet
 from conditional_flow_matching.Model.mash_latent_net import MashLatentNet
 from conditional_flow_matching.Model.image2mash_latent_net import Image2MashLatentNet
-from conditional_flow_matching.Module.batch_ot_cfm import BatchExactOptimalTransportConditionalFlowMatcher
-from conditional_flow_matching.Module.stacked_random_generator import StackedRandomGenerator
+from conditional_flow_matching.Module.batch_ot_cfm import (
+    BatchExactOptimalTransportConditionalFlowMatcher,
+)
+from conditional_flow_matching.Module.stacked_random_generator import (
+    StackedRandomGenerator,
+)
 
 
 class Trainer(BaseTrainer):
@@ -65,7 +71,9 @@ class Trainer(BaseTrainer):
         if fm_id == 1:
             self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
         elif fm_id == 2:
-            self.FM = BatchExactOptimalTransportConditionalFlowMatcher(sigma=0.0, target_dim=None)
+            self.FM = BatchExactOptimalTransportConditionalFlowMatcher(
+                sigma=0.0, target_dim=None
+            )
         elif fm_id == 3:
             self.FM = AffineProbPath(scheduler=CondOTScheduler())
 
@@ -94,52 +102,63 @@ class Trainer(BaseTrainer):
 
     def createDatasets(self) -> bool:
         if False:
-            mash_file_path = os.environ['HOME'] + '/Dataset/MashV4/ShapeNet/03636649/583a5a163e59e16da523f74182db8f2.npy'
-            self.dataloader_dict['single_shape'] =  {
-                'dataset': SingleShapeDataset(mash_file_path),
-                'repeat_num': 1,
+            mash_file_path = (
+                os.environ["HOME"]
+                + "/Dataset/MashV4/ShapeNet/03636649/583a5a163e59e16da523f74182db8f2.npy"
+            )
+            self.dataloader_dict["single_shape"] = {
+                "dataset": SingleShapeDataset(mash_file_path),
+                "repeat_num": 1,
             }
 
         if False:
-            self.dataloader_dict['mash'] =  {
-                'dataset': MashDataset(self.dataset_root_folder_path, 'train'),
-                'repeat_num': 1,
+            self.dataloader_dict["mash"] = {
+                "dataset": MashDataset(self.dataset_root_folder_path, "train"),
+                "repeat_num": 1,
             }
 
         if True:
-            self.dataloader_dict['dino'] =  {
-                'dataset': EmbeddingDataset(
+            self.dataloader_dict["dino"] = {
+                "dataset": EmbeddingDataset(
                     self.dataset_root_folder_path,
-                    'Objaverse_82K/render_dino',
-                    'dino',
-                    'train',
-                    self.dataset_json_file_path_dict.get('dino')),
-                'repeat_num': 1,
+                    "Objaverse_82K/render_dino",
+                    "dino",
+                    "train",
+                    self.dataset_json_file_path_dict.get("dino"),
+                ),
+                "repeat_num": 1,
             }
 
         if False:
-            self.dataloader_dict['points'] =  {
-                'dataset': EmbeddingDataset(self.dataset_root_folder_path, 'PointsEmbedding', 'train'),
-                'repeat_num': 1,
+            self.dataloader_dict["points"] = {
+                "dataset": EmbeddingDataset(
+                    self.dataset_root_folder_path, "PointsEmbedding", "train"
+                ),
+                "repeat_num": 1,
             }
 
         if False:
-            self.dataloader_dict['text'] =  {
-                'dataset': EmbeddingDataset(self.dataset_root_folder_path, 'TextEmbedding_ShapeGlot', 'train'),
-                'repeat_num': 10,
+            self.dataloader_dict["text"] = {
+                "dataset": EmbeddingDataset(
+                    self.dataset_root_folder_path, "TextEmbedding_ShapeGlot", "train"
+                ),
+                "repeat_num": 10,
             }
 
         if True:
-            self.dataloader_dict['eval'] =  {
-                'dataset': EmbeddingDataset(
+            self.dataloader_dict["eval"] = {
+                "dataset": EmbeddingDataset(
                     self.dataset_root_folder_path,
-                    'Objaverse_82K/render_dino',
-                    'dino',
-                    'eval',
-                    self.dataset_json_file_path_dict.get('eval')),
+                    "Objaverse_82K/render_dino",
+                    "dino",
+                    "eval",
+                    self.dataset_json_file_path_dict.get("dino"),
+                ),
             }
 
-            self.dataloader_dict['eval']['dataset'].paths_list = self.dataloader_dict['eval']['dataset'].paths_list[:64]
+            self.dataloader_dict["eval"]["dataset"].paths_list = self.dataloader_dict[
+                "eval"
+            ]["dataset"].paths_list[:64]
 
         return True
 
@@ -155,7 +174,7 @@ class Trainer(BaseTrainer):
                 context_dim=self.context_dim,
                 n_heads=self.n_heads,
                 d_head=self.d_head,
-                depth=self.depth
+                depth=self.depth,
             ).to(self.device)
         elif model_id == 3:
             self.model = MashLatentNet(
@@ -165,7 +184,7 @@ class Trainer(BaseTrainer):
                 context_dim=self.context_dim,
                 n_heads=self.n_heads,
                 d_head=self.d_head,
-                depth=self.depth
+                depth=self.depth,
             ).to(self.device)
         elif model_id == 4:
             self.model = Image2MashLatentNet(
@@ -176,67 +195,71 @@ class Trainer(BaseTrainer):
                 context_dim=self.context_dim,
                 n_heads=self.n_heads,
                 d_head=self.d_head,
-                depth=self.depth
+                depth=self.depth,
             ).to(self.device)
 
         return True
 
     def getCondition(self, data_dict: dict) -> dict:
-        if 'category_id' in data_dict.keys():
-            data_dict['condition'] = data_dict['category_id']
-        elif 'embedding' in data_dict.keys():
-            embedding = data_dict['embedding']
+        if "category_id" in data_dict.keys():
+            data_dict["condition"] = data_dict["category_id"]
+        elif "embedding" in data_dict.keys():
+            embedding = data_dict["embedding"]
 
             if embedding.ndim == 2:
                 embedding = embedding.unsqueeze(1)
             elif embedding.ndim == 4:
                 embedding = torch.squeeze(embedding, dim=1)
 
-            data_dict['condition'] = embedding.to(self.device)
+            data_dict["condition"] = embedding.to(self.device)
         else:
-            print('[ERROR][Trainer::toCondition]')
-            print('\t valid condition type not found!')
+            print("[ERROR][Trainer::toCondition]")
+            print("\t valid condition type not found!")
             exit()
 
         return data_dict
 
     def preProcessData(self, data_dict: dict, is_training: bool = False) -> dict:
-        mash_params = data_dict['mash_params']
+        mash_params = data_dict["mash_params"]
 
         init_mash_params = torch.randn_like(mash_params)
 
         data_dict = self.getCondition(data_dict)
 
         if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
-            t, xt, ut = self.FM.sample_location_and_conditional_flow(init_mash_params, mash_params)
+            t, xt, ut = self.FM.sample_location_and_conditional_flow(
+                init_mash_params, mash_params
+            )
         elif isinstance(self.FM, BatchExactOptimalTransportConditionalFlowMatcher):
-            t, xt, ut = self.FM.sample_location_and_conditional_flow(init_mash_params, mash_params)
+            t, xt, ut = self.FM.sample_location_and_conditional_flow(
+                init_mash_params, mash_params
+            )
         elif isinstance(self.FM, AffineProbPath):
-            t = torch.rand(mash_params.shape[0]).to(self.device) 
+            t = torch.rand(mash_params.shape[0]).to(self.device)
             t = torch.pow(t, 1.0 / 2.0)
             path_sample = self.FM.sample(t=t, x_0=init_mash_params, x_1=mash_params)
             t = path_sample.t
             xt = path_sample.x_t
             ut = path_sample.dx_t
         else:
-            print('[ERROR][Trainer::trainStep]')
-            print('\t FM not valid!')
+            print("[ERROR][Trainer::trainStep]")
+            print("\t FM not valid!")
             exit()
 
-        data_dict['ut'] = ut
-        data_dict['t'] = t
-        data_dict['xt'] = xt
+        data_dict["ut"] = ut
+        data_dict["t"] = t
+        data_dict["xt"] = xt
 
         if is_training:
-            data_dict['drop_prob'] = 0.0
+            data_dict["drop_prob"] = 0.0
         else:
-            data_dict['drop_prob'] = 0.0
+            data_dict["drop_prob"] = 0.0
 
         return data_dict
 
     def getLossDict(self, data_dict: dict, result_dict: dict) -> dict:
-        ut = data_dict['ut']
-        vt = result_dict['vt']
+        ut = data_dict["ut"]
+        vt = result_dict["vt"]
 
         loss = torch.pow(vt - ut, 2).mean()
 
@@ -254,23 +277,23 @@ class Trainer(BaseTrainer):
         sample_gt = False
         sample_num = 3
         timestamp_num = 2
-        dataset = self.dataloader_dict['dino']['dataset']
+        dataset = self.dataloader_dict["dino"]["dataset"]
 
         model.eval()
 
         data = dataset.__getitem__(0)
-        gt_mash = data['mash_params']
+        gt_mash = data["mash_params"]
 
         data = self.getCondition(data)
-        condition = data['condition']
+        condition = data["condition"]
 
         if sample_gt:
             gt_mash = dataset.normalizeInverse(gt_mash)
 
-        print('[INFO][Trainer::sampleModelStep]')
+        print("[INFO][Trainer::sampleModelStep]")
         print("\t start diffuse", sample_num, "mashs....")
 
-        query_t = torch.linspace(0,1,timestamp_num).to(self.device)
+        query_t = torch.linspace(0, 1, timestamp_num).to(self.device)
         query_t = torch.pow(query_t, 1.0 / 2.0)
 
         # x_init = torch.randn(sample_num, 400, 25, device=self.device)
@@ -312,12 +335,12 @@ class Trainer(BaseTrainer):
                 mask_params=mask_params,
                 sh_params=sh_params,
                 positions=positions,
-                ortho6d_poses=ortho_poses
+                ortho6d_poses=ortho_poses,
             )
 
             pcd = mash_model.toSamplePcd()
 
-            self.logger.addPointCloud('GT_MASH/gt_mash', pcd, self.step)
+            self.logger.addPointCloud("GT_MASH/gt_mash", pcd, self.step)
 
             self.gt_sample_added_to_logger = True
 
@@ -336,11 +359,11 @@ class Trainer(BaseTrainer):
                 mask_params=mask_params,
                 sh_params=sh_params,
                 positions=positions,
-                ortho6d_poses=ortho_poses
+                ortho6d_poses=ortho_poses,
             )
 
             pcd = mash_model.toSamplePcd()
 
-            self.logger.addPointCloud(model_name + '/pcd_' + str(i), pcd, self.step)
+            self.logger.addPointCloud(model_name + "/pcd_" + str(i), pcd, self.step)
 
         return True
