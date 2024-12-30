@@ -13,7 +13,7 @@ def demo():
     assert dataset_root_folder_path is not None
 
     dataset_json_file_path_dict = {
-        'dino': dataset_root_folder_path + 'Objaverse_82K/render_dino.json',
+        'dino': dataset_root_folder_path + 'Objaverse_82K/render_dino.pkl',
     }
     batch_size = 12
     accum_iter = 10

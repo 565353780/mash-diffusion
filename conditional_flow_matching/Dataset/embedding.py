@@ -14,10 +14,10 @@ class EmbeddingDataset(Dataset):
     def __init__(
         self,
         dataset_root_folder_path: str,
-        dataset_json_file_path: Union[str, None] = None,
         embedding_folder_name: str,
         embedding_key: str,
         split: str = "train",
+        dataset_json_file_path: Union[str, None] = None,
     ) -> None:
         self.dataset_root_folder_path = dataset_root_folder_path
         self.embedding_key = embedding_key
@@ -35,13 +35,19 @@ class EmbeddingDataset(Dataset):
 
         self.invalid_embedding_file_path_list = []
 
+        self.paths_list = []
+
         if dataset_json_file_path is not None:
             if os.path.exists(dataset_json_file_path):
                 with open(dataset_json_file_path, 'rb') as f:
-                    self.paths_list = pickle.load(f)
-                    return
+                    paths_list = pickle.load(f)
 
-        self.paths_list = []
+                    for paths in paths_list:
+                        self.paths_list.append([
+                            self.mash_folder_path + paths[0],
+                            [self.embedding_root_folder_path + path for path in paths[1]]
+                        ])
+                    return
 
         print("[INFO][EmbeddingDataset::__init__]")
         print("\t start load mash and embedding datasets...")
@@ -66,7 +72,7 @@ class EmbeddingDataset(Dataset):
             if len(embedding_file_path_list) == 0:
                 continue
 
-            # embedding_file_path_list.sort()
+            embedding_file_path_list.sort()
 
             self.paths_list.append([
                 mash_file_path, embedding_file_path_list
@@ -95,13 +101,16 @@ class EmbeddingDataset(Dataset):
 
         mash_file_path, embedding_file_path_list = self.paths_list[index]
 
+        if not os.path.exists(mash_file_path):
+            new_idx = random.randint(0, len(self.paths_list) - 1)
+            return self.__getitem__(new_idx)
+
         embedding_file_idx = np.random.choice(len(embedding_file_path_list))
 
         embedding_file_path = embedding_file_path_list[embedding_file_idx]
 
         if embedding_file_path in self.invalid_embedding_file_path_list:
             new_idx = random.randint(0, len(self.paths_list) - 1)
-
             return self.__getitem__(new_idx)
 
         try:

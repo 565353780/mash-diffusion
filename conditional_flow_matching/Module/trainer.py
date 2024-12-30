@@ -110,10 +110,10 @@ class Trainer(BaseTrainer):
             self.dataloader_dict['dino'] =  {
                 'dataset': EmbeddingDataset(
                     self.dataset_root_folder_path,
-                    self.dataset_json_file_path_dict.get('dino'),
                     'Objaverse_82K/render_dino',
                     'dino',
-                    'train'),
+                    'train',
+                    self.dataset_json_file_path_dict.get('dino')),
                 'repeat_num': 1,
             }
 
@@ -133,11 +133,10 @@ class Trainer(BaseTrainer):
             self.dataloader_dict['eval'] =  {
                 'dataset': EmbeddingDataset(
                     self.dataset_root_folder_path,
-                    self.dataset_json_file_path_dict.get('eval'),
                     'Objaverse_82K/render_dino',
                     'dino',
-                    'eval'
-                ),
+                    'eval',
+                    self.dataset_json_file_path_dict.get('eval')),
             }
 
             self.dataloader_dict['eval']['dataset'].paths_list = self.dataloader_dict['eval']['dataset'].paths_list[:64]
