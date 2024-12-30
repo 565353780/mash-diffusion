@@ -1,7 +1,9 @@
 import os
 import torch
+import pickle
 import random
 import numpy as np
+from typing import Union
 from torch.utils.data import Dataset
 
 from ma_sh.Method.io import loadMashFileParamsTensor
@@ -12,6 +14,7 @@ class EmbeddingDataset(Dataset):
     def __init__(
         self,
         dataset_root_folder_path: str,
+        dataset_json_file_path: Union[str, None] = None,
         embedding_folder_name: str,
         embedding_key: str,
         split: str = "train",
@@ -19,12 +22,24 @@ class EmbeddingDataset(Dataset):
         self.dataset_root_folder_path = dataset_root_folder_path
         self.embedding_key = embedding_key
         self.split = split
+        self.dataset_json_file_path = dataset_json_file_path
 
         self.mash_folder_path = self.dataset_root_folder_path + "Objaverse_82K/manifold_mash/"
         self.embedding_root_folder_path = self.dataset_root_folder_path + embedding_folder_name + "/"
 
         assert os.path.exists(self.mash_folder_path)
         assert os.path.exists(self.embedding_root_folder_path)
+
+        self.transformer = getTransformer('Objaverse_82K')
+        assert self.transformer is not None
+
+        self.invalid_embedding_file_path_list = []
+
+        if dataset_json_file_path is not None:
+            if os.path.exists(dataset_json_file_path):
+                with open(dataset_json_file_path, 'rb') as f:
+                    self.paths_list = pickle.load(f)
+                    return
 
         self.paths_list = []
 
@@ -59,10 +74,6 @@ class EmbeddingDataset(Dataset):
 
         self.paths_list.sort(key=lambda x: x[0])
 
-        self.transformer = getTransformer('Objaverse_82K')
-        assert self.transformer is not None
-
-        self.invalid_embedding_file_path_list = []
         return
 
     def normalize(self, mash_params: torch.Tensor) -> torch.Tensor:
@@ -95,6 +106,10 @@ class EmbeddingDataset(Dataset):
 
         try:
             embedding = np.load(embedding_file_path, allow_pickle=True).item()[self.embedding_key]
+        except KeyboardInterrupt:
+            print('[INFO][EmbeddingDataset::__getitem__]')
+            print('\t stopped by the user (Ctrl+C).')
+            exit()
         except Exception as e:
             '''
             print("[ERROR][EmbeddingDataset::__getitem__]")

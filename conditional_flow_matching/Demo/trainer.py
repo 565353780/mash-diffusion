@@ -12,6 +12,9 @@ def demo():
     dataset_root_folder_path = toDatasetRootPath()
     assert dataset_root_folder_path is not None
 
+    dataset_json_file_path_dict = {
+        'dino': dataset_root_folder_path + 'Objaverse_82K/render_dino.json',
+    }
     batch_size = 12
     accum_iter = 10
     num_workers = 16
@@ -35,6 +38,7 @@ def demo():
 
     trainer = Trainer(
         dataset_root_folder_path,
+        dataset_json_file_path_dict,
         batch_size,
         accum_iter,
         num_workers,

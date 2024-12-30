@@ -28,6 +28,7 @@ class Trainer(BaseTrainer):
     def __init__(
         self,
         dataset_root_folder_path: str,
+        dataset_json_file_path_dict: dict = {},
         batch_size: int = 5,
         accum_iter: int = 10,
         num_workers: int = 16,
@@ -49,6 +50,7 @@ class Trainer(BaseTrainer):
         use_amp: bool = False,
     ) -> None:
         self.dataset_root_folder_path = dataset_root_folder_path
+        self.dataset_json_file_path_dict = dataset_json_file_path_dict
 
         self.mash_channel = 400
         self.mask_degree = 3
@@ -108,6 +110,7 @@ class Trainer(BaseTrainer):
             self.dataloader_dict['dino'] =  {
                 'dataset': EmbeddingDataset(
                     self.dataset_root_folder_path,
+                    self.dataset_json_file_path_dict.get('dino'),
                     'Objaverse_82K/render_dino',
                     'dino',
                     'train'),
@@ -130,6 +133,7 @@ class Trainer(BaseTrainer):
             self.dataloader_dict['eval'] =  {
                 'dataset': EmbeddingDataset(
                     self.dataset_root_folder_path,
+                    self.dataset_json_file_path_dict.get('eval'),
                     'Objaverse_82K/render_dino',
                     'dino',
                     'eval'
