@@ -24,14 +24,20 @@ class EmbeddingDataset(Dataset):
         self.split = split
         self.dataset_json_file_path = dataset_json_file_path
 
-        self.mash_folder_path = self.dataset_root_folder_path + "Objaverse_82K/manifold_mash/"
-        self.embedding_root_folder_path = self.dataset_root_folder_path + embedding_folder_name + "/"
+        self.mash_folder_path = (
+            self.dataset_root_folder_path + "Objaverse_82K/manifold_mash/"
+        )
+        self.embedding_root_folder_path = (
+            self.dataset_root_folder_path + embedding_folder_name + "/"
+        )
 
         assert os.path.exists(self.mash_folder_path)
         assert os.path.exists(self.embedding_root_folder_path)
 
-        self.transformer = getTransformer('Objaverse_82K')
+        self.transformer = getTransformer("Objaverse_82K")
         assert self.transformer is not None
+
+        self.output_error = False
 
         self.invalid_embedding_file_path_list = []
 
@@ -39,14 +45,19 @@ class EmbeddingDataset(Dataset):
 
         if dataset_json_file_path is not None:
             if os.path.exists(dataset_json_file_path):
-                with open(dataset_json_file_path, 'rb') as f:
+                with open(dataset_json_file_path, "rb") as f:
                     paths_list = pickle.load(f)
 
                     for paths in paths_list:
-                        self.paths_list.append([
-                            self.mash_folder_path + paths[0],
-                            [self.embedding_root_folder_path + path for path in paths[1]]
-                        ])
+                        self.paths_list.append(
+                            [
+                                self.mash_folder_path + paths[0],
+                                [
+                                    self.embedding_root_folder_path + path
+                                    for path in paths[1]
+                                ],
+                            ]
+                        )
                     return
 
         print("[INFO][EmbeddingDataset::__init__]")
@@ -57,26 +68,24 @@ class EmbeddingDataset(Dataset):
 
             rel_folder_path = os.path.relpath(root, self.embedding_root_folder_path)
 
-            mash_file_path = self.mash_folder_path + rel_folder_path + '.npy'
+            mash_file_path = self.mash_folder_path + rel_folder_path + ".npy"
 
             if not os.path.exists(mash_file_path):
                 continue
 
             embedding_file_path_list = []
             for file in files:
-                if not file.endswith('.npy') or file.endswith('_tmp.npy'):
+                if not file.endswith(".npy") or file.endswith("_tmp.npy"):
                     continue
 
-                embedding_file_path_list.append(root + '/' + file)
+                embedding_file_path_list.append(root + "/" + file)
 
             if len(embedding_file_path_list) == 0:
                 continue
 
             embedding_file_path_list.sort()
 
-            self.paths_list.append([
-                mash_file_path, embedding_file_path_list
-            ])
+            self.paths_list.append([mash_file_path, embedding_file_path_list])
 
         self.paths_list.sort(key=lambda x: x[0])
 
@@ -102,6 +111,9 @@ class EmbeddingDataset(Dataset):
         mash_file_path, embedding_file_path_list = self.paths_list[index]
 
         if not os.path.exists(mash_file_path):
+            if self.output_error:
+                print("[ERROR][EmbeddingDataset::__getitem__]")
+                print("\t this npy file is not valid!")
             new_idx = random.randint(0, len(self.paths_list) - 1)
             return self.__getitem__(new_idx)
 
@@ -114,28 +126,27 @@ class EmbeddingDataset(Dataset):
             return self.__getitem__(new_idx)
 
         try:
-            embedding = np.load(embedding_file_path, allow_pickle=True).item()[self.embedding_key]
+            embedding = np.load(embedding_file_path, allow_pickle=True).item()[
+                self.embedding_key
+            ]
         except KeyboardInterrupt:
-            print('[INFO][EmbeddingDataset::__getitem__]')
-            print('\t stopped by the user (Ctrl+C).')
+            print("[INFO][EmbeddingDataset::__getitem__]")
+            print("\t stopped by the user (Ctrl+C).")
             exit()
         except Exception as e:
-            '''
-            print("[ERROR][EmbeddingDataset::__getitem__]")
-            print('\t this npy file is not valid!')
-            print('\t embedding_file_path:', embedding_file_path)
-            print('\t error info:', e)
-            '''
+            if self.output_error:
+                print("[ERROR][EmbeddingDataset::__getitem__]")
+                print("\t this npy file is not valid!")
+                print("\t embedding_file_path:", embedding_file_path)
+                print("\t error info:", e)
 
             self.invalid_embedding_file_path_list.append(embedding_file_path)
-
             new_idx = random.randint(0, len(self.paths_list) - 1)
-
             return self.__getitem__(new_idx)
 
         embedding = torch.from_numpy(embedding).float()
 
-        mash_params = loadMashFileParamsTensor(mash_file_path, torch.float32, 'cpu')
+        mash_params = loadMashFileParamsTensor(mash_file_path, torch.float32, "cpu")
 
         mash_params = self.normalize(mash_params)
 
@@ -144,8 +155,8 @@ class EmbeddingDataset(Dataset):
         mash_params = mash_params[permute_idxs]
 
         data = {
-            'mash_params': mash_params,
-            'embedding': embedding,
+            "mash_params": mash_params,
+            "embedding": embedding,
         }
 
         return data

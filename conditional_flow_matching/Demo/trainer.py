@@ -18,7 +18,7 @@ def demo():
     }
     batch_size = 12
     accum_iter = 3
-    num_workers = 16
+    num_workers = 12
     model_file_path = None
     # model_file_path = "../../output/20241225_15:14:36/total_model_last.pth".replace('../../', './')
     device = "auto"
