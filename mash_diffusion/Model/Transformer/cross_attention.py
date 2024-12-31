@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from einops import rearrange
+from einops import rearrange, repeat
 
 
 class CrossAttention(nn.Module):
@@ -21,6 +21,7 @@ class CrossAttention(nn.Module):
         self.to_out = nn.Sequential(
             nn.Linear(inner_dim, query_dim), nn.Dropout(dropout)
         )
+        return
 
     def forward(self, x, context=None, mask=None):
         h = self.heads
@@ -37,9 +38,18 @@ class CrossAttention(nn.Module):
 
         sim = torch.einsum("b i d, b j d -> b i j", q, k) * self.scale
 
+        if mask is not None:
+            mask = rearrange(mask, "b ... -> b (...)")
+            max_neg_value = -torch.finfo(sim.dtype).max
+            mask = repeat(mask, "b j -> (b h) () j", h=h)
+            sim.masked_fill_(~mask, max_neg_value)
+
         # attention, what we cannot get enough of
         attn = sim.softmax(dim=-1)
 
         out = torch.einsum("b i j, b j d -> b i d", attn, v)
         out = rearrange(out, "(b h) n d -> b n (h d)", h=h)
-        return self.to_out(out)
+
+        out = self.to_out(out)
+
+        return out

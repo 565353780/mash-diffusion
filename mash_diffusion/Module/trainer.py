@@ -18,8 +18,6 @@ from mash_diffusion.Dataset.embedding import EmbeddingDataset
 from mash_diffusion.Dataset.single_shape import SingleShapeDataset
 from mash_diffusion.Model.unet2d import MashUNet
 from mash_diffusion.Model.mash_net import MashNet
-from mash_diffusion.Model.mash_latent_net import MashLatentNet
-from mash_diffusion.Model.image2mash_latent_net import Image2MashLatentNet
 from mash_diffusion.Module.batch_ot_cfm import BatchExactOptimalTransportConditionalFlowMatcher
 from mash_diffusion.Module.stacked_random_generator import StackedRandomGenerator
 
@@ -168,28 +166,6 @@ class Trainer(BaseTrainer):
                 d_head=self.d_head,
                 depth=self.depth,
             ).to(self.device)
-        elif model_id == 3:
-            self.model = MashLatentNet(
-                n_latents=self.mash_channel,
-                mask_degree=self.mask_degree,
-                sh_degree=self.sh_degree,
-                context_dim=self.context_dim,
-                n_heads=self.n_heads,
-                d_head=self.d_head,
-                depth=self.depth,
-            ).to(self.device)
-        elif model_id == 4:
-            self.model = Image2MashLatentNet(
-                n_latents=self.mash_channel,
-                mask_degree=self.mask_degree,
-                sh_degree=self.sh_degree,
-                embed_dim=self.embed_dim,
-                context_dim=self.context_dim,
-                n_heads=self.n_heads,
-                d_head=self.d_head,
-                depth=self.depth,
-            ).to(self.device)
-
         return True
 
     def getCondition(self, data_dict: dict) -> dict:

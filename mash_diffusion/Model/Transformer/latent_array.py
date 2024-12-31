@@ -1,8 +1,8 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-from mash_diffusion.Model.positional_encoding import PositionalEncoding
-from mash_diffusion.Model.positional_embedding import PositionalEmbedding
+from mash_diffusion.Model.Layer.positional_encoding import PositionalEncoding
+from mash_diffusion.Model.Layer.positional_embedding import PositionalEmbedding
 from mash_diffusion.Model.Transformer.basic_block import BasicTransformerBlock
 
 

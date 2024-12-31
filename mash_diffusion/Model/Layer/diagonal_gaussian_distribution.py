@@ -6,7 +6,7 @@ class DiagonalGaussianDistribution(object):
     def __init__(self, mean: torch.Tensor, logvar: torch.Tensor, deterministic: bool=False):
         self.mean = mean
         self.logvar = logvar
-        # self.logvar = torch.clamp(self.logvar, -30.0, 20.0)
+        self.logvar = torch.clamp(self.logvar, -30.0, 20.0)
         self.deterministic = deterministic
         self.std = torch.exp(0.5 * self.logvar)
         self.var = torch.exp(self.logvar)

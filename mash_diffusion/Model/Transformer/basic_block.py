@@ -1,9 +1,9 @@
 import torch.nn as nn
 from timm.layers.drop import DropPath
 
-from mash_diffusion.Model.layer_scale import LayerScale
+from mash_diffusion.Model.Layer.layer_scale import LayerScale
 from mash_diffusion.Model.Layer.feed_forward import FeedForward
-from mash_diffusion.Model.ada_layer_norm import AdaLayerNorm
+from mash_diffusion.Model.Layer.ada_layer_norm import AdaLayerNorm
 from mash_diffusion.Model.Transformer.cross_attention import CrossAttention
 
 
