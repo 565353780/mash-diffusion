@@ -2,7 +2,8 @@ import os
 from tqdm import tqdm
 from shutil import copyfile
 
-from conditional_flow_matching.Method.path import createFileFolder, removeFile
+from mash_diffusion.Method.path import createFileFolder, removeFile
+
 
 def copyConditionFiles(
         root_folder_path: str,

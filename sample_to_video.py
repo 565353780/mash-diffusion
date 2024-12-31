@@ -1,4 +1,4 @@
-from conditional_flow_matching.Method.video import sampleImagesFolderToVideos
+from mash_diffusion.Method.video import sampleImagesFolderToVideos
 
 
 if __name__ == "__main__":

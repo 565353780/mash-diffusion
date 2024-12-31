@@ -1,10 +1,10 @@
-# Conditional Flow Matching
+# MASH Diffusion
 
 ## Setup
 
 ```bash
-conda create -n cfm python=3.10
-conda activate cfm
+conda create -n md python=3.10
+conda activate md
 ./setup.sh
 ```
 
