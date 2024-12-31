@@ -52,7 +52,6 @@ class Trainer(BaseTrainer):
         self.mash_channel = 400
         self.mask_degree = 3
         self.sh_degree = 2
-        self.embed_dim = 1024
         self.context_dim = 1024
         self.n_heads = 8
         self.d_head = 64

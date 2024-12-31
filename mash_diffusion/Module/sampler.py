@@ -10,8 +10,6 @@ from ma_sh.Module.local_editor import LocalEditor
 
 from mash_diffusion.Model.unet2d import MashUNet
 from mash_diffusion.Model.mash_net import MashNet
-from mash_diffusion.Model.mash_latent_net import MashLatentNet
-from mash_diffusion.Model.image2mash_latent_net import Image2MashLatentNet
 
 
 class Sampler(object):
@@ -25,7 +23,6 @@ class Sampler(object):
         self.encoded_mash_channel = 25
         self.mask_degree = 3
         self.sh_degree = 2
-        self.embed_dim = 1024
         self.context_dim = 512
         self.n_heads = 8
         self.d_head = 64
@@ -42,27 +39,6 @@ class Sampler(object):
                 n_latents=self.mash_channel,
                 mask_degree=self.mask_degree,
                 sh_degree=self.sh_degree,
-                context_dim=self.context_dim,
-                n_heads=self.n_heads,
-                d_head=self.d_head,
-                depth=self.depth
-            ).to(self.device)
-        elif model_id == 3:
-            self.model = MashLatentNet(
-                n_latents=self.mash_channel,
-                mask_degree=self.mask_degree,
-                sh_degree=self.sh_degree,
-                context_dim=self.context_dim,
-                n_heads=self.n_heads,
-                d_head=self.d_head,
-                depth=self.depth
-            ).to(self.device)
-        elif model_id == 4:
-            self.model = Image2MashLatentNet(
-                n_latents=self.mash_channel,
-                mask_degree=self.mask_degree,
-                sh_degree=self.sh_degree,
-                embed_dim=self.embed_dim,
                 context_dim=self.context_dim,
                 n_heads=self.n_heads,
                 d_head=self.d_head,
