@@ -4,7 +4,7 @@ import torch.nn as nn
 from mash_diffusion.Model.Transformer.latent_array import LatentArrayTransformer
 
 
-class MashNet(torch.nn.Module):
+class CFMLatentTransformer(torch.nn.Module):
     def __init__(
         self,
         n_latents=400,
@@ -14,15 +14,9 @@ class MashNet(torch.nn.Module):
         n_heads=8,
         d_head=64,
         depth=24,
-        sigma_min=0,
-        sigma_max=float("inf"),
-        sigma_data=1,
     ):
         super().__init__()
         self.n_latents = n_latents
-        self.sigma_min = sigma_min
-        self.sigma_max = sigma_max
-        self.sigma_data = sigma_data
 
         self.mask_dim = 2 * mask_degree + 1
         self.sh_dim = (sh_degree + 1) ** 2

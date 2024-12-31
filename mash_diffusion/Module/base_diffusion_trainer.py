@@ -12,8 +12,6 @@ from base_trainer.Module.base_trainer import BaseTrainer
 from mash_diffusion.Dataset.mash import MashDataset
 from mash_diffusion.Dataset.embedding import EmbeddingDataset
 from mash_diffusion.Dataset.single_shape import SingleShapeDataset
-from mash_diffusion.Model.unet2d import MashUNet
-from mash_diffusion.Model.mash_net import MashNet
 
 
 class BaseDiffusionTrainer(BaseTrainer):
@@ -50,6 +48,10 @@ class BaseDiffusionTrainer(BaseTrainer):
         self.n_heads = 8
         self.d_head = 64
         self.depth = 24
+
+        self.channels = int(
+            9 + (2 * self.mask_degree + 1) + ((self.sh_degree + 1) ** 2)
+        )
 
         super().__init__(
             batch_size,
@@ -117,22 +119,6 @@ class BaseDiffusionTrainer(BaseTrainer):
                 "eval"
             ]["dataset"].paths_list[:64]
 
-        return True
-
-    def createModel(self) -> bool:
-        model_id = 2
-        if model_id == 1:
-            self.model = MashUNet(self.context_dim).to(self.device)
-        elif model_id == 2:
-            self.model = MashNet(
-                n_latents=self.mash_channel,
-                mask_degree=self.mask_degree,
-                sh_degree=self.sh_degree,
-                context_dim=self.context_dim,
-                n_heads=self.n_heads,
-                d_head=self.d_head,
-                depth=self.depth,
-            ).to(self.device)
         return True
 
     def getCondition(self, data_dict: dict) -> dict:

@@ -8,8 +8,9 @@ from flow_matching.path import AffineProbPath
 
 from torchcfm.conditional_flow_matching import ExactOptimalTransportConditionalFlowMatcher
 
+from mash_diffusion.Model.unet2d import MashUNet
+from mash_diffusion.Model.cfm_latent_transformer import CFMLatentTransformer
 from mash_diffusion.Module.base_diffusion_trainer import BaseDiffusionTrainer
-
 from mash_diffusion.Module.batch_ot_cfm import BatchExactOptimalTransportConditionalFlowMatcher
 from mash_diffusion.Module.stacked_random_generator import StackedRandomGenerator
 
@@ -71,6 +72,22 @@ class CFMTrainer(BaseDiffusionTrainer):
             use_amp,
         )
         return
+
+    def createModel(self) -> bool:
+        model_id = 2
+        if model_id == 1:
+            self.model = MashUNet(self.context_dim).to(self.device)
+        elif model_id == 2:
+            self.model = CFMLatentTransformer(
+                n_latents=self.mash_channel,
+                mask_degree=self.mask_degree,
+                sh_degree=self.sh_degree,
+                context_dim=self.context_dim,
+                n_heads=self.n_heads,
+                d_head=self.d_head,
+                depth=self.depth,
+            ).to(self.device)
+        return True
 
     def preProcessDiffusionData(self, data_dict: dict, is_training: bool = False) -> dict:
         mash_params = data_dict["mash_params"]
