@@ -34,7 +34,7 @@ class CFMLatentTransformer(torch.nn.Module):
             context_dim=context_dim,
         )
 
-        self.final_linear = True
+        self.final_linear = False
 
         if self.final_linear:
             self.to_outputs = nn.Linear(self.channels, self.channels)
