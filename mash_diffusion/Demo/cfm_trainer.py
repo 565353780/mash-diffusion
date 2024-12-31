@@ -5,7 +5,7 @@ sys.path.append("../base-trainer/")
 
 from ma_sh.Config.custom_path import toDatasetRootPath
 
-from mash_diffusion.Module.trainer import Trainer
+from mash_diffusion.Module.cfm_trainer import CFMTrainer
 
 
 def demo():
@@ -35,7 +35,7 @@ def demo():
     sample_results_freq = 1
     use_amp = False
 
-    trainer = Trainer(
+    cfm_trainer = CFMTrainer(
         dataset_root_folder_path,
         dataset_json_file_path_dict,
         batch_size,
@@ -58,5 +58,5 @@ def demo():
         use_amp,
     )
 
-    trainer.train()
+    cfm_trainer.train()
     return True

@@ -98,7 +98,7 @@ class EmbeddingDataset(Dataset):
         return self.transformer.inverse_transform(mash_params, False)
 
     def __len__(self):
-        return len(self.paths_list) * 100
+        return len(self.paths_list)
 
     def __getitem__(self, index):
         index = index % len(self.paths_list)

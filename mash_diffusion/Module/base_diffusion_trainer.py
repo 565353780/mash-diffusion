@@ -1,13 +1,9 @@
 import os
 import torch
-import torchdiffeq
+from torch import nn
 from tqdm import trange
 from typing import Union
-
-from flow_matching.path.scheduler import CondOTScheduler
-from flow_matching.path import AffineProbPath
-
-from torchcfm.conditional_flow_matching import ExactOptimalTransportConditionalFlowMatcher
+from abc import abstractmethod
 
 from ma_sh.Model.mash import Mash
 
@@ -18,11 +14,9 @@ from mash_diffusion.Dataset.embedding import EmbeddingDataset
 from mash_diffusion.Dataset.single_shape import SingleShapeDataset
 from mash_diffusion.Model.unet2d import MashUNet
 from mash_diffusion.Model.mash_net import MashNet
-from mash_diffusion.Module.batch_ot_cfm import BatchExactOptimalTransportConditionalFlowMatcher
-from mash_diffusion.Module.stacked_random_generator import StackedRandomGenerator
 
 
-class Trainer(BaseTrainer):
+class BaseDiffusionTrainer(BaseTrainer):
     def __init__(
         self,
         dataset_root_folder_path: str,
@@ -56,16 +50,6 @@ class Trainer(BaseTrainer):
         self.n_heads = 8
         self.d_head = 64
         self.depth = 24
-
-        fm_id = 2
-        if fm_id == 1:
-            self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
-        elif fm_id == 2:
-            self.FM = BatchExactOptimalTransportConditionalFlowMatcher(
-                sigma=0.0, target_dim=None
-            )
-        elif fm_id == 3:
-            self.FM = AffineProbPath(scheduler=CondOTScheduler())
 
         super().__init__(
             batch_size,
@@ -118,22 +102,6 @@ class Trainer(BaseTrainer):
                 "repeat_num": 1,
             }
 
-        if False:
-            self.dataloader_dict["points"] = {
-                "dataset": EmbeddingDataset(
-                    self.dataset_root_folder_path, "PointsEmbedding", "train"
-                ),
-                "repeat_num": 1,
-            }
-
-        if False:
-            self.dataloader_dict["text"] = {
-                "dataset": EmbeddingDataset(
-                    self.dataset_root_folder_path, "TextEmbedding_ShapeGlot", "train"
-                ),
-                "repeat_num": 10,
-            }
-
         if True:
             self.dataloader_dict["eval"] = {
                 "dataset": EmbeddingDataset(
@@ -180,105 +148,62 @@ class Trainer(BaseTrainer):
 
             data_dict["condition"] = embedding.to(self.device)
         else:
-            print("[ERROR][Trainer::toCondition]")
+            print("[ERROR][BaseDiffusionTrainer::toCondition]")
             print("\t valid condition type not found!")
             exit()
 
         return data_dict
 
+    @abstractmethod
+    def preProcessDiffusionData(self, data_dict: dict, is_training: bool = False) -> dict:
+        '''
+        if is_training:
+            data_dict[new_name] = new_value
+        return data_dict
+        '''
+        pass
+
     def preProcessData(self, data_dict: dict, is_training: bool = False) -> dict:
-        mash_params = data_dict["mash_params"]
-
-        init_mash_params = torch.randn_like(mash_params)
-
         data_dict = self.getCondition(data_dict)
-
-        if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
-            t, xt, ut = self.FM.sample_location_and_conditional_flow(
-                init_mash_params, mash_params
-            )
-        elif isinstance(self.FM, BatchExactOptimalTransportConditionalFlowMatcher):
-            t, xt, ut = self.FM.sample_location_and_conditional_flow(
-                init_mash_params, mash_params
-            )
-        elif isinstance(self.FM, AffineProbPath):
-            t = torch.rand(mash_params.shape[0]).to(self.device)
-            t = torch.pow(t, 1.0 / 2.0)
-            path_sample = self.FM.sample(t=t, x_0=init_mash_params, x_1=mash_params)
-            t = path_sample.t
-            xt = path_sample.x_t
-            ut = path_sample.dx_t
-        else:
-            print("[ERROR][Trainer::trainStep]")
-            print("\t FM not valid!")
-            exit()
-
-        data_dict["ut"] = ut
-        data_dict["t"] = t
-        data_dict["xt"] = xt
 
         if is_training:
             data_dict["drop_prob"] = 0.0
         else:
             data_dict["drop_prob"] = 0.0
 
+        data_dict = self.preProcessDiffusionData(data_dict, is_training)
+
         return data_dict
 
-    def getLossDict(self, data_dict: dict, result_dict: dict) -> dict:
-        ut = data_dict["ut"]
-        vt = result_dict["vt"]
-
-        loss = torch.pow(vt - ut, 2).mean()
-
-        loss_dict = {
-            "Loss": loss,
-        }
-
-        return loss_dict
+    @abstractmethod
+    @torch.no_grad()
+    def sampleMashData(self, model: nn.Module, condition: torch.Tensor, sample_num: int) -> torch.Tensor:
+        '''
+        mash_params = sample_func(model, condition, sample_num)
+        return mash_params
+        '''
+        pass
 
     @torch.no_grad()
-    def sampleModelStep(self, model: torch.nn.Module, model_name: str) -> bool:
+    def sampleModelStep(self, model: nn.Module, model_name: str) -> bool:
         if self.local_rank != 0:
             return True
 
-        sample_gt = False
+        sample_gt = True
         sample_num = 3
-        timestamp_num = 2
         dataset = self.dataloader_dict["dino"]["dataset"]
 
         model.eval()
 
-        data = dataset.__getitem__(0)
-        gt_mash = data["mash_params"]
+        data_dict = dataset.__getitem__(0)
+        data_dict = self.getCondition(data_dict)
 
-        data = self.getCondition(data)
-        condition = data["condition"]
+        condition = data_dict['condition']
 
-        if sample_gt:
-            gt_mash = dataset.normalizeInverse(gt_mash)
-
-        print("[INFO][Trainer::sampleModelStep]")
+        print("[INFO][BaseDiffusionTrainer::sampleModelStep]")
         print("\t start diffuse", sample_num, "mashs....")
 
-        query_t = torch.linspace(0, 1, timestamp_num).to(self.device)
-        query_t = torch.pow(query_t, 1.0 / 2.0)
-
-        # x_init = torch.randn(sample_num, 400, 25, device=self.device)
-
-        batch_seeds = torch.arange(sample_num)
-        rnd = StackedRandomGenerator(self.device, batch_seeds)
-        x_init = rnd.randn([sample_num, self.mash_channel, 25], device=self.device)
-
-        traj = torchdiffeq.odeint(
-            lambda t, x: model.forwardData(x, condition, t),
-            x_init,
-            query_t,
-            atol=1e-4,
-            rtol=1e-4,
-            method="dopri5",
-        )
-
-        sampled_array = traj.cpu()[-1]
+        sampled_array = self.sampleMashData(model, condition, sample_num)
 
         mash_model = Mash(
             self.mash_channel,
@@ -292,6 +217,10 @@ class Trainer(BaseTrainer):
         )
 
         if sample_gt and not self.gt_sample_added_to_logger:
+            gt_mash = data_dict['mash_params']
+
+            gt_mash = dataset.normalizeInverse(gt_mash)
+
             sh2d = 2 * self.mask_degree + 1
             ortho_poses = gt_mash[:, :6]
             positions = gt_mash[:, 6:9]
