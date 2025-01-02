@@ -15,9 +15,9 @@ def demo():
     dataset_json_file_path_dict = {
         "dino": dataset_root_folder_path + "Objaverse_82K/render_dino.pkl",
     }
-    batch_size = 12
-    accum_iter = 3
-    num_workers = 12
+    batch_size = 2
+    accum_iter = 16
+    num_workers = 2
     model_file_path = None
     # model_file_path = "../../output/20241225_15:14:36/total_model_last.pth".replace('../../', './')
     device = "auto"

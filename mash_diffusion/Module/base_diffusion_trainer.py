@@ -45,7 +45,7 @@ class BaseDiffusionTrainer(BaseTrainer):
         self.mask_degree = 3
         self.sh_degree = 2
         self.context_dim = 1024
-        self.n_heads = 8
+        self.n_heads = 16
         self.d_head = 64
         self.depth = 24
 
