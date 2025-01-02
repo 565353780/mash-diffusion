@@ -16,6 +16,7 @@ class EDMTrainer(BaseDiffusionTrainer):
         self,
         dataset_root_folder_path: str,
         dataset_json_file_path_dict: dict = {},
+        training_mode: str = 'dino',
         batch_size: int = 5,
         accum_iter: int = 10,
         num_workers: int = 16,
@@ -35,18 +36,25 @@ class EDMTrainer(BaseDiffusionTrainer):
         sample_results_freq: int = -1,
         use_amp: bool = False,
     ) -> None:
-        self.context_dim = 1024
-        self.n_heads = 16
-        self.d_head = 64
-        self.depth = 24
-
-        self.fix_params = False
+        if training_mode in ['single_shape', 'category']:
+            self.context_dim = 512
+            self.n_heads = 8
+            self.d_head = 64
+            self.depth = 24
+            self.fix_params = True
+        elif training_mode in ['dino']:
+            self.context_dim = 1024
+            self.n_heads = 16
+            self.d_head = 64
+            self.depth = 24
+            self.fix_params = False
 
         self.loss_func = EDMLoss()
 
         super().__init__(
             dataset_root_folder_path,
             dataset_json_file_path_dict,
+            training_mode,
             batch_size,
             accum_iter,
             num_workers,
@@ -121,9 +129,8 @@ class EDMTrainer(BaseDiffusionTrainer):
         timestamp_num = 18
 
         batch_seeds = torch.arange(sample_num)
-        rnd = StackedRandomGenerator(condition.device, batch_seeds)
-        latents = rnd.randn([sample_num, self.anchor_num, self.anchor_channel], device=condition.device)
-
+        rnd = StackedRandomGenerator(self.device, batch_seeds)
+        latents = rnd.randn([sample_num, self.anchor_num, self.anchor_channel], device=self.device)
 
         sampled_array = edm_sampler(
             model,

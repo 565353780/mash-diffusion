@@ -53,7 +53,7 @@ class MashDataset(Dataset):
 
         self.paths_list.sort(key=lambda x: x[0])
 
-        self.transformer = getTransformer('Objaverse_82K')
+        self.transformer = getTransformer('ShapeNet_03001627')
         assert self.transformer is not None
         return
 

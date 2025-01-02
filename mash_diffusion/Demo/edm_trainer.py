@@ -15,15 +15,16 @@ def demo():
     dataset_json_file_path_dict = {
         "dino": dataset_root_folder_path + "Objaverse_82K/render_dino.pkl",
     }
-    batch_size = 2
-    accum_iter = 16
-    num_workers = 2
+    training_mode = 'category'
+    batch_size = 24
+    accum_iter = 2
+    num_workers = 16
     model_file_path = None
-    # model_file_path = "../../output/20241225_15:14:36/total_model_last.pth".replace('../../', './')
+    model_file_path = "../../output/edm-ShapeNet_03001627-24depth-v3/model_last.pth".replace('../../', './')
     device = "auto"
     warm_step_num = 2000
     finetune_step_num = -1
-    lr = 2e-4
+    lr = 2e-5
     lr_batch_size = 256
     ema_start_step = 5000
     ema_decay_init = 0.99
@@ -38,6 +39,7 @@ def demo():
     edm_trainer = EDMTrainer(
         dataset_root_folder_path,
         dataset_json_file_path_dict,
+        training_mode,
         batch_size,
         accum_iter,
         num_workers,

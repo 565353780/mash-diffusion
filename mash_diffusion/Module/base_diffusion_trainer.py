@@ -19,6 +19,7 @@ class BaseDiffusionTrainer(BaseTrainer):
         self,
         dataset_root_folder_path: str,
         dataset_json_file_path_dict: dict = {},
+        training_mode: str = 'dino',
         batch_size: int = 5,
         accum_iter: int = 10,
         num_workers: int = 16,
@@ -40,6 +41,7 @@ class BaseDiffusionTrainer(BaseTrainer):
     ) -> None:
         self.dataset_root_folder_path = dataset_root_folder_path
         self.dataset_json_file_path_dict = dataset_json_file_path_dict
+        self.training_mode = training_mode
 
         self.anchor_num = 400
         self.mask_degree = 3
@@ -73,23 +75,21 @@ class BaseDiffusionTrainer(BaseTrainer):
         return
 
     def createDatasets(self) -> bool:
-        if False:
-            mash_file_path = (
-                os.environ["HOME"]
-                + "/Dataset/MashV4/ShapeNet/03636649/583a5a163e59e16da523f74182db8f2.npy"
-            )
+        if self.training_mode == 'single_shape':
+            mash_file_path = self.dataset_root_folder_path + \
+                "MashV4/ShapeNet/03636649/583a5a163e59e16da523f74182db8f2.npy"
             self.dataloader_dict["single_shape"] = {
                 "dataset": SingleShapeDataset(mash_file_path),
                 "repeat_num": 1,
             }
 
-        if False:
-            self.dataloader_dict["mash"] = {
+        elif self.training_mode == 'category':
+            self.dataloader_dict['category'] = {
                 "dataset": MashDataset(self.dataset_root_folder_path, "train"),
                 "repeat_num": 1,
             }
 
-        if True:
+        elif self.training_mode == 'dino':
             self.dataloader_dict["dino"] = {
                 "dataset": EmbeddingDataset(
                     self.dataset_root_folder_path,
@@ -101,7 +101,15 @@ class BaseDiffusionTrainer(BaseTrainer):
                 "repeat_num": 1,
             }
 
-        if True:
+        if self.training_mode in ['single_shape', 'category']:
+            self.dataloader_dict["eval"] = {
+                "dataset": MashDataset(
+                    self.dataset_root_folder_path,
+                    "eval",
+                ),
+            }
+
+        elif self.training_mode in ['dino']:
             self.dataloader_dict["eval"] = {
                 "dataset": EmbeddingDataset(
                     self.dataset_root_folder_path,
@@ -150,7 +158,7 @@ class BaseDiffusionTrainer(BaseTrainer):
         data_dict = self.getCondition(data_dict)
 
         if is_training:
-            data_dict["drop_prob"] = 0.0
+            data_dict["drop_prob"] = 0.1
         else:
             data_dict["drop_prob"] = 0.0
 
@@ -173,14 +181,21 @@ class BaseDiffusionTrainer(BaseTrainer):
             return True
 
         sample_num = 3
-        dataset = self.dataloader_dict["dino"]["dataset"]
+        dataset = self.dataloader_dict[self.training_mode]["dataset"]
 
         model.eval()
 
         data_dict = dataset.__getitem__(0)
         data_dict = self.getCondition(data_dict)
-
+ 
         condition = data_dict['condition']
+
+        if isinstance(condition, int):
+            condition = torch.ones([sample_num]).long().to(self.device) * condition
+        else:
+            condition = condition.type(torch.float32).to(self.device).repeat(
+                *([sample_num] + [1] * (condition.ndim - 1))
+            )
 
         print("[INFO][BaseDiffusionTrainer::sampleModelStep]")
         print("\t start diffuse", sample_num, "mashs....")
