@@ -40,6 +40,8 @@ class EDMTrainer(BaseDiffusionTrainer):
         self.d_head = 64
         self.depth = 24
 
+        self.fix_params = False
+
         self.loss_func = EDMLoss()
 
         super().__init__(
@@ -90,7 +92,7 @@ class EDMTrainer(BaseDiffusionTrainer):
         data_dict['sigma'] = sigma
         data_dict['weight'] = weight
 
-        if is_training:
+        if is_training and self.fix_params:
             fixed_prob = 2.0 * np.random.rand() - 1.0
             fixed_prob = max(fixed_prob, 0.0)
             data_dict['fixed_prob'] = fixed_prob
