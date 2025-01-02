@@ -41,15 +41,10 @@ class BaseDiffusionTrainer(BaseTrainer):
         self.dataset_root_folder_path = dataset_root_folder_path
         self.dataset_json_file_path_dict = dataset_json_file_path_dict
 
-        self.mash_channel = 400
+        self.anchor_num = 400
         self.mask_degree = 3
         self.sh_degree = 2
-        self.context_dim = 1024
-        self.n_heads = 16
-        self.d_head = 64
-        self.depth = 24
-
-        self.channels = int(
+        self.anchor_channel = int(
             9 + (2 * self.mask_degree + 1) + ((self.sh_degree + 1) ** 2)
         )
 
@@ -177,7 +172,6 @@ class BaseDiffusionTrainer(BaseTrainer):
         if self.local_rank != 0:
             return True
 
-        sample_gt = True
         sample_num = 3
         dataset = self.dataloader_dict["dino"]["dataset"]
 
@@ -194,7 +188,7 @@ class BaseDiffusionTrainer(BaseTrainer):
         sampled_array = self.sampleMashData(model, condition, sample_num)
 
         mash_model = Mash(
-            self.mash_channel,
+            self.anchor_num,
             self.mask_degree,
             self.sh_degree,
             20,
@@ -204,7 +198,7 @@ class BaseDiffusionTrainer(BaseTrainer):
             device=self.device,
         )
 
-        if sample_gt and not self.gt_sample_added_to_logger:
+        if not self.gt_sample_added_to_logger:
             gt_mash = data_dict['mash_params']
 
             gt_mash = dataset.normalizeInverse(gt_mash)

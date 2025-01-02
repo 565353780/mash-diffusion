@@ -34,6 +34,11 @@ class EDMTrainer(BaseDiffusionTrainer):
         sample_results_freq: int = -1,
         use_amp: bool = False,
     ) -> None:
+        self.context_dim = 1024
+        self.n_heads = 16
+        self.d_head = 64
+        self.depth = 24
+
         self.loss_func = EDMLoss()
 
         super().__init__(
@@ -66,8 +71,8 @@ class EDMTrainer(BaseDiffusionTrainer):
             self.model = MashUNet(self.context_dim).to(self.device)
         elif model_id == 2:
             self.model = EDMLatentTransformer(
-                n_latents=self.mash_channel,
-                channels=self.channels,
+                n_latents=self.anchor_num,
+                channels=self.anchor_channel,
                 n_heads=self.n_heads,
                 d_head=self.d_head,
                 depth=self.depth,
@@ -107,7 +112,7 @@ class EDMTrainer(BaseDiffusionTrainer):
 
         batch_seeds = torch.arange(sample_num)
         rnd = StackedRandomGenerator(condition.device, batch_seeds)
-        latents = rnd.randn([sample_num, self.mash_channel, self.channels], device=condition.device)
+        latents = rnd.randn([sample_num, self.anchor_num, self.anchor_channel], device=condition.device)
 
 
         sampled_array = edm_sampler(

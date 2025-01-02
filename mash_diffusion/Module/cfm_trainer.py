@@ -39,6 +39,12 @@ class CFMTrainer(BaseDiffusionTrainer):
         sample_results_freq: int = -1,
         use_amp: bool = False,
     ) -> None:
+        self.context_dim = 512
+        self.n_heads = 8
+        self.d_head = 64
+        self.depth = 24
+
+
         fm_id = 2
         if fm_id == 1:
             self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
@@ -79,7 +85,7 @@ class CFMTrainer(BaseDiffusionTrainer):
             self.model = MashUNet(self.context_dim).to(self.device)
         elif model_id == 2:
             self.model = CFMLatentTransformer(
-                n_latents=self.mash_channel,
+                n_latents=self.anchor_num,
                 mask_degree=self.mask_degree,
                 sh_degree=self.sh_degree,
                 context_dim=self.context_dim,
@@ -141,7 +147,7 @@ class CFMTrainer(BaseDiffusionTrainer):
 
         batch_seeds = torch.arange(sample_num)
         rnd = StackedRandomGenerator(self.device, batch_seeds)
-        x_init = rnd.randn([sample_num, self.mash_channel, 25], device=self.device)
+        x_init = rnd.randn([sample_num, self.anchor_num, self.anchor_channel], device=self.device)
 
         traj = torchdiffeq.odeint(
             lambda t, x: model.forwardData(x, condition, t),

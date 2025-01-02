@@ -9,19 +9,17 @@ class EDMLatentTransformer(nn.Module):
         self,
         n_latents=512,
         channels=8,
-        use_fp16=False,
-        sigma_min=0,
-        sigma_max=float("inf"),
-        sigma_data=1,
         n_heads=8,
         d_head=64,
         depth=12,
         context_dim=512,
+        sigma_min=0,
+        sigma_max=float("inf"),
+        sigma_data=1,
     ):
         super().__init__()
         self.n_latents = n_latents
         self.channels = channels
-        self.use_fp16 = use_fp16
         self.sigma_min = sigma_min
         self.sigma_max = sigma_max
         self.sigma_data = sigma_data
