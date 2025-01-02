@@ -33,7 +33,7 @@ def demo():
     save_log_folder_path = "auto"
     best_model_metric_name = None
     is_metric_lower_better = True
-    sample_results_freq = 1
+    sample_results_freq = 50
     use_amp = False
     quick_test = False
 

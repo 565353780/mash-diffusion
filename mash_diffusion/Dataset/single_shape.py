@@ -5,10 +5,6 @@ from torch.utils.data import Dataset
 
 from ma_sh.Method.io import loadMashFileParamsTensor
 
-from distribution_manage.Module.transformer import Transformer
-
-from mash_diffusion.Config.shapenet import CATEGORY_IDS
-
 
 class SingleShapeDataset(Dataset):
     def __init__(
@@ -17,20 +13,18 @@ class SingleShapeDataset(Dataset):
     ) -> None:
         assert os.path.exists(mash_file_path)
 
-        self.category_id = CATEGORY_IDS['03636649']
+        self.category_id = 0
 
         self.mash_params = loadMashFileParamsTensor(mash_file_path, torch.float32, 'cpu')
-
-        self.transformer = Transformer('../ma-sh/output/multi_linear_transformers.pkl')
 
         self.mash_params = self.normalize(self.mash_params)
         return
 
     def normalize(self, mash_params: torch.Tensor) -> torch.Tensor:
-        return self.transformer.transform(mash_params, False)
+        return mash_params
 
     def normalizeInverse(self, mash_params: torch.Tensor) -> torch.Tensor:
-        return self.transformer.inverse_transform(mash_params, False)
+        return mash_params
 
     def __len__(self):
         return 10000

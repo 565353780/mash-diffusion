@@ -17,7 +17,7 @@ def demo():
     }
     training_mode = 'dino'
     batch_size = 2
-    accum_iter = 16
+    accum_iter = 32
     num_workers = 2
     model_file_path = None
     # model_file_path = "../../output/cfm-20241230_16:16:14/model_last.pth".replace('../../', './')

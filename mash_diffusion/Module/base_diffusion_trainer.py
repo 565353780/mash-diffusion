@@ -122,9 +122,9 @@ class BaseDiffusionTrainer(BaseTrainer):
                 ),
             }
 
-            self.dataloader_dict["eval"]["dataset"].paths_list = self.dataloader_dict[
-                "eval"
-            ]["dataset"].paths_list[:64]
+        self.dataloader_dict["eval"]["dataset"].paths_list = self.dataloader_dict[
+            "eval"
+        ]["dataset"].paths_list[:64]
 
         return True
 
