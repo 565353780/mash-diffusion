@@ -74,10 +74,18 @@ class EDMLatentTransformer(nn.Module):
         x = data_dict['noise']
         sigma = data_dict['sigma']
         condition = data_dict['condition']
+        fixed_prob = data_dict['fixed_prob']
 
         if condition.dtype == torch.float32:
             condition = condition + 0.0 * self.emb_category(torch.zeros([x.shape[0]], dtype=torch.long, device=x.device))
         else:
             condition = self.emb_category(condition)
+
+        if fixed_prob > 0.0:
+            mash_params = data_dict['mash_params']
+
+            fixed_mask = torch.rand_like(mash_params) <= fixed_prob
+
+            x[fixed_mask] = mash_params[fixed_mask]
 
         return self.forwardCondition(x, sigma, condition)
