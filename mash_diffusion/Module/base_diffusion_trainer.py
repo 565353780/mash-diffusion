@@ -38,6 +38,7 @@ class BaseDiffusionTrainer(BaseTrainer):
         is_metric_lower_better: bool = True,
         sample_results_freq: int = -1,
         use_amp: bool = False,
+        quick_test: bool = False,
     ) -> None:
         self.dataset_root_folder_path = dataset_root_folder_path
         self.dataset_json_file_path_dict = dataset_json_file_path_dict
@@ -71,6 +72,7 @@ class BaseDiffusionTrainer(BaseTrainer):
             is_metric_lower_better,
             sample_results_freq,
             use_amp,
+            quick_test,
         )
         return
 

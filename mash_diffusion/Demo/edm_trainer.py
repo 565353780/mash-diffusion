@@ -35,6 +35,7 @@ def demo():
     is_metric_lower_better = True
     sample_results_freq = 1
     use_amp = False
+    quick_test = False
 
     edm_trainer = EDMTrainer(
         dataset_root_folder_path,
@@ -58,6 +59,7 @@ def demo():
         is_metric_lower_better,
         sample_results_freq,
         use_amp,
+        quick_test,
     )
 
     edm_trainer.train()

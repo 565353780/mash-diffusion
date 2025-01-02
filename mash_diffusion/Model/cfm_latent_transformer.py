@@ -43,80 +43,83 @@ class CFMLatentTransformer(torch.nn.Module):
     def emb_category(self, class_labels):
         return self.category_emb(class_labels).unsqueeze(1)
 
-    def forwardCondition(self, mash_params: torch.Tensor, condition: torch.Tensor, t: torch.Tensor) -> dict:
-        mash_params_noise = self.model(mash_params, t, cond=condition)
+    def forwardCondition(self, xt: torch.Tensor, condition: torch.Tensor, t: torch.Tensor) -> dict:
+        vt = self.model(xt, t, cond=condition)
 
         if self.final_linear:
-            mash_params_noise = self.to_outputs(mash_params_noise)
+            vt = self.to_outputs(vt)
 
         result_dict = {
-            'vt': mash_params_noise
+            'vt': vt
         }
 
         return result_dict
 
-    def forwardData(self, mash_params: torch.Tensor, condition: torch.Tensor, t: torch.Tensor, condition_drop_prob: float = 0.0) -> torch.Tensor:
+    def forwardData(self, xt: torch.Tensor, condition: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
         if condition.dtype == torch.float32:
-            condition = condition + 0.0 * self.emb_category(torch.zeros([mash_params.shape[0]], dtype=torch.long, device=mash_params.device))
+            condition = condition + 0.0 * self.emb_category(torch.zeros([xt.shape[0]], dtype=torch.long, device=xt.device))
         else:
             condition = self.emb_category(condition)
 
         if len(t.shape) == 0:
             t = t.unsqueeze(0)
 
-        # dropout context with some probability
-        context_mask = torch.bernoulli(torch.ones_like(condition)-condition_drop_prob).to(mash_params.device)
-        condition = condition * context_mask
+        result_dict = self.forwardCondition(xt, condition, t)
 
-        result_dict = self.forwardCondition(mash_params, condition, t)
+        vt = result_dict['vt']
 
-        return result_dict['vt']
+        return vt
 
     def forward(self, data_dict: dict) -> dict:
-        mash_params = data_dict['mash_params']
-        condition = data_dict['condition']
+        xt = data_dict['xt']
         t = data_dict['t']
-        condition_drop_prob = data_dict['drop_prob']
+        condition = data_dict['condition']
+        drop_prob = data_dict['drop_prob']
+        fixed_prob = data_dict['fixed_prob']
 
         if condition.dtype == torch.float32:
-            condition = condition + 0.0 * self.emb_category(torch.zeros([mash_params.shape[0]], dtype=torch.long, device=mash_params.device))
+            condition = condition + 0.0 * self.emb_category(torch.zeros([xt.shape[0]], dtype=torch.long, device=xt.device))
         else:
             condition = self.emb_category(condition)
 
         if len(t.shape) == 0:
             t = t.unsqueeze(0)
 
-        # dropout context with some probability
-        context_mask = torch.bernoulli(torch.ones_like(condition)-condition_drop_prob).to(mash_params.device)
-        condition = condition * context_mask
+        if drop_prob > 0:
+            drop_mask = torch.rand_like(condition) <= drop_prob
+            condition[drop_mask] = 0
 
-        return self.forwardCondition(mash_params, condition, t)
+        if fixed_prob > 0:
+            mash_params = data_dict['mash_params']
+
+            fixed_mask = torch.rand_like(mash_params) <= fixed_prob
+
+            xt[fixed_mask] = mash_params[fixed_mask]
+
+        result_dict = self.forwardCondition(xt, condition, t)
+
+        return result_dict
 
     def forwardWithFixedAnchors(
         self,
-        mash_params: torch.Tensor,
+        xt: torch.Tensor,
         condition: torch.Tensor,
         t: torch.Tensor,
         fixed_anchor_mask: torch.Tensor,
-        condition_drop_prob: float = 0.0
     ):
         if condition.dtype == torch.float32:
-            condition = condition + 0.0 * self.emb_category(torch.zeros([mash_params.shape[0]], dtype=torch.long, device=mash_params.device))
+            condition = condition + 0.0 * self.emb_category(torch.zeros([xt.shape[0]], dtype=torch.long, device=xt.device))
         else:
             condition = self.emb_category(condition)
 
         if len(t.shape) == 0:
             t = t.unsqueeze(0)
 
-        # dropout context with some probability
-        context_mask = torch.bernoulli(torch.ones_like(condition)-condition_drop_prob).to(mash_params.device)
-        condition = condition * context_mask
+        result_dict = self.forwardCondition(xt, condition, t)
 
-        result_dict = self.forwardCondition(mash_params, condition, t)
+        vt = result_dict['vt']
 
-        mash_params_noise = result_dict['vt']
-
-        mash_params_noise[fixed_anchor_mask] = 0.0
+        vt[fixed_anchor_mask] = 0.0
 
         '''
         sum_data = torch.sum(torch.sum(mash_params_noise, dim=2), dim=0)
@@ -127,4 +130,4 @@ class CFMLatentTransformer(torch.nn.Module):
         assert is_valid
         '''
 
-        return mash_params_noise
+        return vt

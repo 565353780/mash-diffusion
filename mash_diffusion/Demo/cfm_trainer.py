@@ -15,6 +15,7 @@ def demo():
     dataset_json_file_path_dict = {
         "dino": dataset_root_folder_path + "Objaverse_82K/render_dino.pkl",
     }
+    training_mode = 'dino'
     batch_size = 2
     accum_iter = 16
     num_workers = 2
@@ -34,10 +35,12 @@ def demo():
     is_metric_lower_better = True
     sample_results_freq = 1
     use_amp = False
+    quick_test = False
 
     cfm_trainer = CFMTrainer(
         dataset_root_folder_path,
         dataset_json_file_path_dict,
+        training_mode,
         batch_size,
         accum_iter,
         num_workers,
@@ -56,6 +59,7 @@ def demo():
         is_metric_lower_better,
         sample_results_freq,
         use_amp,
+        quick_test,
     )
 
     cfm_trainer.train()

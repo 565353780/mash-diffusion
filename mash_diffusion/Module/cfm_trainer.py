@@ -39,6 +39,7 @@ class CFMTrainer(BaseDiffusionTrainer):
         is_metric_lower_better: bool = True,
         sample_results_freq: int = -1,
         use_amp: bool = False,
+        quick_test: bool = False,
     ) -> None:
         if training_mode in ['single_shape', 'category']:
             self.context_dim = 512
@@ -85,6 +86,7 @@ class CFMTrainer(BaseDiffusionTrainer):
             is_metric_lower_better,
             sample_results_freq,
             use_amp,
+            quick_test,
         )
         return
 
