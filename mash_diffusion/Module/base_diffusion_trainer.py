@@ -53,6 +53,8 @@ class BaseDiffusionTrainer(BaseTrainer):
             9 + (2 * self.mask_degree + 1) + ((self.sh_degree + 1) ** 2)
         )
 
+        self.gt_sample_added_to_logger = False
+
         super().__init__(
             batch_size,
             accum_iter,
