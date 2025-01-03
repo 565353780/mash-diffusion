@@ -13,7 +13,7 @@ from ma_sh.Module.local_editor import LocalEditor
 from mash_diffusion.Model.edm_latent_transformer import EDMLatentTransformer
 
 
-class MashSampler(object):
+class EDMSampler(object):
     def __init__(
         self,
         model_file_path: Union[str, None] = None,
@@ -66,7 +66,7 @@ class MashSampler(object):
 
     def loadModel(self, model_file_path: str) -> bool:
         if not os.path.exists(model_file_path):
-            print("[ERROR][MashSampler::loadModel]")
+            print("[ERROR][EDMSampler::loadModel]")
             print("\t model_file not exist!")
             print('\t model_file_path:', model_file_path)
             return False
@@ -78,7 +78,7 @@ class MashSampler(object):
         else:
             self.model.load_state_dict(model_dict["model"])
 
-        print("[INFO][MashSampler::loadModel]")
+        print("[INFO][EDMSampler::loadModel]")
         print("\t load model success!")
         print("\t model_file_path:", model_file_path)
         return True

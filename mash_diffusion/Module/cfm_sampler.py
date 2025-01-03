@@ -11,7 +11,7 @@ from mash_diffusion.Model.unet2d import MashUNet
 from mash_diffusion.Model.cfm_latent_transformer import CFMLatentTransformer
 
 
-class Sampler(object):
+class CFMSampler(object):
     def __init__(
         self,
         model_file_path: Union[str, None] = None,
@@ -66,7 +66,7 @@ class Sampler(object):
 
     def loadModel(self, model_file_path: str) -> bool:
         if not os.path.exists(model_file_path):
-            print("[ERROR][Sampler::loadModel]")
+            print("[ERROR][CFMSampler::loadModel]")
             print("\t model_file not exist!")
             print("\t model_file_path:", model_file_path)
             return False
@@ -78,7 +78,7 @@ class Sampler(object):
         else:
             self.model.load_state_dict(model_dict["model"])
 
-        print("[INFO][Sampler::loadModel]")
+        print("[INFO][CFMSampler::loadModel]")
         print("\t load model success!")
         print("\t model_file_path:", model_file_path)
         return True
@@ -98,7 +98,7 @@ class Sampler(object):
             # condition dim: 1x768
             condition_tensor = torch.from_numpy(condition).type(torch.float32).to(self.device).repeat(sample_num, 1)
         else:
-            print('[ERROR][Sampler::sample]')
+            print('[ERROR][CFMSampler::sample]')
             print('\t condition type not valid!')
             return np.ndarray()
 
@@ -134,7 +134,7 @@ class Sampler(object):
             # condition dim: 1x768
             condition_tensor = torch.from_numpy(condition).type(torch.float32).to(self.device).repeat(sample_num, 1)
         else:
-            print('[ERROR][Sampler::sample]')
+            print('[ERROR][CFMSampler::sample]')
             print('\t condition type not valid!')
             return np.ndarray()
 
@@ -144,13 +144,13 @@ class Sampler(object):
         '''
         local_editor = LocalEditor(self.device)
         if not local_editor.loadMashFiles(mash_file_path_list):
-            print('[ERROR][Sampler::sampleWithFixedAnchors]')
+            print('[ERROR][CFMSampler::sampleWithFixedAnchors]')
             print('\t loadMashFiles failed!')
             return None
 
         combined_mash = local_editor.toCombinedMash()
         if combined_mash is None:
-            print('[ERROR][Sampler::sampleWithFixedAnchors]')
+            print('[ERROR][CFMSampler::sampleWithFixedAnchors]')
             print('\t toCombinedMash failed!')
             return None
         '''
