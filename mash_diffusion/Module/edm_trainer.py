@@ -139,7 +139,6 @@ class EDMTrainer(BaseDiffusionTrainer):
             latents,
             condition,
             randn_like=rnd.randn_like,
-            num_steps=timestamp_num,
-            fixed_mask=None)[-1]
+            num_steps=timestamp_num)[-1]
 
         return sampled_array

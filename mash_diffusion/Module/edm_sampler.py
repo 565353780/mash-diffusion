@@ -11,6 +11,7 @@ from ma_sh.Module.o3d_viewer import O3DViewer
 from ma_sh.Module.local_editor import LocalEditor
 
 from mash_diffusion.Model.edm_latent_transformer import EDMLatentTransformer
+from mash_diffusion.Method.sample import edm_sampler
 
 
 class EDMSampler(object):
@@ -21,7 +22,7 @@ class EDMSampler(object):
         device: str = "cpu",
         transformer_id: str = 'Objaverse_82K',
     ) -> None:
-        self.mash_channel = 400
+        self.anchor_num = 400
         self.mask_degree = 3
         self.sh_degree = 2
         self.context_dim = 512
@@ -32,12 +33,12 @@ class EDMSampler(object):
         self.use_ema = use_ema
         self.device = device
 
-        self.channels = int(
+        self.anchor_channel = int(
             9 + (2 * self.mask_degree + 1) + ((self.sh_degree + 1) ** 2)
         )
         self.model = EDMLatentTransformer(
-            n_latents=self.mash_channel,
-            channels=self.channels,
+            n_latents=self.anchor_num,
+            channels=self.anchor_channel,
             n_heads=self.n_heads,
             d_head=self.d_head,
             depth=self.depth,
@@ -53,7 +54,7 @@ class EDMSampler(object):
 
     def toInitialMashModel(self) -> Mash:
         mash_model = Mash(
-            self.mash_channel,
+            self.anchor_num,
             self.mask_degree,
             self.sh_degree,
             20,
@@ -102,10 +103,13 @@ class EDMSampler(object):
             print('\t condition type not valid!')
             return np.ndarray()
 
-        sampled_array = self.model.sample(
-            cond=condition_tensor,
-            batch_seeds=torch.arange(0, sample_num).to(self.device),
-            diffuse_steps=diffuse_steps,
+        latents = torch.randn([sample_num, self.anchor_num, self.anchor_channel], device=self.device)
+
+        sampled_array = edm_sampler(
+            self.model,
+            latents,
+            condition_tensor,
+            num_steps=diffuse_steps,
         )
 
         return sampled_array
@@ -133,11 +137,14 @@ class EDMSampler(object):
 
         row_num = ceil(sqrt(sample_num))
 
+        latents = torch.randn([sample_num, self.anchor_num, self.anchor_channel], device=self.device)
+
         print("start diffuse", sample_num, "mashs....")
-        sampled_array = self.model.sample(
-            cond=condition_tensor,
-            batch_seeds=torch.arange(0, sample_num).to(self.device),
-            diffuse_steps=diffuse_steps,
+        sampled_array = edm_sampler(
+            self.model,
+            latents,
+            condition_tensor,
+            num_steps=diffuse_steps,
         )
 
         o3d_viewer = O3DViewer()
@@ -251,11 +258,11 @@ class EDMSampler(object):
         fixed_mask = torch.zeros_like(x_init, dtype=torch.bool)
         fixed_mask[:, :combined_mash.anchor_num, :] = True
 
-        sampled_array = self.model.sample(
-            cond=condition_tensor,
-            batch_seeds=torch.arange(0, sample_num).to(self.device),
-            diffuse_steps=diffuse_steps,
-            latents=x_init,
+        sampled_array = edm_sampler(
+            self.model,
+            x_init,
+            condition_tensor,
+            num_steps=diffuse_steps,
             fixed_mask=fixed_mask,
         )
 
