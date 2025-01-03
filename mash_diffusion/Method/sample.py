@@ -67,9 +67,7 @@ def toMaskedNoise(
 
     noise = randn_like(latents) * t
 
-    #FIXME: check if needed to add noise
-    # fixed_x = fixed_latents + noise[fixed_mask]
-    fixed_x = fixed_latents
+    fixed_x = fixed_latents + noise[fixed_mask]
 
     x[fixed_mask] = fixed_x
 

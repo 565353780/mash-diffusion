@@ -21,7 +21,7 @@ def demo():
     accum_iter = 2
     num_workers = 16
     model_file_path = None
-    # model_file_path = "../../output/cfm-24depth_512cond_2000epoch/model_last.pth".replace('../../', './')
+    model_file_path = "../../output/cfm-ShapeNet_03001627-512cond-inpainting-v1/model_last.pth".replace('../../', './')
     device = "auto"
     warm_step_num = 2000
     finetune_step_num = -1
@@ -34,7 +34,7 @@ def demo():
     save_log_folder_path = "auto"
     best_model_metric_name = None
     is_metric_lower_better = True
-    sample_results_freq = 1
+    sample_results_freq = 50
     use_amp = False
     quick_test = False
 
