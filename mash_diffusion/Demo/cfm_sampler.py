@@ -17,7 +17,7 @@ from ulip_manage.Module.detector import Detector
 
 from mash_diffusion.Config.shapenet import CATEGORY_IDS
 from mash_diffusion.Method.time import getCurrentTime
-from mash_diffusion.Module.sampler import Sampler
+from mash_diffusion.Module.cfm_sampler import CFMSampler
 
 
 def toRandomIdList(dataset_folder_path: str, valid_category_id_list: Union[list, None]=None, sample_id_num: int=100) -> list:
@@ -167,7 +167,7 @@ def demo(save_folder_path: Union[str, None] = None):
     timestamp_num = 2
     device = 'cuda:0'
     save_results_only = True
-    sample_category = True
+    sample_category = False
     sample_image = False
     sample_points = False
     sample_text = False
@@ -287,7 +287,7 @@ def demo(save_folder_path: Union[str, None] = None):
 
     if sample_fixed_anchor:
         mash_file_path_list = [
-            '/home/chli/github/ASDF/ma-sh/output/combined_mash.npy',
+            '../ma-sh/output/combined_mash.npy',
         ]
         categoty_id = '03001627'
         print('start sample for fixed anchor category ' + categoty_id + '...')

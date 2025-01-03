@@ -5,11 +5,10 @@ import numpy as np
 from typing import Union
 
 from ma_sh.Model.mash import Mash
-from ma_sh.Method.random_mash import sampleRandomMashParams
 from ma_sh.Module.local_editor import LocalEditor
 
 from mash_diffusion.Model.unet2d import MashUNet
-from mash_diffusion.Model.mash_net import MashNet
+from mash_diffusion.Model.cfm_latent_transformer import CFMLatentTransformer
 
 
 class Sampler(object):
@@ -35,7 +34,7 @@ class Sampler(object):
         if model_id == 1:
             self.model = MashUNet(self.context_dim).to(self.device)
         elif model_id == 2:
-            self.model = MashNet(
+            self.model = CFMLatentTransformer(
                 n_latents=self.mash_channel,
                 mask_degree=self.mask_degree,
                 sh_degree=self.sh_degree,
@@ -105,16 +104,6 @@ class Sampler(object):
 
         query_t = torch.linspace(0,1,timestamp_num).to(self.device)
         query_t = torch.pow(query_t, 1.0 / 2.0)
-
-        #FIXME: need to not pass random params to Mash module, it will convert noise to valid data!
-        x_init = sampleRandomMashParams(
-            self.mash_channel,
-            self.mask_degree,
-            self.sh_degree,
-            sample_num,
-            'cpu',
-            'randn',
-            False).type(torch.float32).to(self.device)
 
         x_init = torch.randn(condition_tensor.shape[0], 400, 25, device=self.device)
 
