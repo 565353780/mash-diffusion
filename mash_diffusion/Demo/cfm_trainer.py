@@ -11,14 +11,15 @@ from mash_diffusion.Module.cfm_trainer import CFMTrainer
 def demo():
     dataset_root_folder_path = toDatasetRootPath()
     assert dataset_root_folder_path is not None
+    print(dataset_root_folder_path)
 
     dataset_json_file_path_dict = {
         "dino": dataset_root_folder_path + "Objaverse_82K/render_dino.pkl",
     }
-    training_mode = 'dino'
-    batch_size = 2
-    accum_iter = 32
-    num_workers = 2
+    training_mode = 'category'
+    batch_size = 24
+    accum_iter = 2
+    num_workers = 16
     model_file_path = None
     # model_file_path = "../../output/cfm-24depth_512cond_2000epoch/model_last.pth".replace('../../', './')
     device = "auto"

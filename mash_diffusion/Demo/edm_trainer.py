@@ -11,6 +11,7 @@ from mash_diffusion.Module.edm_trainer import EDMTrainer
 def demo():
     dataset_root_folder_path = toDatasetRootPath()
     assert dataset_root_folder_path is not None
+    print(dataset_root_folder_path)
 
     dataset_json_file_path_dict = {
         "dino": dataset_root_folder_path + "Objaverse_82K/render_dino.pkl",

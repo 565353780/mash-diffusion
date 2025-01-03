@@ -75,7 +75,6 @@ class CFMLatentTransformer(torch.nn.Module):
         t = data_dict['t']
         condition = data_dict['condition']
         drop_prob = data_dict['drop_prob']
-        fixed_prob = data_dict['fixed_prob']
 
         if condition.dtype == torch.float32:
             condition = condition + 0.0 * self.emb_category(torch.zeros([xt.shape[0]], dtype=torch.long, device=xt.device))
@@ -88,13 +87,6 @@ class CFMLatentTransformer(torch.nn.Module):
         if drop_prob > 0:
             drop_mask = torch.rand_like(condition) <= drop_prob
             condition[drop_mask] = 0
-
-        if fixed_prob > 0:
-            mash_params = data_dict['mash_params']
-
-            fixed_mask = torch.rand_like(mash_params) <= fixed_prob
-
-            xt[fixed_mask] = mash_params[fixed_mask]
 
         result_dict = self.forwardCondition(xt, condition, t)
 

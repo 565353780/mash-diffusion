@@ -112,6 +112,14 @@ class CFMTrainer(BaseDiffusionTrainer):
 
         init_mash_params = torch.randn_like(mash_params)
 
+        if is_training and self.fix_params:
+            fixed_prob = 2.0 * np.random.rand() - 1.0
+            fixed_prob = max(fixed_prob, 0.0)
+
+            if fixed_prob > 0:
+                fixed_mask = torch.rand_like(mash_params) <= fixed_prob
+                init_mash_params[fixed_mask] = mash_params[fixed_mask]
+
         if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
             t, xt, ut = self.FM.sample_location_and_conditional_flow(
                 init_mash_params, mash_params
@@ -135,13 +143,6 @@ class CFMTrainer(BaseDiffusionTrainer):
         data_dict["ut"] = ut
         data_dict["t"] = t
         data_dict["xt"] = xt
-
-        if is_training and self.fix_params:
-            fixed_prob = 2.0 * np.random.rand() - 1.0
-            fixed_prob = max(fixed_prob, 0.0)
-            data_dict['fixed_prob'] = fixed_prob
-        else:
-            data_dict['fixed_prob'] = 0.0
 
         return data_dict
 
