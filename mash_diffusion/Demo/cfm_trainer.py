@@ -20,7 +20,7 @@ def demo():
     accum_iter = 32
     num_workers = 2
     model_file_path = None
-    # model_file_path = "../../output/cfm-20241230_16:16:14/model_last.pth".replace('../../', './')
+    # model_file_path = "../../output/cfm-24depth_512cond_2000epoch/model_last.pth".replace('../../', './')
     device = "auto"
     warm_step_num = 2000
     finetune_step_num = -1

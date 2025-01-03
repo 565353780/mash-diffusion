@@ -1,5 +1,6 @@
 import torch
 import torchdiffeq
+import numpy as np
 from torch import nn
 from typing import Union
 
@@ -134,6 +135,13 @@ class CFMTrainer(BaseDiffusionTrainer):
         data_dict["ut"] = ut
         data_dict["t"] = t
         data_dict["xt"] = xt
+
+        if is_training and self.fix_params:
+            fixed_prob = 2.0 * np.random.rand() - 1.0
+            fixed_prob = max(fixed_prob, 0.0)
+            data_dict['fixed_prob'] = fixed_prob
+        else:
+            data_dict['fixed_prob'] = 0.0
 
         return data_dict
 
