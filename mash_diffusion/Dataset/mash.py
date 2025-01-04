@@ -35,7 +35,7 @@ class MashDataset(Dataset):
                 # categories = ["02691156"]
                 categories = ["03001627"]
 
-            categories = ["03001627"]
+            # categories = ["03001627"]
 
             print("[INFO][MashDataset::__init__]")
             print("\t start load dataset [" + dataset_name + "]...")
@@ -53,7 +53,7 @@ class MashDataset(Dataset):
 
         self.paths_list.sort(key=lambda x: x[0])
 
-        self.transformer = getTransformer('ShapeNet_03001627')
+        self.transformer = getTransformer('ShapeNet')
         assert self.transformer is not None
         return
 

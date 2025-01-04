@@ -16,12 +16,12 @@ def demo():
     dataset_json_file_path_dict = {
         "dino": dataset_root_folder_path + "Objaverse_82K/render_dino.pkl",
     }
-    training_mode = 'dino'
-    batch_size = 2
-    accum_iter = 16
+    training_mode = 'category'
+    batch_size = 24
+    accum_iter = 2
     num_workers = 16
     model_file_path = None
-    # model_file_path = "../../output/cfm-ShapeNet_03001627-512cond-inpainting-v1/model_last.pth".replace('../../', './')
+    model_file_path = "../../output/cfm-ShapeNet_03001627-512cond-inpainting-v2/model_last.pth".replace('../../', './')
     device = "auto"
     warm_step_num = 2000
     finetune_step_num = -1
