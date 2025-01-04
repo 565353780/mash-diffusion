@@ -16,7 +16,7 @@ def demo():
     dataset_json_file_path_dict = {
         "dino": dataset_root_folder_path + "Objaverse_82K/render_dino.pkl",
     }
-    training_mode = 'multi_modal'
+    training_mode = 'dino'
     batch_size = 24
     accum_iter = 2
     num_workers = 16
@@ -51,7 +51,7 @@ def demo():
     elif training_mode == 'dino':
         batch_size = 2
         accum_iter = 16
-        model_file_path = "../../output/cfm-ShapeNet_03001627-512cond-inpainting-v2/model_last.pth".replace('../../', './')
+        model_file_path = "../../output/cfm-Objaverse_82K-single_image-v1/model_last.pth".replace('../../', './')
         lr = 2e-4
     else:
         exit()
