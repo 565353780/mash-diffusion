@@ -1,4 +1,3 @@
-import os
 import torch
 from torch import nn
 from tqdm import trange
@@ -77,7 +76,7 @@ class BaseDiffusionTrainer(BaseTrainer):
         return
 
     def createDatasets(self) -> bool:
-        if self.training_mode == 'single_shape':
+        if self.training_mode in ['single_shape']:
             mash_file_path = self.dataset_root_folder_path + \
                 "MashV4/ShapeNet/03636649/583a5a163e59e16da523f74182db8f2.npy"
             self.dataloader_dict["single_shape"] = {
@@ -85,29 +84,84 @@ class BaseDiffusionTrainer(BaseTrainer):
                 "repeat_num": 1,
             }
 
-        elif self.training_mode == 'category':
+        if self.training_mode in ['category', 'multi_modal']:
             self.dataloader_dict['category'] = {
-                "dataset": MashDataset(self.dataset_root_folder_path, "train"),
+                "dataset": MashDataset(
+                    self.dataset_root_folder_path,
+                    "MashV4/ShapeNet",
+                    "train",
+                    'ShapeNet',
+                ),
                 "repeat_num": 1,
             }
 
-        elif self.training_mode == 'dino':
+        if self.training_mode in ['dino']:
             self.dataloader_dict["dino"] = {
                 "dataset": EmbeddingDataset(
                     self.dataset_root_folder_path,
+                    "Objaverse_82K/manifold_mash",
                     "Objaverse_82K/render_dino",
                     "dino",
                     "train",
+                    'Objaverse_82K',
+                    False,
                     self.dataset_json_file_path_dict.get("dino"),
                 ),
                 "repeat_num": 1,
             }
 
-        if self.training_mode in ['single_shape', 'category']:
+        if self.training_mode in ['image', 'multi_modal']:
+            self.dataloader_dict['image'] = {
+                "dataset": EmbeddingDataset(
+                    self.dataset_root_folder_path,
+                    "MashV4/ShapeNet",
+                    "ImageEmbedding_ulip/ShapeNet",
+                    "random",
+                    "train",
+                    'ShapeNet',
+                    True,
+                    self.dataset_json_file_path_dict.get("image"),
+                ),
+                "repeat_num": 1,
+            }
+
+        if self.training_mode in ['point', 'multi_modal']:
+            self.dataloader_dict['point'] = {
+                "dataset": EmbeddingDataset(
+                    self.dataset_root_folder_path,
+                    "MashV4/ShapeNet",
+                    "PointsEmbedding/ShapeNet",
+                    "random",
+                    "train",
+                    'ShapeNet',
+                    True,
+                    self.dataset_json_file_path_dict.get("point"),
+                ),
+                "repeat_num": 1,
+            }
+
+        if self.training_mode in ['text', 'multi_modal']:
+            self.dataloader_dict['text'] = {
+                "dataset": EmbeddingDataset(
+                    self.dataset_root_folder_path,
+                    "MashV4/ShapeNet",
+                    "TextEmbedding_ShapeGlot/ShapeNet",
+                    "random",
+                    "train",
+                    'ShapeNet',
+                    True,
+                    self.dataset_json_file_path_dict.get("text"),
+                ),
+                "repeat_num": 10,
+            }
+
+        if self.training_mode in ['single_shape', 'category', 'multi_modal']:
             self.dataloader_dict["eval"] = {
                 "dataset": MashDataset(
                     self.dataset_root_folder_path,
+                    'MashV4/ShapeNet',
                     "eval",
+                    'ShapeNet',
                 ),
             }
 
@@ -115,9 +169,12 @@ class BaseDiffusionTrainer(BaseTrainer):
             self.dataloader_dict["eval"] = {
                 "dataset": EmbeddingDataset(
                     self.dataset_root_folder_path,
+                    "Objaverse_82K/manifold_mash",
                     "Objaverse_82K/render_dino",
                     "dino",
                     "eval",
+                    'Objaverse_82K',
+                    False,
                     self.dataset_json_file_path_dict.get("dino"),
                 ),
             }
@@ -183,7 +240,10 @@ class BaseDiffusionTrainer(BaseTrainer):
             return True
 
         sample_num = 3
-        dataset = self.dataloader_dict[self.training_mode]["dataset"]
+        if self.training_mode == 'multi_modal':
+            dataset = self.dataloader_dict['image']["dataset"]
+        else:
+            dataset = self.dataloader_dict[self.training_mode]["dataset"]
 
         model.eval()
 

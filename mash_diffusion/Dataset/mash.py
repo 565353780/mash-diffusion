@@ -14,47 +14,44 @@ class MashDataset(Dataset):
     def __init__(
         self,
         dataset_root_folder_path: str,
+        mash_folder_name: str,
         split: str = "train",
+        transformer_id: str = 'ShapeNet',
     ) -> None:
         self.dataset_root_folder_path = dataset_root_folder_path
         self.split = split
 
-        self.mash_folder_path = self.dataset_root_folder_path + "MashV4/"
+        self.mash_folder_path = self.dataset_root_folder_path + mash_folder_name + "/"
         assert os.path.exists(self.mash_folder_path)
+
+        self.transformer = getTransformer(transformer_id)
+        assert self.transformer is not None
 
         self.paths_list = []
 
-        dataset_name_list = os.listdir(self.mash_folder_path)
+        categories = os.listdir(self.mash_folder_path)
+        # FIXME: for detect test only
+        if self.split == "test":
+            # categories = ["02691156"]
+            categories = ["03001627"]
 
-        for dataset_name in dataset_name_list:
-            dataset_folder_path = self.mash_folder_path + dataset_name + "/"
+        # categories = ["03001627"]
 
-            categories = os.listdir(dataset_folder_path)
-            # FIXME: for detect test only
-            if self.split == "test":
-                # categories = ["02691156"]
-                categories = ["03001627"]
+        print("[INFO][MashDataset::__init__]")
+        print("\t start load ShapeNet dataset...")
+        for category in tqdm(categories):
+            category_id = CATEGORY_IDS[category]
 
-            # categories = ["03001627"]
+            class_folder_path = self.mash_folder_path + category + "/"
 
-            print("[INFO][MashDataset::__init__]")
-            print("\t start load dataset [" + dataset_name + "]...")
-            for category in tqdm(categories):
-                category_id = CATEGORY_IDS[category]
+            mash_filename_list = os.listdir(class_folder_path)
 
-                class_folder_path = dataset_folder_path + category + "/"
+            for mash_filename in mash_filename_list:
+                mash_file_path = class_folder_path + mash_filename
 
-                mash_filename_list = os.listdir(class_folder_path)
-
-                for mash_filename in mash_filename_list:
-                    mash_file_path = class_folder_path + mash_filename
-
-                    self.paths_list.append([mash_file_path, category_id])
+                self.paths_list.append([mash_file_path, category_id])
 
         self.paths_list.sort(key=lambda x: x[0])
-
-        self.transformer = getTransformer('ShapeNet')
-        assert self.transformer is not None
         return
 
     def normalize(self, mash_params: torch.Tensor) -> torch.Tensor:

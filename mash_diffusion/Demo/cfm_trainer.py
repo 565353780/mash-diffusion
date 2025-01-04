@@ -16,12 +16,12 @@ def demo():
     dataset_json_file_path_dict = {
         "dino": dataset_root_folder_path + "Objaverse_82K/render_dino.pkl",
     }
-    training_mode = 'category'
+    training_mode = 'multi_modal'
     batch_size = 24
     accum_iter = 2
     num_workers = 16
     model_file_path = None
-    model_file_path = "../../output/cfm-ShapeNet_03001627-512cond-inpainting-v2/model_last.pth".replace('../../', './')
+    # model_file_path = "../../output/cfm-ShapeNet_03001627-512cond-inpainting-v2/model_last.pth".replace('../../', './')
     device = "auto"
     warm_step_num = 2000
     finetune_step_num = -1
@@ -37,6 +37,24 @@ def demo():
     sample_results_freq = 1
     use_amp = False
     quick_test = False
+
+    if training_mode == 'multi_modal':
+        batch_size = 24
+        accum_iter = 2
+        model_file_path = "../../output/cfm-ShapeNet-category-v1/model_last.pth".replace('../../', './')
+        lr = 2e-5
+    elif training_mode == 'category':
+        batch_size = 24
+        accum_iter = 2
+        model_file_path = "../../output/cfm-ShapeNet-category-v1/model_last.pth".replace('../../', './')
+        lr = 2e-4
+    elif training_mode == 'dino':
+        batch_size = 2
+        accum_iter = 16
+        model_file_path = "../../output/cfm-ShapeNet_03001627-512cond-inpainting-v2/model_last.pth".replace('../../', './')
+        lr = 2e-4
+    else:
+        exit()
 
     cfm_trainer = CFMTrainer(
         dataset_root_folder_path,
