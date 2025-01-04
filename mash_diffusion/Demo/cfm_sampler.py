@@ -44,7 +44,7 @@ def toRandomIdList(dataset_folder_path: str, valid_category_id_list: Union[list,
     return random_id_list
 
 def demoCondition(
-    sampler: Sampler,
+    cfm_sampler: CFMSampler,
     detector: Detector,
     time_stamp: str,
     condition_value: Union[int, str, np.ndarray] = 18,
@@ -67,7 +67,7 @@ def demoCondition(
 
         image_file_path = condition_value
         if not os.path.exists(image_file_path):
-            print('[ERROR][sampler::demoCondition]')
+            print('[ERROR][cfm_sampler::demoCondition]')
             print('\t condition image file not exist!')
             return False
 
@@ -89,7 +89,7 @@ def demoCondition(
             detector.encodeText(condition_value).cpu().numpy()
         )
     else:
-        print('[ERROR][sampler::demoCondition]')
+        print('[ERROR][cfm_sampler::demoCondition]')
         print('\t condition type not valid!')
         return False
 
@@ -97,15 +97,15 @@ def demoCondition(
 
     print("start diffuse", sample_num, "mashs....")
     if mash_file_path_list is None:
-        sampled_array = sampler.sample(sample_num, condition, timestamp_num)
+        sampled_array = cfm_sampler.sample(sample_num, condition, timestamp_num)
     else:
-        sampled_array = sampler.sampleWithFixedAnchors(mash_file_path_list, sample_num, condition, timestamp_num)
+        sampled_array = cfm_sampler.sampleWithFixedAnchors(mash_file_path_list, sample_num, condition, timestamp_num)
 
     object_dist = [0, 0, 0]
 
     row_num = ceil(sqrt(sample_num))
 
-    mash_model = sampler.toInitialMashModel()
+    mash_model = cfm_sampler.toInitialMashModel()
 
     for j in range(sampled_array.shape[0]):
         if save_results_only:
@@ -133,7 +133,9 @@ def demoCondition(
 
             mash_params = sampled_array[j][i]
 
-            sh2d = 2 * sampler.mask_degree + 1
+            mash_params = cfm_sampler.transformer.inverse_transform(mash_params)
+
+            sh2d = 2 * cfm_sampler.mask_degree + 1
             ortho_poses = mash_params[:, :6]
             positions = mash_params[:, 6:9]
             mask_params = mash_params[:, 9 : 9 + sh2d]
@@ -160,12 +162,13 @@ def demoCondition(
     return True
 
 def demo(save_folder_path: Union[str, None] = None):
-    cfm_model_file_path = "../../output/24depth_512cond_2000epoch/total_model_last.pth".replace('../../', './')
+    cfm_model_file_path = "../../output/20250103_20:25:18/model_last.pth".replace('../../', './')
+    transformer_id = 'ShapeNet_03001627'
     use_ema = True
     sample_id_num = 1
     sample_num = 10
     timestamp_num = 2
-    device = 'cuda:0'
+    device = 'cpu'
     save_results_only = True
     sample_category = False
     sample_image = False
@@ -176,7 +179,7 @@ def demo(save_folder_path: Union[str, None] = None):
     ulip_model_file_path = '/home/chli/chLi/Model/ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
     open_clip_model_file_path = '/home/chli/Model/CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
 
-    sampler = Sampler(cfm_model_file_path, use_ema, device)
+    cfm_sampler = CFMSampler(cfm_model_file_path, use_ema, device, transformer_id)
     # detector = Detector(ulip_model_file_path, open_clip_model_file_path, device)
     detector = None
 
@@ -232,7 +235,7 @@ def demo(save_folder_path: Union[str, None] = None):
         for categoty_id in valid_category_id_list:
             print('start sample for category ' + categoty_id + '...')
             category_idx = CATEGORY_IDS[categoty_id]
-            demoCondition(sampler, detector, time_stamp, category_idx, sample_num, timestamp_num, save_folder_path, 'category', str(categoty_id), save_results_only)
+            demoCondition(cfm_sampler, detector, time_stamp, category_idx, sample_num, timestamp_num, save_folder_path, 'category', str(categoty_id), save_results_only)
 
     if sample_image:
         image_id_list = [
@@ -250,7 +253,7 @@ def demo(save_folder_path: Union[str, None] = None):
             image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
             if not os.path.exists(image_file_path):
                 continue
-            demoCondition(sampler, detector, time_stamp, image_file_path, sample_num, timestamp_num, save_folder_path, 'image', image_id, save_results_only)
+            demoCondition(cfm_sampler, detector, time_stamp, image_file_path, sample_num, timestamp_num, save_folder_path, 'image', image_id, save_results_only)
 
     if sample_points:
         points_id_list = [
@@ -269,7 +272,7 @@ def demo(save_folder_path: Union[str, None] = None):
             if not os.path.exists(mesh_file_path):
                 continue
             points = Mesh(mesh_file_path).toSamplePoints(8192)
-            demoCondition(sampler, detector, time_stamp, points, sample_num, timestamp_num, save_folder_path, 'points', points_id, save_results_only)
+            demoCondition(cfm_sampler, detector, time_stamp, points, sample_num, timestamp_num, save_folder_path, 'points', points_id, save_results_only)
 
     if sample_text:
         text_list = [
@@ -283,7 +286,7 @@ def demo(save_folder_path: Union[str, None] = None):
         ]
         for i, text in enumerate(text_list):
             print('start sample for text [' + text + ']...')
-            demoCondition(sampler, detector, time_stamp, text, sample_num, timestamp_num, save_folder_path, 'text', str(i), save_results_only)
+            demoCondition(cfm_sampler, detector, time_stamp, text, sample_num, timestamp_num, save_folder_path, 'text', str(i), save_results_only)
 
     if sample_fixed_anchor:
         mash_file_path_list = [
@@ -293,7 +296,7 @@ def demo(save_folder_path: Union[str, None] = None):
         print('start sample for fixed anchor category ' + categoty_id + '...')
         category_idx = CATEGORY_IDS[categoty_id]
         demoCondition(
-            sampler,
+            cfm_sampler,
             detector,
             time_stamp,
             category_idx,

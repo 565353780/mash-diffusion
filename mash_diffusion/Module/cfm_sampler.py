@@ -5,6 +5,7 @@ import numpy as np
 from typing import Union
 
 from ma_sh.Model.mash import Mash
+from ma_sh.Method.transformer import getTransformer
 from ma_sh.Module.local_editor import LocalEditor
 
 from mash_diffusion.Model.unet2d import MashUNet
@@ -16,7 +17,8 @@ class CFMSampler(object):
         self,
         model_file_path: Union[str, None] = None,
         use_ema: bool = True,
-        device: str = "cpu"
+        device: str = "cpu",
+        transformer_id: str = 'Objaverse_82K',
     ) -> None:
         self.mash_channel = 400
         self.encoded_mash_channel = 25
@@ -46,6 +48,9 @@ class CFMSampler(object):
 
         if model_file_path is not None:
             self.loadModel(model_file_path)
+
+        self.transformer = getTransformer(transformer_id)
+        assert self.transformer is not None
         return
 
     def toInitialMashModel(self, device: Union[str, None]=None) -> Mash:
@@ -175,6 +180,8 @@ class CFMSampler(object):
             fixed_mask_params,
             fixed_sh_params,
         ), dim=1).view(1, combined_mash.anchor_num, 25).expand(condition_tensor.shape[0], combined_mash.anchor_num, 25)
+
+        fixed_x_init = self.transformer.transform(fixed_x_init)
 
         random_x_init = torch.randn(condition_tensor.shape[0], 400 - combined_mash.anchor_num, 25, device=self.device)
 
