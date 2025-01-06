@@ -42,7 +42,7 @@ class CFMTrainer(BaseDiffusionTrainer):
         use_amp: bool = False,
         quick_test: bool = False,
     ) -> None:
-        if training_mode in ['single_shape', 'category', 'multi_modal']:
+        if training_mode in ['single_shape', 'single_category', 'category', 'multi_modal']:
             self.context_dim = 512
             self.n_heads = 8
             self.d_head = 64

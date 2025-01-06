@@ -10,6 +10,7 @@ from base_trainer.Module.base_trainer import BaseTrainer
 
 from mash_diffusion.Dataset.mash import MashDataset
 from mash_diffusion.Dataset.embedding import EmbeddingDataset
+from mash_diffusion.Dataset.single_category import SingleCategoryDataset
 from mash_diffusion.Dataset.single_shape import SingleShapeDataset
 
 
@@ -84,6 +85,18 @@ class BaseDiffusionTrainer(BaseTrainer):
                 "repeat_num": 1,
             }
 
+        if self.training_mode in ['single_category']:
+            self.dataloader_dict["single_category"] = {
+                "dataset": SingleCategoryDataset(
+                    self.dataset_root_folder_path,
+                    "MashV4/ShapeNet",
+                    '03001627',
+                    "train",
+                    'ShapeNet_03001627',
+                ),
+                "repeat_num": 1,
+            }
+
         if self.training_mode in ['category', 'multi_modal']:
             self.dataloader_dict['category'] = {
                 "dataset": MashDataset(
@@ -155,6 +168,18 @@ class BaseDiffusionTrainer(BaseTrainer):
                 "repeat_num": 10,
             }
 
+        if self.training_mode in ['single_category']:
+            self.dataloader_dict["eval"] = {
+                "dataset": SingleCategoryDataset(
+                    self.dataset_root_folder_path,
+                    "MashV4/ShapeNet",
+                    '03001627',
+                    "eval",
+                    'ShapeNet_03001627',
+                ),
+                "repeat_num": 1,
+            }
+
         if self.training_mode in ['single_shape', 'category', 'multi_modal']:
             self.dataloader_dict["eval"] = {
                 "dataset": MashDataset(
@@ -165,7 +190,7 @@ class BaseDiffusionTrainer(BaseTrainer):
                 ),
             }
 
-        elif self.training_mode in ['dino']:
+        if self.training_mode in ['dino']:
             self.dataloader_dict["eval"] = {
                 "dataset": EmbeddingDataset(
                     self.dataset_root_folder_path,
