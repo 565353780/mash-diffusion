@@ -79,7 +79,7 @@ class CFMSampler(object):
 
         self.occ_detector = None
         if occ_model_file_path is not None:
-            self.occ_detector = OCCDetector(occ_model_file_path, transformer_id, device)
+            self.occ_detector = OCCDetector(occ_model_file_path, 'Objaverse_82K', device)
 
         self.mesh_smoother = MeshSmoother()
         return
