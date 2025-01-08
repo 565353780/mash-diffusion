@@ -314,13 +314,13 @@ class CFMSampler(object):
 
             os.makedirs(current_save_folder_path, exist_ok=True)
 
-            if condition_type == 'image':
+            if condition_type in ['dino', 'ulip-image']:
                 copyfile(image_file_path, current_save_folder_path + 'condition_image.png')
-            elif condition_type == 'points':
+            elif condition_type == 'ulip-points':
                 pcd = o3d.geometry.PointCloud()
                 pcd.points = o3d.utility.Vector3dVector(points)
                 o3d.io.write_point_cloud(current_save_folder_path + 'condition_pcd.ply', pcd)
-            elif condition_type == 'text':
+            elif condition_type == 'ulip-text':
                 with open(current_save_folder_path + 'condition_text.txt', 'w') as f:
                     f.write(text)
 
