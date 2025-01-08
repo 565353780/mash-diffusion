@@ -1,19 +1,18 @@
 import sys
+
 sys.path.append("../ma-sh/")
+sys.path.append("../wn-nc/")
 sys.path.append("../ulip-manage/")
+sys.path.append("../dino-v2-detect/")
+sys.path.append("../mash-occ-decoder/")
 sys.path.append('../distribution-manage/')
 
 import os
 import random
-import numpy as np
-import open3d as o3d
-from tqdm import tqdm
 from typing import Union
-from math import sqrt, ceil
-from shutil import copyfile
 
+from ma_sh.Config.custom_path import toModelRootPath
 from ma_sh.Data.mesh import Mesh
-from ulip_manage.Module.detector import Detector
 
 from mash_diffusion.Config.shapenet import CATEGORY_IDS
 from mash_diffusion.Method.time import getCurrentTime
@@ -43,168 +42,43 @@ def toRandomIdList(dataset_folder_path: str, valid_category_id_list: Union[list,
 
     return random_id_list
 
-def demoCondition(
-    cfm_sampler: CFMSampler,
-    detector: Detector,
-    time_stamp: str,
-    condition_value: Union[int, str, np.ndarray] = 18,
-    sample_num: int = 9,
-    timestamp_num: int = 10,
-    save_folder_path: Union[str, None] = None,
-    condition_type: str = 'category',
-    condition_name: str = '0',
-    save_results_only: bool = True,
-    mash_file_path_list: Union[list, None]=None,
-) -> bool:
-    assert condition_type in ['category', 'image', 'points', 'text']
+def demo():
+    model_root_path = toModelRootPath()
+    assert model_root_path is not None
 
-    if condition_type == 'category':
-        assert isinstance(condition_value, int)
-
-        condition = condition_value
-    elif condition_type == 'image':
-        assert isinstance(condition_value, str)
-
-        image_file_path = condition_value
-        if not os.path.exists(image_file_path):
-            print('[ERROR][cfm_sampler::demoCondition]')
-            print('\t condition image file not exist!')
-            return False
-
-        condition = (
-            detector.encodeImageFile(image_file_path).cpu().numpy()
-        )
-    elif condition_type == 'points':
-        assert isinstance(condition_value, np.ndarray)
-
-        points = condition_value
-        condition = (
-            detector.encodePointCloud(points).cpu().numpy()
-        )
-    elif condition_type == 'text':
-        assert isinstance(condition_value, str)
-
-        text = condition_value
-        condition = (
-            detector.encodeText(condition_value).cpu().numpy()
-        )
-    else:
-        print('[ERROR][cfm_sampler::demoCondition]')
-        print('\t condition type not valid!')
-        return False
-
-    condition_info = condition_type + '/' + condition_name
-
-    print("start diffuse", sample_num, "mashs....")
-    if mash_file_path_list is None:
-        sampled_array = cfm_sampler.sample(sample_num, condition, timestamp_num)
-    else:
-        sampled_array = cfm_sampler.sampleWithFixedAnchors(mash_file_path_list, sample_num, condition, timestamp_num)
-
-    object_dist = [0, 0, 0]
-
-    row_num = ceil(sqrt(sample_num))
-
-    mash_model = cfm_sampler.toInitialMashModel()
-
-    for j in range(sampled_array.shape[0]):
-        if save_results_only:
-            if j != sampled_array.shape[0] - 1:
-                continue
-
-        if save_folder_path is None:
-            save_folder_path = './output/sample/' + time_stamp + '/'
-        current_save_folder_path = save_folder_path + 'iter_' + str(j) + '/' + condition_info + '/'
-
-        os.makedirs(current_save_folder_path, exist_ok=True)
-
-        if condition_type == 'image':
-            copyfile(image_file_path, current_save_folder_path + 'condition_image.png')
-        elif condition_type == 'points':
-            pcd = o3d.geometry.PointCloud()
-            pcd.points = o3d.utility.Vector3dVector(points)
-            o3d.io.write_point_cloud(current_save_folder_path + 'condition_pcd.ply', pcd)
-        elif condition_type == 'text':
-            with open(current_save_folder_path + 'condition_text.txt', 'w') as f:
-                f.write(text)
-
-        print("start create mash files,", j + 1, '/', sampled_array.shape[0], "...")
-        for i in tqdm(range(sample_num)):
-
-            mash_params = sampled_array[j][i]
-
-            mash_params = cfm_sampler.transformer.inverse_transform(mash_params)
-
-            sh2d = 2 * cfm_sampler.mask_degree + 1
-            ortho_poses = mash_params[:, :6]
-            positions = mash_params[:, 6:9]
-            mask_params = mash_params[:, 9 : 9 + sh2d]
-            sh_params = mash_params[:, 9 + sh2d :]
-
-            mash_model.loadParams(
-                mask_params=mask_params,
-                sh_params=sh_params,
-                positions=positions,
-                ortho6d_poses=ortho_poses
-            )
-
-            translate = [
-                int(i / row_num) * object_dist[0],
-                (i % row_num) * object_dist[1],
-                j * object_dist[2],
-            ]
-
-            mash_model.translate(translate)
-
-            mash_model.saveParamsFile(current_save_folder_path + 'mash/sample_' + str(i+1) + '_mash.npy', True)
-            mash_model.saveAsPcdFile(current_save_folder_path + 'pcd/sample_' + str(i+1) + '_pcd.ply', True)
-
-    return True
-
-def demo(save_folder_path: Union[str, None] = None):
-    cfm_model_file_path = "../../output/20250103_20:25:18/model_last.pth".replace('../../', './')
-    transformer_id = 'ShapeNet_03001627'
+    cfm_model_file_path = "../../output/cfm-ShapeNet_03001627/model_last.pth".replace('../../', './')
     use_ema = True
+    device = 'cuda:0'
+    transformer_id = 'ShapeNet_03001627'
+    ulip_model_file_path = model_root_path + 'ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
+    open_clip_model_file_path = 'CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
+    dino_model_file_path = 'DINOv2/dinov2_vitl14_reg4_pretrain.pth'
+
+    save_folder_path = './output/sample/' + getCurrentTime() + '/'
     sample_id_num = 1
     sample_num = 10
     timestamp_num = 2
-    device = 'cpu'
-    save_results_only = True
-    sample_category = False
+    sample_category = True
     sample_image = False
     sample_points = False
     sample_text = False
     sample_fixed_anchor = True
+    save_results_only = True
 
-    ulip_model_file_path = '/home/chli/chLi/Model/ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
-    open_clip_model_file_path = '/home/chli/Model/CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
+    #FIXME: deactivate detectors for fast test only
+    ulip_model_file_path = None
+    dino_model_file_path = None
 
-    cfm_sampler = CFMSampler(cfm_model_file_path, use_ema, device, transformer_id)
-    # detector = Detector(ulip_model_file_path, open_clip_model_file_path, device)
-    detector = None
+    cfm_sampler = CFMSampler(
+        cfm_model_file_path,
+        use_ema,
+        device,
+        transformer_id,
+        ulip_model_file_path,
+        open_clip_model_file_path,
+        dino_model_file_path,
+    )
 
-    time_stamp = getCurrentTime()
-
-    # 0: airplane
-    # 2: bag
-    # 6: bench
-    # 9: bottle
-    # 16: car
-    # 18: chair
-    # 22: monitor
-    # 23: earphone
-    # 24: spigot
-    # 26: guitar
-    # 27: helmet
-    # 30: lamp
-    # 33: mailbox
-    # 40: gun
-    # 44: long-gun
-    # 46: skateboard
-    # 47: sofa
-    # 49: table
-    # 52: train
-    # 53: watercraft
     valid_category_id_list = [
         '02691156', # 0: airplane
         '02773838', # 2: bag
@@ -234,8 +108,13 @@ def demo(save_folder_path: Union[str, None] = None):
     if sample_category:
         for categoty_id in valid_category_id_list:
             print('start sample for category ' + categoty_id + '...')
-            category_idx = CATEGORY_IDS[categoty_id]
-            demoCondition(cfm_sampler, detector, time_stamp, category_idx, sample_num, timestamp_num, save_folder_path, 'category', str(categoty_id), save_results_only)
+            cfm_sampler.samplePipeline(
+                save_folder_path + 'category/' + categoty_id + '/',
+                'category',
+                CATEGORY_IDS[categoty_id],
+                sample_num,
+                timestamp_num,
+                save_results_only)
 
     if sample_image:
         image_id_list = [
@@ -253,7 +132,13 @@ def demo(save_folder_path: Union[str, None] = None):
             image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
             if not os.path.exists(image_file_path):
                 continue
-            demoCondition(cfm_sampler, detector, time_stamp, image_file_path, sample_num, timestamp_num, save_folder_path, 'image', image_id, save_results_only)
+            cfm_sampler.samplePipeline(
+                save_folder_path + 'ulip-image/' + image_id + '/',
+                'ulip-image',
+                image_file_path,
+                sample_num,
+                timestamp_num,
+                save_results_only)
 
     if sample_points:
         points_id_list = [
@@ -272,7 +157,13 @@ def demo(save_folder_path: Union[str, None] = None):
             if not os.path.exists(mesh_file_path):
                 continue
             points = Mesh(mesh_file_path).toSamplePoints(8192)
-            demoCondition(cfm_sampler, detector, time_stamp, points, sample_num, timestamp_num, save_folder_path, 'points', points_id, save_results_only)
+            cfm_sampler.samplePipeline(
+                save_folder_path + 'ulip-points/' + points_id + '/',
+                'ulip-points',
+                points,
+                sample_num,
+                timestamp_num,
+                save_results_only)
 
     if sample_text:
         text_list = [
@@ -286,7 +177,13 @@ def demo(save_folder_path: Union[str, None] = None):
         ]
         for i, text in enumerate(text_list):
             print('start sample for text [' + text + ']...')
-            demoCondition(cfm_sampler, detector, time_stamp, text, sample_num, timestamp_num, save_folder_path, 'text', str(i), save_results_only)
+            cfm_sampler.samplePipeline(
+                save_folder_path + 'ulip-text/' + str(i) + '/',
+                'ulip-text',
+                text,
+                sample_num,
+                timestamp_num,
+                save_results_only)
 
     if sample_fixed_anchor:
         mash_file_path_list = [
@@ -294,19 +191,12 @@ def demo(save_folder_path: Union[str, None] = None):
         ]
         categoty_id = '03001627'
         print('start sample for fixed anchor category ' + categoty_id + '...')
-        category_idx = CATEGORY_IDS[categoty_id]
-        demoCondition(
-            cfm_sampler,
-            detector,
-            time_stamp,
-            category_idx,
+        cfm_sampler.samplePipeline(
+            save_folder_path + 'category-fixed-anchors/' + categoty_id + '/',
+            'category',
+            CATEGORY_IDS[categoty_id],
             sample_num,
             timestamp_num,
-            save_folder_path,
-            'category',
-            'fixed_anchor',
             save_results_only,
-            mash_file_path_list,
-        )
-
+            mash_file_path_list)
     return True
