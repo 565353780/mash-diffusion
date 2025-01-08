@@ -12,17 +12,24 @@ from ma_sh.Model.mash import Mash
 from ma_sh.Method.transformer import getTransformer
 from ma_sh.Module.local_editor import LocalEditor
 
+from mash_occ_decoder.Module.detector import Detector as OCCDetector
+
+from wn_nc.Module.mesh_smoother import MeshSmoother
+
 from ulip_manage.Module.detector import Detector as ULIPDetector
+
 from dino_v2_detect.Module.detector import Detector as DINODetector
 
 from mash_diffusion.Model.unet2d import MashUNet
 from mash_diffusion.Model.cfm_latent_transformer import CFMLatentTransformer
+from mash_diffusion.Method.path import createFileFolder
 
 
 class CFMSampler(object):
     def __init__(
         self,
         model_file_path: Union[str, None] = None,
+        occ_model_file_path: Union[str, None] = None,
         use_ema: bool = True,
         device: str = "cpu",
         transformer_id: str = 'Objaverse_82K',
@@ -69,6 +76,12 @@ class CFMSampler(object):
         self.dino_detector = None
         if dino_model_file_path is not None:
             self.dino_detector = DINODetector('large', dino_model_file_path, device)
+
+        self.occ_detector = None
+        if occ_model_file_path is not None:
+            self.occ_detector = OCCDetector(occ_model_file_path, transformer_id, device)
+
+        self.mesh_smoother = MeshSmoother()
         return
 
     def toInitialMashModel(self, device: Union[str, None]=None) -> Mash:
@@ -339,7 +352,27 @@ class CFMSampler(object):
 
                 mash_model.translate(translate)
 
-                mash_model.saveParamsFile(current_save_folder_path + 'mash/sample_' + str(i+1) + '_mash.npy', True)
-                mash_model.saveAsPcdFile(current_save_folder_path + 'pcd/sample_' + str(i+1) + '_pcd.ply', True)
+                current_save_mash_file_path = current_save_folder_path + 'mash/sample_' + str(i+1) + '_mash.npy'
+                current_save_pcd_file_path = current_save_folder_path + 'pcd/sample_' + str(i+1) + '_pcd.ply'
+                current_save_recon_mesh_file_path = current_save_folder_path + 'recon/sample_' + str(i+1) + '_mesh.ply'
+                current_save_recon_smooth_mesh_file_path = current_save_folder_path + 'recon_smooth/sample_' + str(i+1) + '_mesh.ply'
+
+                mash_model.saveParamsFile(current_save_mash_file_path, True)
+                mash_model.saveAsPcdFile(current_save_pcd_file_path, True)
+
+                if self.occ_detector is not None:
+                    mesh = self.occ_detector.detectFile(current_save_mash_file_path)
+                    createFileFolder(current_save_recon_mesh_file_path)
+                    mesh.export(current_save_recon_mesh_file_path)
+
+                if os.path.exists(current_save_recon_mesh_file_path):
+                    self.mesh_smoother.smoothMesh(
+                        current_save_recon_mesh_file_path,
+                        current_save_recon_smooth_mesh_file_path,
+                        n_iter=100,
+                        pass_band=0.01,
+                        edge_angle=15.0,
+                        feature_angle=45.0,
+                        overwrite=True)
 
         return True

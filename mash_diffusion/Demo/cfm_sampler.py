@@ -47,6 +47,7 @@ def demo():
     assert model_root_path is not None
 
     cfm_model_file_path = "../../output/cfm-ShapeNet_03001627/model_last.pth".replace('../../', './')
+    occ_model_file_path = '../../../mash-occ-decoder/output/512dim-v4/model_best.pth'.replace('../../', './')
     use_ema = True
     device = 'cuda:0'
     transformer_id = 'ShapeNet_03001627'
@@ -71,6 +72,7 @@ def demo():
 
     cfm_sampler = CFMSampler(
         cfm_model_file_path,
+        occ_model_file_path,
         use_ema,
         device,
         transformer_id,
