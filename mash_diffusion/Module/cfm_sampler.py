@@ -41,10 +41,17 @@ class CFMSampler(object):
         self.encoded_mash_channel = 25
         self.mask_degree = 3
         self.sh_degree = 2
-        self.context_dim = 512
-        self.n_heads = 8
-        self.d_head = 64
-        self.depth = 24
+
+        if transformer_id in ['ShapeNet', 'ShapeNet_03001627']:
+            self.context_dim = 512
+            self.n_heads = 8
+            self.d_head = 64
+            self.depth = 24
+        elif transformer_id == 'Objaverse_82K':
+            self.context_dim = 1024
+            self.n_heads = 16
+            self.d_head = 64
+            self.depth = 24
 
         self.use_ema = use_ema
         self.device = device

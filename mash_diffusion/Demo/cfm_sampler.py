@@ -57,15 +57,19 @@ def demo():
     open_clip_model_file_path = model_root_path + 'CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
     dino_model_file_path = model_root_path + 'DINOv2/dinov2_vitl14_reg4_pretrain.pth'
 
+    cfm_model_file_path = code_root_path + 'mash-diffusion/output/cfm-Objaverse_82K-single_image-v4-tmp/model_last.pth'
+    transformer_id = 'Objaverse_82K'
+
     save_folder_path = './output/sample/' + getCurrentTime() + '/'
     sample_id_num = 1
     sample_num = 10
     timestamp_num = 2
-    sample_category = True
-    sample_image = False
-    sample_points = False
-    sample_text = False
-    sample_fixed_anchor = True
+    sample_category = False
+    sample_dino = True
+    sample_ulip_image = False
+    sample_ulip_points = False
+    sample_ulip_text = False
+    sample_fixed_anchor = False
     save_results_only = True
 
     #FIXME: deactivate detectors for fast test only
@@ -120,7 +124,31 @@ def demo():
                 timestamp_num,
                 save_results_only)
 
-    if sample_image:
+    if sample_dino:
+        image_id_list = [
+            '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
+            '03001627/1a38407b3036795d19fb4103277a6b93',
+            '03001627/1ab8a3b55c14a7b27eaeab1f0c9120b7',
+            '02691156/1a6ad7a24bb89733f412783097373bdc',
+            '02691156/1a32f10b20170883663e90eaf6b4ca52',
+            '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
+            '02691156/1adb40469ec3636c3d64e724106730cf',
+        ]
+        image_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', valid_category_id_list, sample_id_num)
+        for image_id in image_id_list:
+            print('start sample for image ' + image_id + '...')
+            image_file_path = '/home/chli/chLi2/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
+            if not os.path.exists(image_file_path):
+                continue
+            cfm_sampler.samplePipeline(
+                save_folder_path + 'dino/' + image_id + '/',
+                'dino',
+                image_file_path,
+                sample_num,
+                timestamp_num,
+                save_results_only)
+
+    if sample_ulip_image:
         image_id_list = [
             '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
             '03001627/1a38407b3036795d19fb4103277a6b93',
@@ -144,7 +172,7 @@ def demo():
                 timestamp_num,
                 save_results_only)
 
-    if sample_points:
+    if sample_ulip_points:
         points_id_list = [
             '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
             '03001627/1a38407b3036795d19fb4103277a6b93',
@@ -169,7 +197,7 @@ def demo():
                 timestamp_num,
                 save_results_only)
 
-    if sample_text:
+    if sample_ulip_text:
         text_list = [
             'a tall chair',
             'a short chair',
