@@ -1,5 +1,6 @@
 import os
 import torch
+from torch.nn.modules import transformer
 import torchdiffeq
 import numpy as np
 import open3d as o3d
@@ -79,7 +80,12 @@ class CFMSampler(object):
 
         self.occ_detector = None
         if occ_model_file_path is not None:
-            self.occ_detector = OCCDetector(occ_model_file_path, 'Objaverse_82K', device)
+            self.occ_detector = OCCDetector(
+                occ_model_file_path,
+                batch_size=1200000,
+                resolution=128,
+                transformer_id='Objaverse_82K',
+                device=device)
 
         self.mesh_smoother = MeshSmoother()
         return
