@@ -1,6 +1,7 @@
 import sys
 sys.path.append("../ma-sh/")
 sys.path.append("../base-trainer/")
+sys.path.append("../dino-v2-detect/")
 sys.path.append("../distribution-manage/")
 
 from ma_sh.Config.custom_path import toDatasetRootPath
@@ -13,9 +14,6 @@ def demo():
     assert dataset_root_folder_path is not None
     print(dataset_root_folder_path)
 
-    dataset_json_file_path_dict = {
-        "dino": dataset_root_folder_path + "Objaverse_82K/render_dino.pkl",
-    }
     training_mode = 'dino'
     batch_size = 24
     accum_iter = 2
@@ -29,12 +27,12 @@ def demo():
     lr_batch_size = 256
     ema_start_step = 5000
     ema_decay_init = 0.99
-    ema_decay = 0.999
+    ema_decay = 0.9999
     save_result_folder_path = "auto"
     save_log_folder_path = "auto"
     best_model_metric_name = None
     is_metric_lower_better = True
-    sample_results_freq = 50
+    sample_results_freq = 1
     use_amp = False
     quick_test = False
 
@@ -46,24 +44,24 @@ def demo():
     elif training_mode == 'category':
         batch_size = 24
         accum_iter = 5
-        model_file_path = "../../output/cfm-ShapeNet-category-v2/model_last.pth".replace('../../', './')
-        lr = 2e-6
+        model_file_path = "../../output/cfm-ShapeNet-category-v3/model_last.pth".replace('../../', './')
+        lr = 2e-4
     elif training_mode == 'multi_modal':
         batch_size = 24
         accum_iter = 2
         model_file_path = "../../output/cfm-ShapeNet-multi_modal-v1/model_last.pth".replace('../../', './')
         lr = 2e-5
     elif training_mode == 'dino':
-        batch_size = 2
-        accum_iter = 16
-        model_file_path = "../../output/cfm-Objaverse_82K-single_image-v4/model_last.pth".replace('../../', './')
-        lr = 2e-6
+        batch_size = 12
+        accum_iter = 2
+        model_file_path = "../../output/cfm-Objaverse_82K-single_image-v5/model_last.pth".replace('../../', './')
+        model_file_path = None
+        lr = 2e-4
     else:
         exit()
 
     cfm_trainer = CFMTrainer(
         dataset_root_folder_path,
-        dataset_json_file_path_dict,
         training_mode,
         batch_size,
         accum_iter,

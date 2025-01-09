@@ -1,7 +1,8 @@
 import sys
 sys.path.append("../ma-sh/")
-sys.path.append("../distribution-manage/")
 sys.path.append("../base-trainer/")
+sys.path.append("../dino-v2-detect/")
+sys.path.append("../distribution-manage/")
 
 from ma_sh.Config.custom_path import toDatasetRootPath
 
@@ -13,9 +14,6 @@ def demo():
     assert dataset_root_folder_path is not None
     print(dataset_root_folder_path)
 
-    dataset_json_file_path_dict = {
-        "dino": dataset_root_folder_path + "Objaverse_82K/render_dino.pkl",
-    }
     training_mode = 'dino'
     batch_size = 24
     accum_iter = 2
@@ -29,7 +27,7 @@ def demo():
     lr_batch_size = 256
     ema_start_step = 5000
     ema_decay_init = 0.99
-    ema_decay = 0.999
+    ema_decay = 0.9999
     save_result_folder_path = "auto"
     save_log_folder_path = "auto"
     best_model_metric_name = None
@@ -54,16 +52,16 @@ def demo():
         model_file_path = "../../output/edm-ShapeNet-multi_modal-v1/model_last.pth".replace('../../', './')
         lr = 2e-5
     elif training_mode == 'dino':
-        batch_size = 2
-        accum_iter = 16
-        model_file_path = "../../output/edm-Objaverse_82K-single_image-v1/model_last.pth".replace('../../', './')
-        lr = 2e-5
+        batch_size = 12
+        accum_iter = 2
+        model_file_path = "../../output/edm-Objaverse_82K-single_image-v2/model_last.pth".replace('../../', './')
+        model_file_path = None
+        lr = 2e-4
     else:
         exit()
 
     edm_trainer = EDMTrainer(
         dataset_root_folder_path,
-        dataset_json_file_path_dict,
         training_mode,
         batch_size,
         accum_iter,

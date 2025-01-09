@@ -20,7 +20,6 @@ class CFMTrainer(BaseDiffusionTrainer):
     def __init__(
         self,
         dataset_root_folder_path: str,
-        dataset_json_file_path_dict: dict = {},
         training_mode: str = 'dino',
         batch_size: int = 5,
         accum_iter: int = 10,
@@ -42,19 +41,6 @@ class CFMTrainer(BaseDiffusionTrainer):
         use_amp: bool = False,
         quick_test: bool = False,
     ) -> None:
-        if training_mode in ['single_shape', 'single_category', 'category', 'multi_modal']:
-            self.context_dim = 512
-            self.n_heads = 8
-            self.d_head = 64
-            self.depth = 24
-            self.fix_params = True
-        elif training_mode in ['dino']:
-            self.context_dim = 1024
-            self.n_heads = 16
-            self.d_head = 64
-            self.depth = 24
-            self.fix_params = False
-
         fm_id = 2
         if fm_id == 1:
             self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
@@ -67,7 +53,6 @@ class CFMTrainer(BaseDiffusionTrainer):
 
         super().__init__(
             dataset_root_folder_path,
-            dataset_json_file_path_dict,
             training_mode,
             batch_size,
             accum_iter,

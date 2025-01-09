@@ -15,7 +15,6 @@ class EDMTrainer(BaseDiffusionTrainer):
     def __init__(
         self,
         dataset_root_folder_path: str,
-        dataset_json_file_path_dict: dict = {},
         training_mode: str = 'dino',
         batch_size: int = 5,
         accum_iter: int = 10,
@@ -37,24 +36,10 @@ class EDMTrainer(BaseDiffusionTrainer):
         use_amp: bool = False,
         quick_test: bool = False,
     ) -> None:
-        if training_mode in ['single_shape', 'category']:
-            self.context_dim = 512
-            self.n_heads = 8
-            self.d_head = 64
-            self.depth = 24
-            self.fix_params = True
-        elif training_mode in ['dino']:
-            self.context_dim = 1024
-            self.n_heads = 16
-            self.d_head = 64
-            self.depth = 24
-            self.fix_params = False
-
         self.loss_func = EDMLoss()
 
         super().__init__(
             dataset_root_folder_path,
-            dataset_json_file_path_dict,
             training_mode,
             batch_size,
             accum_iter,

@@ -4,10 +4,14 @@ from tqdm import trange
 from typing import Union
 from abc import abstractmethod
 
+from ma_sh.Config.custom_path import toModelRootPath
 from ma_sh.Model.mash import Mash
 
 from base_trainer.Module.base_trainer import BaseTrainer
 
+from dino_v2_detect.Module.detector import Detector as DINODetector
+
+from mash_diffusion.Dataset.image import ImageDataset
 from mash_diffusion.Dataset.mash import MashDataset
 from mash_diffusion.Dataset.embedding import EmbeddingDataset
 from mash_diffusion.Dataset.single_category import SingleCategoryDataset
@@ -18,7 +22,6 @@ class BaseDiffusionTrainer(BaseTrainer):
     def __init__(
         self,
         dataset_root_folder_path: str,
-        dataset_json_file_path_dict: dict = {},
         training_mode: str = 'dino',
         batch_size: int = 5,
         accum_iter: int = 10,
@@ -41,7 +44,6 @@ class BaseDiffusionTrainer(BaseTrainer):
         quick_test: bool = False,
     ) -> None:
         self.dataset_root_folder_path = dataset_root_folder_path
-        self.dataset_json_file_path_dict = dataset_json_file_path_dict
         self.training_mode = training_mode
 
         self.anchor_num = 400
@@ -50,6 +52,19 @@ class BaseDiffusionTrainer(BaseTrainer):
         self.anchor_channel = int(
             9 + (2 * self.mask_degree + 1) + ((self.sh_degree + 1) ** 2)
         )
+
+        if training_mode in ['single_shape', 'single_category', 'category', 'multi_modal']:
+            self.context_dim = 512
+            self.n_heads = 8
+            self.d_head = 64
+            self.depth = 24
+            self.fix_params = True
+        elif training_mode in ['dino']:
+            self.context_dim = 768
+            self.n_heads = 8
+            self.d_head = 64
+            self.depth = 24
+            self.fix_params = False
 
         self.gt_sample_added_to_logger = False
 
@@ -77,6 +92,16 @@ class BaseDiffusionTrainer(BaseTrainer):
         return
 
     def createDatasets(self) -> bool:
+        if self.training_mode in ['dino']:
+            model_root_path = toModelRootPath()
+            assert model_root_path is not None
+
+            model_type = 'base'
+            model_file_path = model_root_path + '/DINOv2/dinov2_vitb14_reg4_pretrain.pth'
+            dtype = 'auto'
+
+            self.dino_detector = DINODetector(model_type, model_file_path, dtype, self.device)
+
         if self.training_mode in ['single_shape']:
             mash_file_path = self.dataset_root_folder_path + \
                 "MashV4/ShapeNet/03636649/583a5a163e59e16da523f74182db8f2.npy"
@@ -110,15 +135,13 @@ class BaseDiffusionTrainer(BaseTrainer):
 
         if self.training_mode in ['dino']:
             self.dataloader_dict["dino"] = {
-                "dataset": EmbeddingDataset(
+                "dataset": ImageDataset(
                     self.dataset_root_folder_path,
                     "Objaverse_82K/manifold_mash",
-                    "Objaverse_82K/render_dino",
-                    "dino",
+                    "Objaverse_82K/render_jpg",
+                    self.dino_detector.transform,
                     "train",
                     'Objaverse_82K',
-                    False,
-                    self.dataset_json_file_path_dict.get("dino"),
                 ),
                 "repeat_num": 1,
             }
@@ -133,7 +156,6 @@ class BaseDiffusionTrainer(BaseTrainer):
                     "train",
                     'ShapeNet',
                     True,
-                    self.dataset_json_file_path_dict.get("image"),
                 ),
                 "repeat_num": 1,
             }
@@ -148,7 +170,6 @@ class BaseDiffusionTrainer(BaseTrainer):
                     "train",
                     'ShapeNet',
                     True,
-                    self.dataset_json_file_path_dict.get("point"),
                 ),
                 "repeat_num": 1,
             }
@@ -163,7 +184,6 @@ class BaseDiffusionTrainer(BaseTrainer):
                     "train",
                     'ShapeNet',
                     True,
-                    self.dataset_json_file_path_dict.get("text"),
                 ),
                 "repeat_num": 10,
             }
@@ -195,12 +215,10 @@ class BaseDiffusionTrainer(BaseTrainer):
                 "dataset": EmbeddingDataset(
                     self.dataset_root_folder_path,
                     "Objaverse_82K/manifold_mash",
-                    "Objaverse_82K/render_dino",
-                    "dino",
+                    "Objaverse_82K/render_jpg",
+                    self.dino_detector.transform,
                     "eval",
                     'Objaverse_82K',
-                    False,
-                    self.dataset_json_file_path_dict.get("dino"),
                 ),
             }
 
@@ -213,6 +231,12 @@ class BaseDiffusionTrainer(BaseTrainer):
     def getCondition(self, data_dict: dict) -> dict:
         if "category_id" in data_dict.keys():
             data_dict["condition"] = data_dict["category_id"]
+        elif "image" in data_dict.keys():
+            image = data_dict["image"]
+
+            dino_feature = self.dino_detector.detect(image)
+
+            data_dict["condition"] = dino_feature.to(self.device)
         elif "embedding" in data_dict.keys():
             embedding = data_dict["embedding"]
 
@@ -223,7 +247,7 @@ class BaseDiffusionTrainer(BaseTrainer):
 
             data_dict["condition"] = embedding.to(self.device)
         else:
-            print("[ERROR][BaseDiffusionTrainer::toCondition]")
+            print("[ERROR][BaseDiffusionTrainer::getCondition]")
             print("\t valid condition type not found!")
             exit()
 
@@ -272,7 +296,7 @@ class BaseDiffusionTrainer(BaseTrainer):
 
         model.eval()
 
-        data_dict = dataset.__getitem__(0)
+        data_dict = dataset.__getitem__(1)
         data_dict = self.getCondition(data_dict)
  
         condition = data_dict['condition']
