@@ -62,7 +62,7 @@ def demo():
 
     save_folder_path = './output/sample/' + getCurrentTime() + '/'
     sample_id_num = 1
-    sample_num = 10
+    sample_num = 20
     timestamp_num = 2
     sample_category = False
     sample_dino = True
@@ -72,9 +72,10 @@ def demo():
     sample_fixed_anchor = False
     save_results_only = True
 
-    #FIXME: deactivate detectors for fast test only
-    ulip_model_file_path = None
-    dino_model_file_path = None
+    if not sample_dino:
+        dino_model_file_path = None
+    if not sample_ulip_image and not sample_ulip_points and not sample_ulip_text:
+        ulip_model_file_path = None
 
     cfm_sampler = CFMSampler(
         cfm_model_file_path,
@@ -126,18 +127,13 @@ def demo():
 
     if sample_dino:
         image_id_list = [
-            '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
-            '03001627/1a38407b3036795d19fb4103277a6b93',
-            '03001627/1ab8a3b55c14a7b27eaeab1f0c9120b7',
-            '02691156/1a6ad7a24bb89733f412783097373bdc',
-            '02691156/1a32f10b20170883663e90eaf6b4ca52',
-            '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
-            '02691156/1adb40469ec3636c3d64e724106730cf',
+            '000-091/897ce33a65d04bb69eb3d87d0742464f/000.png',
+            '000-091/aba44d3812ae4377a5347b5a482f51ab/001.png',
+            '000-091/e7c39d9f92b94bd8a1d44986f5c37549/002.png',
         ]
-        image_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', valid_category_id_list, sample_id_num)
         for image_id in image_id_list:
             print('start sample for image ' + image_id + '...')
-            image_file_path = '/home/chli/chLi2/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
+            image_file_path = '/home/chli/chLi/Dataset/Objaverse_82K/render/' + image_id
             if not os.path.exists(image_file_path):
                 continue
             cfm_sampler.samplePipeline(

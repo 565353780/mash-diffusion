@@ -135,7 +135,7 @@ class CFMSampler(object):
     def sample(
         self,
         sample_num: int,
-        condition: Union[int, np.ndarray] = 0,
+        condition: Union[int, np.ndarray, torch.Tensor] = 0,
         timestamp_num: int = 10,
         ) -> np.ndarray:
         self.model.eval()
@@ -144,14 +144,16 @@ class CFMSampler(object):
             condition_tensor = torch.ones([sample_num]).long().to(self.device) * condition
         elif isinstance(condition, np.ndarray):
             # condition dim: 1x768
-            condition_tensor = torch.from_numpy(condition).type(torch.float32).to(self.device).repeat(sample_num, 1)
+            condition_tensor = torch.from_numpy(condition).type(torch.float32).to(self.device).repeat(*([sample_num] + [1] * (condition.ndim - 1)))
+        elif isinstance(condition, torch.Tensor):
+            condition_tensor = condition.type(torch.float32).to(self.device).repeat(*([sample_num] + [1] * (condition.ndim - 1)))
         else:
             print('[ERROR][CFMSampler::sample]')
             print('\t condition type not valid!')
             return np.ndarray()
 
-        query_t = torch.linspace(0,1,timestamp_num).to(self.device)
-        query_t = torch.pow(query_t, 1.0 / 2.0)
+        query_t = torch.linspace(0, 1, timestamp_num).to(self.device)
+        query_t = torch.pow(query_t, 0.5)
 
         x_init = torch.randn(condition_tensor.shape[0], 400, 25, device=self.device)
 
