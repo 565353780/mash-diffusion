@@ -1,7 +1,7 @@
 import sys
 sys.path.append("../ma-sh/")
-sys.path.append("../distribution-manage/")
 sys.path.append("../base-trainer/")
+sys.path.append("../distribution-manage/")
 
 from ma_sh.Config.custom_path import toDatasetRootPath
 
@@ -45,9 +45,9 @@ def demo():
         lr = 2e-6
     elif training_mode == 'category':
         batch_size = 24
-        accum_iter = 2
-        model_file_path = "../../output/cfm-ShapeNet-multi_modal-v1/model_last.pth".replace('../../', './')
-        lr = 2e-5
+        accum_iter = 5
+        model_file_path = "../../output/cfm-ShapeNet-category-v2/model_last.pth".replace('../../', './')
+        lr = 2e-6
     elif training_mode == 'multi_modal':
         batch_size = 24
         accum_iter = 2
@@ -56,7 +56,7 @@ def demo():
     elif training_mode == 'dino':
         batch_size = 2
         accum_iter = 16
-        model_file_path = "../../output/cfm-Objaverse_82K-single_image-v3/model_last.pth".replace('../../', './')
+        model_file_path = "../../output/cfm-Objaverse_82K-single_image-v4/model_last.pth".replace('../../', './')
         lr = 2e-6
     else:
         exit()
