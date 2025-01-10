@@ -21,6 +21,7 @@ class EDMTrainer(BaseDiffusionTrainer):
         num_workers: int = 16,
         model_file_path: Union[str, None] = None,
         device: str = "cuda:0",
+        dtype = torch.float32,
         warm_step_num: int = 2000,
         finetune_step_num: int = -1,
         lr: float = 2e-4,
@@ -46,6 +47,7 @@ class EDMTrainer(BaseDiffusionTrainer):
             num_workers,
             model_file_path,
             device,
+            dtype,
             warm_step_num,
             finetune_step_num,
             lr,
@@ -66,7 +68,9 @@ class EDMTrainer(BaseDiffusionTrainer):
     def createModel(self) -> bool:
         model_id = 2
         if model_id == 1:
-            self.model = MashUNet(self.context_dim).to(self.device)
+            self.model = MashUNet(
+                self.context_dim
+            ).to(self.device, dtype=self.dtype)
         elif model_id == 2:
             self.model = EDMLatentTransformer(
                 n_latents=self.anchor_num,
@@ -75,7 +79,7 @@ class EDMTrainer(BaseDiffusionTrainer):
                 d_head=self.d_head,
                 depth=self.depth,
                 context_dim=self.context_dim,
-            ).to(self.device)
+            ).to(self.device, dtype=self.dtype)
         return True
 
     def preProcessDiffusionData(self, data_dict: dict, is_training: bool = False) -> dict:

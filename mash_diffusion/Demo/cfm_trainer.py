@@ -4,6 +4,8 @@ sys.path.append("../base-trainer/")
 sys.path.append("../dino-v2-detect/")
 sys.path.append("../distribution-manage/")
 
+import torch
+
 from ma_sh.Config.custom_path import toDatasetRootPath
 
 from mash_diffusion.Module.cfm_trainer import CFMTrainer
@@ -15,12 +17,13 @@ def demo():
     print(dataset_root_folder_path)
 
     training_mode = 'dino'
-    batch_size = 24
+    batch_size = 12
     accum_iter = 2
     num_workers = 16
     model_file_path = None
     # model_file_path = "../../output/cfm-ShapeNet_03001627-512cond-inpainting-v2/model_last.pth".replace('../../', './')
     device = "auto"
+    dtype = torch.float32
     warm_step_num = 2000
     finetune_step_num = -1
     lr = 2e-4
@@ -68,6 +71,7 @@ def demo():
         num_workers,
         model_file_path,
         device,
+        dtype,
         warm_step_num,
         finetune_step_num,
         lr,

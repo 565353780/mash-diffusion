@@ -26,6 +26,7 @@ class CFMTrainer(BaseDiffusionTrainer):
         num_workers: int = 16,
         model_file_path: Union[str, None] = None,
         device: str = "cuda:0",
+        dtype = torch.float32,
         warm_step_num: int = 2000,
         finetune_step_num: int = -1,
         lr: float = 2e-4,
@@ -41,7 +42,7 @@ class CFMTrainer(BaseDiffusionTrainer):
         use_amp: bool = False,
         quick_test: bool = False,
     ) -> None:
-        fm_id = 2
+        fm_id = 3
         if fm_id == 1:
             self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
         elif fm_id == 2:
@@ -59,6 +60,7 @@ class CFMTrainer(BaseDiffusionTrainer):
             num_workers,
             model_file_path,
             device,
+            dtype,
             warm_step_num,
             finetune_step_num,
             lr,
@@ -79,7 +81,9 @@ class CFMTrainer(BaseDiffusionTrainer):
     def createModel(self) -> bool:
         model_id = 2
         if model_id == 1:
-            self.model = MashUNet(self.context_dim).to(self.device)
+            self.model = MashUNet(
+                self.context_dim
+            ).to(self.device, dtype=self.dtype)
         elif model_id == 2:
             self.model = CFMLatentTransformer(
                 n_latents=self.anchor_num,
@@ -89,7 +93,7 @@ class CFMTrainer(BaseDiffusionTrainer):
                 n_heads=self.n_heads,
                 d_head=self.d_head,
                 depth=self.depth,
-            ).to(self.device)
+            ).to(self.device, dtype=self.dtype)
         return True
 
     def preProcessDiffusionData(self, data_dict: dict, is_training: bool = False) -> dict:
@@ -114,8 +118,8 @@ class CFMTrainer(BaseDiffusionTrainer):
                 init_mash_params, mash_params
             )
         elif isinstance(self.FM, AffineProbPath):
-            t = torch.rand(mash_params.shape[0]).to(self.device)
-            t = torch.pow(t, 1.0 / 2.0)
+            t = torch.rand(mash_params.shape[0]).to(mash_params.device, dtype=mash_params.dtype)
+            t = torch.pow(t, 0.5)
             path_sample = self.FM.sample(t=t, x_0=init_mash_params, x_1=mash_params)
             t = path_sample.t
             xt = path_sample.x_t

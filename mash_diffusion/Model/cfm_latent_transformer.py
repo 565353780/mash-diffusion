@@ -76,10 +76,10 @@ class CFMLatentTransformer(torch.nn.Module):
         condition = data_dict['condition']
         drop_prob = data_dict['drop_prob']
 
-        if condition.dtype == torch.float32:
-            condition = condition + 0.0 * self.emb_category(torch.zeros([xt.shape[0]], dtype=torch.long, device=xt.device))
-        else:
+        if condition.dtype == torch.long:
             condition = self.emb_category(condition)
+        else:
+            condition = condition + 0.0 * self.emb_category(torch.zeros([xt.shape[0]], dtype=torch.long, device=xt.device))
 
         if len(t.shape) == 0:
             t = t.unsqueeze(0)

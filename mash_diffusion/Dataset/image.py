@@ -18,10 +18,12 @@ class ImageDataset(Dataset):
         transform,
         split: str = "train",
         transformer_id: str = 'Objaverse_82K',
+        dtype = torch.float32,
     ) -> None:
         self.dataset_root_folder_path = dataset_root_folder_path
         self.transform = transform
         self.split = split
+        self.dtype = dtype
 
         self.mash_folder_path = self.dataset_root_folder_path + mash_folder_name + "/"
         self.image_root_folder_path = self.dataset_root_folder_path + image_folder_name + "/"
@@ -133,8 +135,8 @@ class ImageDataset(Dataset):
         mash_params = mash_params[permute_idxs]
 
         data = {
-            "mash_params": mash_params,
-            "image": image,
+            "mash_params": mash_params.to(self.dtype),
+            "image": image.to(self.dtype),
         }
 
         return data

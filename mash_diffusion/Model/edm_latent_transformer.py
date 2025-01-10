@@ -77,10 +77,10 @@ class EDMLatentTransformer(nn.Module):
         drop_prob = data_dict['drop_prob']
         fixed_prob = data_dict['fixed_prob']
 
-        if condition.dtype == torch.float32:
-            condition = condition + 0.0 * self.emb_category(torch.zeros([x.shape[0]], dtype=torch.long, device=x.device))
-        else:
+        if condition.dtype == torch.long:
             condition = self.emb_category(condition)
+        else:
+            condition = condition + 0.0 * self.emb_category(torch.zeros([x.shape[0]], dtype=torch.long, device=x.device))
 
         if drop_prob > 0:
             drop_mask = torch.rand_like(condition) <= drop_prob

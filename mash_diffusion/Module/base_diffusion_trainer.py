@@ -28,6 +28,7 @@ class BaseDiffusionTrainer(BaseTrainer):
         num_workers: int = 16,
         model_file_path: Union[str, None] = None,
         device: str = "cuda:0",
+        dtype = torch.float32,
         warm_step_num: int = 2000,
         finetune_step_num: int = -1,
         lr: float = 2e-4,
@@ -74,6 +75,7 @@ class BaseDiffusionTrainer(BaseTrainer):
             num_workers,
             model_file_path,
             device,
+            dtype,
             warm_step_num,
             finetune_step_num,
             lr,
@@ -106,7 +108,11 @@ class BaseDiffusionTrainer(BaseTrainer):
             mash_file_path = self.dataset_root_folder_path + \
                 "MashV4/ShapeNet/03636649/583a5a163e59e16da523f74182db8f2.npy"
             self.dataloader_dict["single_shape"] = {
-                "dataset": SingleShapeDataset(mash_file_path),
+                "dataset": SingleShapeDataset(
+                    mash_file_path,
+                    10000,
+                    self.dtype,
+                ),
                 "repeat_num": 1,
             }
 
@@ -118,6 +124,7 @@ class BaseDiffusionTrainer(BaseTrainer):
                     '03001627',
                     "train",
                     'ShapeNet_03001627',
+                    self.dtype,
                 ),
                 "repeat_num": 1,
             }
@@ -129,6 +136,7 @@ class BaseDiffusionTrainer(BaseTrainer):
                     "MashV4/ShapeNet",
                     "train",
                     'ShapeNet',
+                    self.dtype,
                 ),
                 "repeat_num": 1,
             }
@@ -142,6 +150,7 @@ class BaseDiffusionTrainer(BaseTrainer):
                     self.dino_detector.transform,
                     "train",
                     'Objaverse_82K',
+                    self.dtype,
                 ),
                 "repeat_num": 1,
             }
@@ -156,6 +165,8 @@ class BaseDiffusionTrainer(BaseTrainer):
                     "train",
                     'ShapeNet',
                     True,
+                    None,
+                    self.dtype,
                 ),
                 "repeat_num": 1,
             }
@@ -170,6 +181,8 @@ class BaseDiffusionTrainer(BaseTrainer):
                     "train",
                     'ShapeNet',
                     True,
+                    None,
+                    self.dtype,
                 ),
                 "repeat_num": 1,
             }
@@ -184,6 +197,8 @@ class BaseDiffusionTrainer(BaseTrainer):
                     "train",
                     'ShapeNet',
                     True,
+                    None,
+                    self.dtype,
                 ),
                 "repeat_num": 10,
             }
@@ -196,6 +211,7 @@ class BaseDiffusionTrainer(BaseTrainer):
                     '03001627',
                     "eval",
                     'ShapeNet_03001627',
+                    self.dtype,
                 ),
                 "repeat_num": 1,
             }
@@ -207,6 +223,7 @@ class BaseDiffusionTrainer(BaseTrainer):
                     'MashV4/ShapeNet',
                     "eval",
                     'ShapeNet',
+                    self.dtype,
                 ),
             }
 
@@ -219,6 +236,7 @@ class BaseDiffusionTrainer(BaseTrainer):
                     self.dino_detector.transform,
                     "eval",
                     'Objaverse_82K',
+                    self.dtype,
                 ),
             }
 
@@ -308,7 +326,7 @@ class BaseDiffusionTrainer(BaseTrainer):
         if isinstance(condition, int):
             condition = torch.ones([sample_num]).long().to(self.device) * condition
         else:
-            condition = condition.type(torch.float32).to(self.device).repeat(
+            condition = condition.type(self.dtype).to(self.device).repeat(
                 *([sample_num] + [1] * (condition.ndim - 1))
             )
 

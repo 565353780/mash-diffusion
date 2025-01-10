@@ -17,9 +17,11 @@ class MashDataset(Dataset):
         mash_folder_name: str,
         split: str = "train",
         transformer_id: str = 'ShapeNet',
+        dtype = torch.float32,
     ) -> None:
         self.dataset_root_folder_path = dataset_root_folder_path
         self.split = split
+        self.dtype = dtype
 
         self.mash_folder_path = self.dataset_root_folder_path + mash_folder_name + "/"
         assert os.path.exists(self.mash_folder_path)
@@ -80,7 +82,7 @@ class MashDataset(Dataset):
         mash_params = mash_params[permute_idxs]
 
         data = {
-            'mash_params': mash_params,
+            'mash_params': mash_params.to(self.dtype),
             'category_id': category_id,
         }
 

@@ -4,6 +4,8 @@ sys.path.append("../base-trainer/")
 sys.path.append("../dino-v2-detect/")
 sys.path.append("../distribution-manage/")
 
+import torch
+
 from ma_sh.Config.custom_path import toDatasetRootPath
 
 from mash_diffusion.Module.edm_trainer import EDMTrainer
@@ -21,6 +23,7 @@ def demo():
     model_file_path = None
     model_file_path = "../../output/edm-ShapeNet_03001627-24depth-v3/model_last.pth".replace('../../', './')
     device = "auto"
+    dtype = torch.float32
     warm_step_num = 2000
     finetune_step_num = -1
     lr = 2e-5
@@ -68,6 +71,7 @@ def demo():
         num_workers,
         model_file_path,
         device,
+        dtype,
         warm_step_num,
         finetune_step_num,
         lr,

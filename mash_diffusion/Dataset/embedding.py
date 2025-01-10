@@ -21,11 +21,13 @@ class EmbeddingDataset(Dataset):
         transformer_id: str = 'Objaverse_82K',
         load_embedding_from_single_file: bool = False,
         dataset_json_file_path: Union[str, None] = None,
+        dtype = torch.float32,
     ) -> None:
         self.dataset_root_folder_path = dataset_root_folder_path
         self.embedding_key = embedding_key
         self.split = split
         self.dataset_json_file_path = dataset_json_file_path
+        self.dtype = dtype
 
         self.mash_folder_path = self.dataset_root_folder_path + mash_folder_name + "/"
         self.embedding_root_folder_path = self.dataset_root_folder_path + embedding_folder_name + "/"
@@ -182,8 +184,8 @@ class EmbeddingDataset(Dataset):
         mash_params = mash_params[permute_idxs]
 
         data = {
-            "mash_params": mash_params,
-            "embedding": embedding,
+            "mash_params": mash_params.to(self.dtype),
+            "embedding": embedding.to(self.dtype),
         }
 
         return data
