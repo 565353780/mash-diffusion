@@ -97,7 +97,7 @@ class BaseDiffusionTrainer(BaseTrainer):
             assert model_root_path is not None
 
             model_type = 'base'
-            model_file_path = model_root_path + '/DINOv2/dinov2_vitb14_reg4_pretrain.pth'
+            model_file_path = model_root_path + 'DINOv2/dinov2_vitb14_reg4_pretrain.pth'
             dtype = 'auto'
 
             self.dino_detector = DINODetector(model_type, model_file_path, dtype, self.device)
@@ -212,7 +212,7 @@ class BaseDiffusionTrainer(BaseTrainer):
 
         if self.training_mode in ['dino']:
             self.dataloader_dict["eval"] = {
-                "dataset": EmbeddingDataset(
+                "dataset": ImageDataset(
                     self.dataset_root_folder_path,
                     "Objaverse_82K/manifold_mash",
                     "Objaverse_82K/render_jpg",
@@ -233,10 +233,14 @@ class BaseDiffusionTrainer(BaseTrainer):
             data_dict["condition"] = data_dict["category_id"]
         elif "image" in data_dict.keys():
             image = data_dict["image"]
+            if image.ndim == 3:
+                image = image.unsqueeze(0)
+
+            image = image.to(self.device)
 
             dino_feature = self.dino_detector.detect(image)
 
-            data_dict["condition"] = dino_feature.to(self.device)
+            data_dict["condition"] = dino_feature
         elif "embedding" in data_dict.keys():
             embedding = data_dict["embedding"]
 
