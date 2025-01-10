@@ -331,7 +331,7 @@ class BaseDiffusionTrainer(BaseTrainer):
             )
 
         print("[INFO][BaseDiffusionTrainer::sampleModelStep]")
-        print("\t start diffuse", sample_num, "mashs....")
+        print("\t start sample", sample_num, "mashs....")
 
         sampled_array = self.sampleMashData(model, condition, sample_num)
 
