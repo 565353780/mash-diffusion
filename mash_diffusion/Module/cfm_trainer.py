@@ -152,7 +152,7 @@ class CFMTrainer(BaseDiffusionTrainer):
         timestamp_num = 2
 
         query_t = torch.linspace(0, 1, timestamp_num).to(self.device)
-        query_t = torch.pow(query_t, 1.0 / 2.0)
+        query_t = torch.pow(query_t, 0.5)
 
         batch_seeds = torch.arange(sample_num)
         rnd = StackedRandomGenerator(self.device, batch_seeds)
