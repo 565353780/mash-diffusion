@@ -34,7 +34,7 @@ def sampleImagesToVideo(
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     video = cv2.VideoWriter(save_video_file_path, fourcc, video_fps, video_size)
 
-    print('[INFO][sampe_to_video::sampleImagesToVideo]')
+    print('[INFO][video::sampleImagesToVideo]')
     print('\t start convert sample images to video...')
     print('\t', rel_image_file_path)
     print('\t -->')
