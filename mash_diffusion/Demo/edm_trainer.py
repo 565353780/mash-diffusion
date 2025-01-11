@@ -56,9 +56,8 @@ def demo():
         lr = 2e-5
     elif training_mode == 'dino':
         batch_size = 12
-        accum_iter = 2
-        model_file_path = "../../output/edm-Objaverse_82K-single_image-v2/model_last.pth".replace('../../', './')
-        model_file_path = None
+        accum_iter = 3
+        model_file_path = "../../output/edm-Objaverse_82K-single_image-v3/model_last.pth".replace('../../', './')
         lr = 2e-4
     else:
         exit()

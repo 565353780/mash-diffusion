@@ -16,7 +16,7 @@ def demo():
     assert dataset_root_folder_path is not None
     print(dataset_root_folder_path)
 
-    training_mode = 'dino'
+    training_mode = 'multi_modal'
     batch_size = 12
     accum_iter = 2
     num_workers = 16
@@ -47,12 +47,12 @@ def demo():
     elif training_mode == 'category':
         batch_size = 24
         accum_iter = 5
-        model_file_path = "../../output/cfm-ShapeNet-category-v4/model_last.pth".replace('../../', './')
-        lr = 2e-4
+        model_file_path = "../../output/cfm-ShapeNet-category-v5/model_last.pth".replace('../../', './')
+        lr = 2e-5
     elif training_mode == 'multi_modal':
         batch_size = 24
-        accum_iter = 2
-        model_file_path = "../../output/cfm-ShapeNet-multi_modal-v1/model_last.pth".replace('../../', './')
+        accum_iter = 5
+        model_file_path = "../../output/cfm-ShapeNet-category-v6/model_last.pth".replace('../../', './')
         lr = 2e-5
     elif training_mode == 'dino':
         batch_size = 12

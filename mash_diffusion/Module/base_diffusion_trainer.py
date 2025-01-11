@@ -216,7 +216,7 @@ class BaseDiffusionTrainer(BaseTrainer):
                 "repeat_num": 1,
             }
 
-        if self.training_mode in ['single_shape', 'category', 'multi_modal']:
+        elif self.training_mode in ['single_shape', 'category']:
             self.dataloader_dict["eval"] = {
                 "dataset": MashDataset(
                     self.dataset_root_folder_path,
@@ -227,7 +227,23 @@ class BaseDiffusionTrainer(BaseTrainer):
                 ),
             }
 
-        if self.training_mode in ['dino']:
+        elif self.training_mode in ['multi_modal']:
+            self.dataloader_dict['eval'] = {
+                "dataset": EmbeddingDataset(
+                    self.dataset_root_folder_path,
+                    "MashV4/ShapeNet",
+                    "PointsEmbedding/ShapeNet",
+                    "random",
+                    "eval",
+                    'ShapeNet',
+                    True,
+                    None,
+                    self.dtype,
+                ),
+                "repeat_num": 1,
+            }
+
+        elif self.training_mode in ['dino']:
             self.dataloader_dict["eval"] = {
                 "dataset": ImageDataset(
                     self.dataset_root_folder_path,
@@ -240,9 +256,10 @@ class BaseDiffusionTrainer(BaseTrainer):
                 ),
             }
 
-        self.dataloader_dict["eval"]["dataset"].paths_list = self.dataloader_dict[
-            "eval"
-        ]["dataset"].paths_list[:64]
+        if 'eval' in self.dataloader_dict.keys():
+            self.dataloader_dict["eval"]["dataset"].paths_list = self.dataloader_dict[
+                "eval"
+            ]["dataset"].paths_list[:64]
 
         return True
 
