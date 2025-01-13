@@ -51,8 +51,8 @@ def demo():
         lr = 2e-5
     elif training_mode == 'multi_modal':
         batch_size = 24
-        accum_iter = 5
-        model_file_path = "../../output/cfm-ShapeNet-category-v6/model_last.pth".replace('../../', './')
+        accum_iter = 3
+        model_file_path = "../../output/cfm-ShapeNet-multi_modal-v2/model_last.pth".replace('../../', './')
         lr = 2e-5
     elif training_mode == 'dino':
         batch_size = 12
