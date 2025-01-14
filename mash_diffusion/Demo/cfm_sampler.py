@@ -46,19 +46,14 @@ def demo():
     model_root_path = toModelRootPath()
     assert model_root_path is not None
 
-    code_root_path = '/home/chli/github/ASDF/'
-
-    cfm_model_file_path = code_root_path + 'mash-diffusion/output/cfm-ShapeNet_03001627/model_last.pth'
-    occ_model_file_path = code_root_path + 'mash-occ-decoder/output/512dim-v4/model_best.pth'
+    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image/model_last.pth'
+    occ_model_file_path = model_root_path + 'MashOCCDecoder/512dim-v4/model_best.pth'
     use_ema = True
     device = 'cuda:0'
-    transformer_id = 'ShapeNet_03001627'
+    transformer_id = 'Objaverse_82K'
     ulip_model_file_path = model_root_path + 'ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
     open_clip_model_file_path = model_root_path + 'CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
-    dino_model_file_path = model_root_path + 'DINOv2/dinov2_vitl14_reg4_pretrain.pth'
-
-    cfm_model_file_path = code_root_path + 'mash-diffusion/output/cfm-Objaverse_82K-single_image-v4-tmp/model_last.pth'
-    transformer_id = 'Objaverse_82K'
+    dino_model_file_path = model_root_path + 'DINOv2/dinov2_vitb14_reg4_pretrain.pth'
 
     save_folder_path = './output/sample/' + getCurrentTime() + '/'
     sample_id_num = 1

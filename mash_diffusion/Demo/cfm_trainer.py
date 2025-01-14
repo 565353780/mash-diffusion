@@ -22,6 +22,7 @@ def demo():
     num_workers = 16
     model_file_path = None
     # model_file_path = "../../output/cfm-ShapeNet_03001627-512cond-inpainting-v2/model_last.pth".replace('../../', './')
+    weights_only = False
     device = "auto"
     dtype = torch.float32
     warm_step_num = 2000
@@ -69,6 +70,7 @@ def demo():
         accum_iter,
         num_workers,
         model_file_path,
+        weights_only,
         device,
         dtype,
         warm_step_num,

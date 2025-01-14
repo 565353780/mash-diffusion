@@ -48,8 +48,8 @@ class CFMSampler(object):
             self.d_head = 64
             self.depth = 24
         elif transformer_id == 'Objaverse_82K':
-            self.context_dim = 1024
-            self.n_heads = 16
+            self.context_dim = 768
+            self.n_heads = 8
             self.d_head = 64
             self.depth = 24
 
@@ -82,7 +82,7 @@ class CFMSampler(object):
 
         self.dino_detector = None
         if dino_model_file_path is not None:
-            self.dino_detector = DINODetector('large', dino_model_file_path, device)
+            self.dino_detector = DINODetector('base', dino_model_file_path, 'auto', device)
 
         self.occ_detector = None
         if occ_model_file_path is not None:
