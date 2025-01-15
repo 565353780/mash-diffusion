@@ -445,6 +445,7 @@ class CFMSampler(object):
                     gpu_id=gpu_id,
                 )
                 if process is not None:
+                    process.start()
                     process_list.append(process)
 
                 process = BlenderRenderer.renderFolder(
@@ -456,6 +457,7 @@ class CFMSampler(object):
                     gpu_id=gpu_id,
                 )
                 if process is not None:
+                    process.start()
                     process_list.append(process)
 
                 process = BlenderRenderer.renderFolder(
@@ -467,13 +469,14 @@ class CFMSampler(object):
                     gpu_id=gpu_id,
                 )
                 if process is not None:
+                    process.start()
                     process_list.append(process)
 
         if len(process_list) > 0:
             print('[INFO][CFMSampler::samplePipeline]')
             print('\t start wait BlenderRenderer finished...')
             for process in process_list:
-                process.wait()
+                process.join()
 
             print('[INFO][CFMSampler::samplePipeline]')
             print('\t all BlenderRenderer finished!')
