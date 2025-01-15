@@ -57,9 +57,9 @@ def demo():
     open_clip_model_file_path = model_root_path + 'CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
     dino_model_file_path = model_root_path + 'DINOv2/dinov2_vitb14_reg4_pretrain.pth'
 
-    save_folder_path = './output/sample/' + getCurrentTime() + '/'
-    sample_id_num = 1
-    sample_num = 10
+    save_folder_path = '/home/chli/chLi/Results/mash-diffusion/output/sample/' + getCurrentTime() + '/'
+    sample_id_num = 10
+    sample_num = 20
     timestamp_num = 2
     sample_category = False
     sample_dino = False
