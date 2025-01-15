@@ -20,6 +20,8 @@ from ulip_manage.Module.detector import Detector as ULIPDetector
 
 from dino_v2_detect.Module.detector import Detector as DINODetector
 
+from blender_manage.Module.blender_renderer import BlenderRenderer
+
 from mash_diffusion.Model.unet2d import MashUNet
 from mash_diffusion.Model.cfm_latent_transformer import CFMLatentTransformer
 from mash_diffusion.Method.path import createFileFolder
@@ -367,6 +369,14 @@ class CFMSampler(object):
                 with open(current_save_folder_path + 'condition_text.txt', 'w') as f:
                     f.write(text)
 
+            current_save_mash_folder_path = current_save_folder_path + 'mash/'
+            current_save_pcd_folder_path = current_save_folder_path + 'pcd/'
+            current_save_recon_folder_path = current_save_folder_path + 'recon/'
+            current_save_recon_smooth_folder_path = current_save_folder_path + 'recon_smooth/'
+            current_save_render_pcd_folder_path = current_save_folder_path + 'render_pcd/'
+            current_save_render_recon_folder_path = current_save_folder_path + 'render_recon/'
+            current_save_render_recon_smooth_folder_path = current_save_folder_path + 'render_recon_smooth/'
+
             print("start create mash files,", j + 1, '/', sampled_array.shape[0], "...")
             for i in tqdm(range(sample_num)):
 
@@ -395,10 +405,10 @@ class CFMSampler(object):
 
                 mash_model.translate(translate)
 
-                current_save_mash_file_path = current_save_folder_path + 'mash/sample_' + str(i+1) + '_mash.npy'
-                current_save_pcd_file_path = current_save_folder_path + 'pcd/sample_' + str(i+1) + '_pcd.ply'
-                current_save_recon_mesh_file_path = current_save_folder_path + 'recon/sample_' + str(i+1) + '_mesh.ply'
-                current_save_recon_smooth_mesh_file_path = current_save_folder_path + 'recon_smooth/sample_' + str(i+1) + '_mesh.ply'
+                current_save_mash_file_path = current_save_mash_folder_path + 'sample_' + str(i+1) + '_mash.npy'
+                current_save_pcd_file_path = current_save_pcd_folder_path + 'sample_' + str(i+1) + '_pcd.ply'
+                current_save_recon_mesh_file_path = current_save_recon_folder_path + 'sample_' + str(i+1) + '_mesh.ply'
+                current_save_recon_smooth_mesh_file_path = current_save_recon_smooth_folder_path + 'sample_' + str(i+1) + '_mesh.ply'
 
                 mash_model.saveParamsFile(current_save_mash_file_path, True)
                 mash_model.saveAsPcdFile(current_save_pcd_file_path, True)
@@ -417,5 +427,36 @@ class CFMSampler(object):
                         edge_angle=15.0,
                         feature_angle=45.0,
                         overwrite=True)
+
+            if BlenderRenderer.isValid():
+                use_gpu = False
+                overwrite = False
+                is_background = True
+                gpu_id = 0
+
+                BlenderRenderer.renderFolder(
+                    shape_folder_path=current_save_pcd_folder_path,
+                    save_image_folder_path=current_save_render_pcd_folder_path,
+                    use_gpu=use_gpu,
+                    overwrite=overwrite,
+                    is_background=is_background,
+                    gpu_id=gpu_id,
+                )
+                BlenderRenderer.renderFolder(
+                    shape_folder_path=current_save_recon_folder_path,
+                    save_image_folder_path=current_save_render_recon_folder_path,
+                    use_gpu=use_gpu,
+                    overwrite=overwrite,
+                    is_background=is_background,
+                    gpu_id=gpu_id,
+                )
+                BlenderRenderer.renderFolder(
+                    shape_folder_path=current_save_recon_smooth_folder_path,
+                    save_image_folder_path=current_save_render_recon_smooth_folder_path,
+                    use_gpu=use_gpu,
+                    overwrite=overwrite,
+                    is_background=is_background,
+                    gpu_id=gpu_id,
+                )
 
         return True

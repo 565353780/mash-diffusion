@@ -1,5 +1,16 @@
 # MASH Diffusion
 
+## Install Blender
+
+```bash
+https://www.blender.org/download/
+->
+# MacOS
+'/Applications/Blender.app/Contents/MacOS/Blender'
+# Linux
+$HOME/Install/blender/blender
+```
+
 ## Setup
 
 ```bash

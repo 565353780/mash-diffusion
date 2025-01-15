@@ -3,6 +3,7 @@ import sys
 sys.path.append("../ma-sh/")
 sys.path.append("../wn-nc/")
 sys.path.append("../ulip-manage/")
+sys.path.append('../blender-manage/')
 sys.path.append("../dino-v2-detect/")
 sys.path.append("../mash-occ-decoder/")
 sys.path.append('../distribution-manage/')
@@ -49,7 +50,7 @@ def demo():
     cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image-0115/model_last.pth'
     cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-ShapeNet-multi_modal-0115/model_last.pth'
     occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0115/model_last.pth'
-    cfm_use_ema = False
+    cfm_use_ema = True
     occ_use_ema = False
     device = 'cuda:0'
     transformer_id = 'ShapeNet'
