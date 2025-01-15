@@ -229,4 +229,7 @@ def demo():
             timestamp_num,
             save_results_only,
             mash_file_path_list)
+
+    cfm_sampler.waitRender()
+
     return True

@@ -98,6 +98,8 @@ class CFMSampler(object):
                 device=device)
 
         self.mesh_smoother = MeshSmoother()
+
+        self.process_list = []
         return
 
     def toInitialMashModel(self, device: Union[str, None]=None) -> Mash:
@@ -350,8 +352,6 @@ class CFMSampler(object):
 
         mash_model = self.toInitialMashModel()
 
-        process_list = []
-
         for j in range(sampled_array.shape[0]):
             if save_results_only:
                 if j != sampled_array.shape[0] - 1:
@@ -446,7 +446,7 @@ class CFMSampler(object):
                 )
                 if process is not None:
                     process.start()
-                    process_list.append(process)
+                    self.process_list.append(process)
 
                 process = BlenderRenderer.renderFolder(
                     shape_folder_path=current_save_recon_folder_path,
@@ -458,7 +458,7 @@ class CFMSampler(object):
                 )
                 if process is not None:
                     process.start()
-                    process_list.append(process)
+                    self.process_list.append(process)
 
                 process = BlenderRenderer.renderFolder(
                     shape_folder_path=current_save_recon_smooth_folder_path,
@@ -470,15 +470,20 @@ class CFMSampler(object):
                 )
                 if process is not None:
                     process.start()
-                    process_list.append(process)
+                    self.process_list.append(process)
 
-        if len(process_list) > 0:
-            print('[INFO][CFMSampler::samplePipeline]')
-            print('\t start wait BlenderRenderer finished...')
-            for process in process_list:
-                process.join()
+        return True
 
-            print('[INFO][CFMSampler::samplePipeline]')
-            print('\t all BlenderRenderer finished!')
+    def waitRender(self) -> bool:
+        if len(self.process_list) == 0:
+            return True
+
+        print('[INFO][CFMSampler::waitRender]')
+        print('\t start wait BlenderRenderer finished...')
+        for process in self.process_list:
+            process.join()
+
+        print('[INFO][CFMSampler::waitRender]')
+        print('\t all BlenderRenderer finished!')
 
         return True
