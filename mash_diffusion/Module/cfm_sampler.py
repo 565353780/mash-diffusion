@@ -350,6 +350,8 @@ class CFMSampler(object):
 
         mash_model = self.toInitialMashModel()
 
+        process_list = []
+
         for j in range(sampled_array.shape[0]):
             if save_results_only:
                 if j != sampled_array.shape[0] - 1:
@@ -434,7 +436,7 @@ class CFMSampler(object):
                 is_background = True
                 gpu_id = 0
 
-                BlenderRenderer.renderFolder(
+                process = BlenderRenderer.renderFolder(
                     shape_folder_path=current_save_pcd_folder_path,
                     save_image_folder_path=current_save_render_pcd_folder_path,
                     use_gpu=use_gpu,
@@ -442,7 +444,10 @@ class CFMSampler(object):
                     is_background=is_background,
                     gpu_id=gpu_id,
                 )
-                BlenderRenderer.renderFolder(
+                if process is not None:
+                    process_list.append(process)
+
+                process = BlenderRenderer.renderFolder(
                     shape_folder_path=current_save_recon_folder_path,
                     save_image_folder_path=current_save_render_recon_folder_path,
                     use_gpu=use_gpu,
@@ -450,7 +455,10 @@ class CFMSampler(object):
                     is_background=is_background,
                     gpu_id=gpu_id,
                 )
-                BlenderRenderer.renderFolder(
+                if process is not None:
+                    process_list.append(process)
+
+                process = BlenderRenderer.renderFolder(
                     shape_folder_path=current_save_recon_smooth_folder_path,
                     save_image_folder_path=current_save_render_recon_smooth_folder_path,
                     use_gpu=use_gpu,
@@ -458,5 +466,16 @@ class CFMSampler(object):
                     is_background=is_background,
                     gpu_id=gpu_id,
                 )
+                if process is not None:
+                    process_list.append(process)
+
+        if len(process_list) > 0:
+            print('[INFO][CFMSampler::samplePipeline]')
+            print('\t start wait BlenderRenderer finished...')
+            for process in process_list:
+                process.wait()
+
+            print('[INFO][CFMSampler::samplePipeline]')
+            print('\t all BlenderRenderer finished!')
 
         return True
