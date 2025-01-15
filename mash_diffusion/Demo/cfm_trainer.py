@@ -52,14 +52,16 @@ def demo():
         lr = 2e-5
     elif training_mode == 'multi_modal':
         batch_size = 24
-        accum_iter = 3
-        model_file_path = "../../output/cfm-ShapeNet-multi_modal-v2/model_last.pth".replace('../../', './')
-        lr = 2e-5
+        accum_iter = 15
+        model_file_path = "../../output/cfm-ShapeNet-multi_modal-v4/model_last.pth".replace('../../', './')
+        lr = 5e-5
+        lr_batch_size = 1024
     elif training_mode == 'dino':
-        batch_size = 12
-        accum_iter = 2
-        model_file_path = "../../output/cfm-Objaverse_82K-single_image-512dim-v1/model_last.pth".replace('../../', './')
-        lr = 2e-4
+        batch_size = 13
+        accum_iter = 10
+        model_file_path = "../../output/cfm-Objaverse_82K-single_image-v7/model_last.pth".replace('../../', './')
+        lr = 1e-4
+        lr_batch_size = 1024
     else:
         exit()
 

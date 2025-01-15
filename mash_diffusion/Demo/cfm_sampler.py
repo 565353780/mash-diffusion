@@ -46,25 +46,27 @@ def demo():
     model_root_path = toModelRootPath()
     assert model_root_path is not None
 
-    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image/model_last.pth'
-    occ_model_file_path = model_root_path + 'MashOCCDecoder/512dim-v4/model_best.pth'
-    use_ema = True
+    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image-0115/model_last.pth'
+    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-ShapeNet-multi_modal-0115/model_last.pth'
+    occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0115/model_last.pth'
+    cfm_use_ema = False
+    occ_use_ema = False
     device = 'cuda:0'
-    transformer_id = 'Objaverse_82K'
+    transformer_id = 'ShapeNet'
     ulip_model_file_path = model_root_path + 'ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
     open_clip_model_file_path = model_root_path + 'CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
     dino_model_file_path = model_root_path + 'DINOv2/dinov2_vitb14_reg4_pretrain.pth'
 
     save_folder_path = './output/sample/' + getCurrentTime() + '/'
     sample_id_num = 1
-    sample_num = 20
+    sample_num = 10
     timestamp_num = 2
     sample_category = False
-    sample_dino = True
-    sample_ulip_image = False
-    sample_ulip_points = False
-    sample_ulip_text = False
-    sample_fixed_anchor = False
+    sample_dino = False
+    sample_ulip_image = True
+    sample_ulip_points = True
+    sample_ulip_text = True
+    sample_fixed_anchor = True
     save_results_only = True
 
     if not sample_dino:
@@ -75,7 +77,8 @@ def demo():
     cfm_sampler = CFMSampler(
         cfm_model_file_path,
         occ_model_file_path,
-        use_ema,
+        cfm_use_ema,
+        occ_use_ema,
         device,
         transformer_id,
         ulip_model_file_path,
@@ -88,7 +91,7 @@ def demo():
         '02773838', # 2: bag
         '02828884', # 6: bench
         '02876657', # 9: bottle
-        '02958343', # 16: bottle
+        '02958343', # 16: car
         '03001627', # 18: chair
         '03211117', # 22: monitor
         '03261776', # 23: earphone
@@ -106,6 +109,8 @@ def demo():
         '04530566', # 53: watercraft
     ]
     valid_category_id_list = [
+        '02691156', # 0: airplane
+        '02958343', # 16: car
         '03001627', # 18: chair
     ]
 
@@ -141,18 +146,18 @@ def demo():
 
     if sample_ulip_image:
         image_id_list = [
-            '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
-            '03001627/1a38407b3036795d19fb4103277a6b93',
-            '03001627/1ab8a3b55c14a7b27eaeab1f0c9120b7',
             '02691156/1a6ad7a24bb89733f412783097373bdc',
             '02691156/1a32f10b20170883663e90eaf6b4ca52',
             '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
             '02691156/1adb40469ec3636c3d64e724106730cf',
+            '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
+            '03001627/1a38407b3036795d19fb4103277a6b93',
+            '03001627/1ab8a3b55c14a7b27eaeab1f0c9120b7',
         ]
-        image_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', valid_category_id_list, sample_id_num)
+        image_id_list = toRandomIdList('/home/chli/Dataset_tmp/MashV4/ShapeNet/', valid_category_id_list, sample_id_num)
         for image_id in image_id_list:
             print('start sample for image ' + image_id + '...')
-            image_file_path = '/home/chli/chLi/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
+            image_file_path = '/home/chli/chLi2/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
             if not os.path.exists(image_file_path):
                 continue
             cfm_sampler.samplePipeline(
@@ -173,10 +178,10 @@ def demo():
             '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
             '02691156/1adb40469ec3636c3d64e724106730cf',
         ]
-        points_id_list = toRandomIdList('/home/chli/Dataset/MashV4/ShapeNet/', valid_category_id_list, sample_id_num)
+        points_id_list = toRandomIdList('/home/chli/Dataset_tmp/MashV4/ShapeNet/', valid_category_id_list, sample_id_num)
         for points_id in points_id_list:
             print('start sample for points ' + points_id + '...')
-            mesh_file_path = '/home/chli/chLi/Dataset/ManifoldMesh/ShapeNet/' + points_id + '.obj'
+            mesh_file_path = '/home/chli/chLi2/Dataset/ManifoldMesh/ShapeNet/' + points_id + '.obj'
             if not os.path.exists(mesh_file_path):
                 continue
             points = Mesh(mesh_file_path).toSamplePoints(8192)
@@ -207,10 +212,11 @@ def demo():
                 sample_num,
                 timestamp_num,
                 save_results_only)
+            return
 
     if sample_fixed_anchor:
         mash_file_path_list = [
-            '../ma-sh/output/combined_mash.npy',
+            '/home/chli/chLi/Results/ma-sh/output/combined_mash.npy',
         ]
         categoty_id = '03001627'
         print('start sample for fixed anchor category ' + categoty_id + '...')

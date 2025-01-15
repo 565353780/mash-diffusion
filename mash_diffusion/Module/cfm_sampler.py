@@ -30,7 +30,8 @@ class CFMSampler(object):
         self,
         model_file_path: Union[str, None] = None,
         occ_model_file_path: Union[str, None] = None,
-        use_ema: bool = True,
+        cfm_use_ema: bool = True,
+        occ_use_ema: bool = True,
         device: str = "cpu",
         transformer_id: str = 'Objaverse_82K',
         ulip_model_file_path: Union[str, None] = None,
@@ -53,7 +54,7 @@ class CFMSampler(object):
             self.d_head = 64
             self.depth = 24
 
-        self.use_ema = use_ema
+        self.use_ema = cfm_use_ema
         self.device = device
 
         self.transformer = getTransformer(transformer_id)
@@ -87,7 +88,8 @@ class CFMSampler(object):
         self.occ_detector = None
         if occ_model_file_path is not None:
             self.occ_detector = OCCDetector(
-                occ_model_file_path,
+                model_file_path=occ_model_file_path,
+                use_ema=occ_use_ema,
                 batch_size=1200000,
                 resolution=128,
                 transformer_id='Objaverse_82K',
@@ -131,6 +133,41 @@ class CFMSampler(object):
         print("\t model_file_path:", model_file_path)
         return True
 
+    def getCondition(self,
+                     condition: Union[int, np.ndarray, torch.Tensor],
+                     batch_size: int = 1,
+                     ) -> Union[torch.Tensor, None]:
+        if isinstance(condition, int):
+            condition_tensor = torch.ones([batch_size]).long().to(self.device) * condition
+        elif isinstance(condition, np.ndarray):
+            condition_tensor = torch.from_numpy(condition).type(torch.float32).to(self.device)
+
+            if condition_tensor.ndim == 1:
+                condition_tensor = condition_tensor.view(1, 1, -1)
+            elif condition_tensor.ndim == 2:
+                condition_tensor = condition_tensor.unsqueeze(1)
+            elif condition_tensor.ndim == 4:
+                condition_tensor = torch.squeeze(condition_tensor, dim=1)
+
+            condition_tensor = condition_tensor.repeat(*([batch_size] + [1] * (condition_tensor.ndim - 1)))
+        elif isinstance(condition, torch.Tensor):
+            condition_tensor = condition.type(torch.float32).to(self.device)
+
+            if condition_tensor.ndim == 1:
+                condition_tensor = condition_tensor.view(1, 1, -1)
+            elif condition_tensor.ndim == 2:
+                condition_tensor = condition_tensor.unsqueeze(1)
+            elif condition_tensor.ndim == 4:
+                condition_tensor = torch.squeeze(condition_tensor, dim=1)
+
+            condition_tensor = condition_tensor.repeat(*([batch_size] + [1] * (condition_tensor.ndim - 1)))
+        else:
+            print('[ERROR][CFMSampler::getCondition]')
+            print('\t condition type not valid!')
+            return None
+
+        return condition_tensor
+
     @torch.no_grad()
     def sample(
         self,
@@ -140,17 +177,12 @@ class CFMSampler(object):
         ) -> np.ndarray:
         self.model.eval()
 
-        if isinstance(condition, int):
-            condition_tensor = torch.ones([sample_num]).long().to(self.device) * condition
-        elif isinstance(condition, np.ndarray):
-            # condition dim: 1x768
-            condition_tensor = torch.from_numpy(condition).type(torch.float32).to(self.device).repeat(*([sample_num] + [1] * (condition.ndim - 1)))
-        elif isinstance(condition, torch.Tensor):
-            condition_tensor = condition.type(torch.float32).to(self.device).repeat(*([sample_num] + [1] * (condition.ndim - 1)))
-        else:
+        condition_tensor = self.getCondition(condition, sample_num)
+
+        if condition_tensor is None:
             print('[ERROR][CFMSampler::sample]')
-            print('\t condition type not valid!')
-            return np.ndarray()
+            print('\t getCondition failed!')
+            return np.ndarray([])
 
         query_t = torch.linspace(0, 1, timestamp_num).to(self.device)
         query_t = torch.pow(query_t, 0.5)
@@ -178,15 +210,12 @@ class CFMSampler(object):
     ) -> Union[np.ndarray, None]:
         self.model.eval()
 
-        if isinstance(condition, int):
-            condition_tensor = torch.ones([sample_num]).long().to(self.device) * condition
-        elif isinstance(condition, np.ndarray):
-            # condition dim: 1x768
-            condition_tensor = torch.from_numpy(condition).type(torch.float32).to(self.device).repeat(sample_num, 1)
-        else:
-            print('[ERROR][CFMSampler::sample]')
-            print('\t condition type not valid!')
-            return np.ndarray()
+        condition_tensor = self.getCondition(condition, sample_num)
+
+        if condition_tensor is None:
+            print('[ERROR][CFMSampler::sampleWithFixedAnchors]')
+            print('\t getCondition failed!')
+            return np.ndarray([])
 
         query_t = torch.linspace(0,1,timestamp_num).to(self.device)
         query_t = torch.pow(query_t, 1.0 / 2.0)
@@ -383,7 +412,7 @@ class CFMSampler(object):
                     self.mesh_smoother.smoothMesh(
                         current_save_recon_mesh_file_path,
                         current_save_recon_smooth_mesh_file_path,
-                        n_iter=100,
+                        n_iter=10,
                         pass_band=0.01,
                         edge_angle=15.0,
                         feature_angle=45.0,

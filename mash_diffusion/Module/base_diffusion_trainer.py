@@ -281,6 +281,8 @@ class BaseDiffusionTrainer(BaseTrainer):
         elif "embedding" in data_dict.keys():
             embedding = data_dict["embedding"]
 
+            if embedding.ndim == 1:
+                embedding = embedding.view(1, 1, -1)
             if embedding.ndim == 2:
                 embedding = embedding.unsqueeze(1)
             elif embedding.ndim == 4:
