@@ -26,7 +26,7 @@ from blender_manage.Module.blender_renderer import BlenderRenderer
 
 from mash_diffusion.Model.unet2d import MashUNet
 from mash_diffusion.Model.cfm_latent_transformer import CFMLatentTransformer
-from mash_diffusion.Method.path import createFileFolder
+from mash_diffusion.Method.path import removeFile, createFileFolder
 
 
 class CFMSampler(object):
@@ -424,7 +424,7 @@ class CFMSampler(object):
                 mash_model.translate(translate)
 
                 current_save_mash_file_path = current_save_mash_folder_path + 'sample_' + str(i+1) + '_mash.npy'
-                current_save_pcd_file_path = current_save_pcd_folder_path + 'sample_' + str(i+1) + '_pcd.xyz'
+                current_save_pcd_file_path = current_save_pcd_folder_path + 'sample_' + str(i+1) + '_pcd.ply'
                 current_save_wnnc_xyz_file_path = current_save_wnnc_normal_folder_path + 'sample_' + str(i+1) + '_pcd.xyz'
                 current_save_wnnc_mesh_file_path = current_save_wnnc_folder_path + 'sample_' + str(i+1) + '_mesh.ply'
                 current_save_wnnc_smooth_mesh_file_path = current_save_wnnc_smooth_folder_path + 'sample_' + str(i+1) + '_mesh.ply'
@@ -436,11 +436,16 @@ class CFMSampler(object):
 
                 if self.recon_wnnc:
                     if os.path.exists(current_save_pcd_file_path):
+                        tmp_xyz_file_path = './output/tmp_pcd.xyz'
+                        removeFile(tmp_xyz_file_path)
+                        createFileFolder(tmp_xyz_file_path)
+                        pcd = o3d.io.read_point_cloud(current_save_pcd_file_path)
+                        o3d.io.write_point_cloud(tmp_xyz_file_path, pcd, write_ascii=True)
                         self.wnnc_reconstructor.autoReconstructSurface(
-                            current_save_pcd_file_path,
+                            tmp_xyz_file_path,
                             current_save_wnnc_xyz_file_path,
                             current_save_wnnc_mesh_file_path,
-                            width_tag='l0',
+                            width_tag='l4',
                             wsmin=0.01,
                             wsmax=0.04,
                             iters=40,
