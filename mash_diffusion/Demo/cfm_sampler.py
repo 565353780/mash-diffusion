@@ -10,9 +10,10 @@ sys.path.append('../distribution-manage/')
 
 import os
 import random
+from tqdm import tqdm
 from typing import Union
 
-from ma_sh.Config.custom_path import toModelRootPath
+from ma_sh.Config.custom_path import toDatasetRootPath, toModelRootPath
 from ma_sh.Data.mesh import Mesh
 
 from mash_diffusion.Config.shapenet import CATEGORY_IDS
@@ -20,54 +21,80 @@ from mash_diffusion.Method.time import getCurrentTime
 from mash_diffusion.Module.cfm_sampler import CFMSampler
 
 
-def toRandomIdList(dataset_folder_path: str, valid_category_id_list: Union[list, None]=None, sample_id_num: int=100) -> list:
-    random_id_list = []
+def toRandomRelBasePathList(dataset_folder_path: str,
+                            data_type: str = '.npy',
+                            valid_category_id_list: Union[list, None]=None,
+                            per_category_sample_condition_num: int=100) -> list:
+    random_rel_base_path_list = []
 
     if valid_category_id_list is None:
         valid_category_id_list = os.listdir(dataset_folder_path)
 
-    for category_id in valid_category_id_list:
+    print('[INFO][cfm_sampler::toRandomRelBasePathList]')
+    print('\t start collect random rel base path from dataset...')
+    for category_id in tqdm(valid_category_id_list):
         category_folder_path = dataset_folder_path + category_id + '/'
         if not os.path.exists(category_folder_path):
             continue
 
-        model_id_list = os.listdir(category_folder_path)
+        rel_base_path_list = []
 
-        if sample_id_num >= len(model_id_list):
-            random_model_id_list = model_id_list
+        for root, _, files in os.walk(category_folder_path):
+            rel_folder_path = os.path.relpath(root, dataset_folder_path) + '/'
+
+            for file in files:
+                if not file.endswith(data_type) or file.endswith('_tmp' + data_type):
+                    continue
+
+                rel_base_path_list.append(rel_folder_path + file[:-len(data_type)])
+
+        if per_category_sample_condition_num >= len(rel_base_path_list):
+            random_rel_base_path_list += rel_base_path_list
         else:
-            random_model_id_list = random.sample(model_id_list, sample_id_num)
+            random_rel_base_path_list += random.sample(rel_base_path_list, per_category_sample_condition_num)
 
-        for random_model_id in random_model_id_list:
-            random_id_list.append(category_id + '/' + random_model_id.replace('.npy', ''))
-
-    return random_id_list
+    return random_rel_base_path_list
 
 def demo():
+    dataset_root_path = toDatasetRootPath()
     model_root_path = toModelRootPath()
+    assert dataset_root_path is not None
     assert model_root_path is not None
 
-    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image-0115/model_last.pth'
-    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-ShapeNet-multi_modal-0115/model_last.pth'
-    occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0115/model_last.pth'
-    cfm_use_ema = True
+    # this will decide the sample mode
+    # available ids: ['Objaverse_82K', 'ShapeNet']
+    # available sample modes:
+    # Objaverse_82K: sample_dino
+    # ShapeNet: sample_category, sample_ulip_image, sample_ulip_points, sample_ulip_text, sample_fixed_anchor
+    transformer_id = 'Objaverse_82K'
+
+    if transformer_id == 'Objaverse_82K':
+        cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image-0116/model_last.pth'
+    elif transformer_id == 'ShapeNet':
+        cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-ShapeNet-multi_modal-0116/model_last.pth'
+    else:
+        print('transformer id not valid!')
+        return False
+
+    occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0116/model_last.pth'
+    cfm_use_ema = False
     occ_use_ema = False
     device = 'cuda:0'
-    transformer_id = 'ShapeNet'
     ulip_model_file_path = model_root_path + 'ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
     open_clip_model_file_path = model_root_path + 'CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
     dino_model_file_path = model_root_path + 'DINOv2/dinov2_vitb14_reg4_pretrain.pth'
 
     save_folder_path = '/home/chli/chLi/Results/mash-diffusion/output/sample/' + getCurrentTime() + '/'
-    sample_id_num = 10
-    sample_num = 20
+    objaverse_per_category_sample_condition_num = 1
+    shapenet_per_category_sample_condition_num = 20
+    sample_conditioned_shape_num = 20
     timestamp_num = 2
-    sample_category = False
-    sample_dino = False
-    sample_ulip_image = True
-    sample_ulip_points = True
-    sample_ulip_text = True
-    sample_fixed_anchor = True
+    sample_dino = transformer_id == 'Objaverse_82K'
+    sample_category = False and (transformer_id == 'ShapeNet')
+    sample_ulip_image = False and (transformer_id == 'ShapeNet')
+    sample_ulip_points = False and (transformer_id == 'ShapeNet')
+    sample_ulip_text = False and (transformer_id == 'ShapeNet')
+    sample_fixed_anchor = True and (transformer_id == 'ShapeNet')
     save_results_only = True
 
     if not sample_dino:
@@ -75,19 +102,10 @@ def demo():
     if not sample_ulip_image and not sample_ulip_points and not sample_ulip_text:
         ulip_model_file_path = None
 
-    cfm_sampler = CFMSampler(
-        cfm_model_file_path,
-        occ_model_file_path,
-        cfm_use_ema,
-        occ_use_ema,
-        device,
-        transformer_id,
-        ulip_model_file_path,
-        open_clip_model_file_path,
-        dino_model_file_path,
-    )
-
-    valid_category_id_list = [
+    valid_objaverse_category_id_list = [
+        '000-' + str(i).zfill(3) for i in range(160)
+    ]
+    valid_shapenet_category_id_list = [
         '02691156', # 0: airplane
         '02773838', # 2: bag
         '02828884', # 6: bench
@@ -109,88 +127,98 @@ def demo():
         '04468005', # 52: train
         '04530566', # 53: watercraft
     ]
-    valid_category_id_list = [
+    valid_shapenet_category_id_list = [
         '02691156', # 0: airplane
         '02958343', # 16: car
         '03001627', # 18: chair
     ]
 
+    tmp_dataset_root_path = '/home/chli/chLi2/Dataset/'
+
+    cfm_sampler = CFMSampler(
+        cfm_model_file_path,
+        occ_model_file_path,
+        cfm_use_ema,
+        occ_use_ema,
+        device,
+        transformer_id,
+        ulip_model_file_path,
+        open_clip_model_file_path,
+        dino_model_file_path,
+    )
+
+    if sample_dino:
+        condition_root_folder_path = dataset_root_path + 'Objaverse_82K/render_jpg/'
+        data_type = '.jpg'
+
+        rel_base_path_list = toRandomRelBasePathList(condition_root_folder_path,
+                                                     data_type,
+                                                     valid_objaverse_category_id_list,
+                                                     objaverse_per_category_sample_condition_num)
+        for rel_base_path in rel_base_path_list:
+            print('start sample for condition ' + rel_base_path + '...')
+            condition_file_path = condition_root_folder_path + rel_base_path + data_type
+            if not os.path.exists(condition_file_path):
+                continue
+            cfm_sampler.samplePipeline(
+                save_folder_path + 'dino/' + rel_base_path + '/',
+                'dino',
+                condition_file_path,
+                sample_conditioned_shape_num,
+                timestamp_num,
+                save_results_only)
+
     if sample_category:
-        for categoty_id in valid_category_id_list:
+        for categoty_id in valid_shapenet_category_id_list:
             print('start sample for category ' + categoty_id + '...')
             cfm_sampler.samplePipeline(
                 save_folder_path + 'category/' + categoty_id + '/',
                 'category',
                 CATEGORY_IDS[categoty_id],
-                sample_num,
-                timestamp_num,
-                save_results_only)
-
-    if sample_dino:
-        image_id_list = [
-            '000-091/897ce33a65d04bb69eb3d87d0742464f/000.png',
-            '000-091/aba44d3812ae4377a5347b5a482f51ab/001.png',
-            '000-091/e7c39d9f92b94bd8a1d44986f5c37549/002.png',
-        ]
-        for image_id in image_id_list:
-            print('start sample for image ' + image_id + '...')
-            image_file_path = '/home/chli/chLi/Dataset/Objaverse_82K/render/' + image_id
-            if not os.path.exists(image_file_path):
-                continue
-            cfm_sampler.samplePipeline(
-                save_folder_path + 'dino/' + image_id + '/',
-                'dino',
-                image_file_path,
-                sample_num,
+                sample_conditioned_shape_num,
                 timestamp_num,
                 save_results_only)
 
     if sample_ulip_image:
-        image_id_list = [
-            '02691156/1a6ad7a24bb89733f412783097373bdc',
-            '02691156/1a32f10b20170883663e90eaf6b4ca52',
-            '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
-            '02691156/1adb40469ec3636c3d64e724106730cf',
-            '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
-            '03001627/1a38407b3036795d19fb4103277a6b93',
-            '03001627/1ab8a3b55c14a7b27eaeab1f0c9120b7',
-        ]
-        image_id_list = toRandomIdList('/home/chli/Dataset_tmp/MashV4/ShapeNet/', valid_category_id_list, sample_id_num)
-        for image_id in image_id_list:
-            print('start sample for image ' + image_id + '...')
-            image_file_path = '/home/chli/chLi2/Dataset/CapturedImage/ShapeNet/' + image_id + '/y_5_x_3.png'
-            if not os.path.exists(image_file_path):
+        condition_root_folder_path = tmp_dataset_root_path + 'CapturedImage/ShapeNet/'
+        data_type = '.png'
+
+        rel_base_path_list = toRandomRelBasePathList(condition_root_folder_path,
+                                                     data_type,
+                                                     valid_objaverse_category_id_list,
+                                                     shapenet_per_category_sample_condition_num)
+        for rel_base_path in rel_base_path_list:
+            print('start sample for condition ' + rel_base_path + '...')
+            condition_file_path = condition_root_folder_path + rel_base_path + data_type
+            if not os.path.exists(condition_file_path):
                 continue
             cfm_sampler.samplePipeline(
-                save_folder_path + 'ulip-image/' + image_id + '/',
-                'ulip-image',
-                image_file_path,
-                sample_num,
+                save_folder_path + 'ulip-condition/' + rel_base_path + '/',
+                'ulip-condition',
+                condition_file_path,
+                sample_conditioned_shape_num,
                 timestamp_num,
                 save_results_only)
 
     if sample_ulip_points:
-        points_id_list = [
-            '03001627/1a74a83fa6d24b3cacd67ce2c72c02e',
-            '03001627/1a38407b3036795d19fb4103277a6b93',
-            '03001627/1ab8a3b55c14a7b27eaeab1f0c9120b7',
-            '02691156/1a6ad7a24bb89733f412783097373bdc',
-            '02691156/1a32f10b20170883663e90eaf6b4ca52',
-            '02691156/1abe9524d3d38a54f49a51dc77a0dd59',
-            '02691156/1adb40469ec3636c3d64e724106730cf',
-        ]
-        points_id_list = toRandomIdList('/home/chli/Dataset_tmp/MashV4/ShapeNet/', valid_category_id_list, sample_id_num)
-        for points_id in points_id_list:
-            print('start sample for points ' + points_id + '...')
-            mesh_file_path = '/home/chli/chLi2/Dataset/ManifoldMesh/ShapeNet/' + points_id + '.obj'
-            if not os.path.exists(mesh_file_path):
+        condition_root_folder_path = tmp_dataset_root_path + 'ManifoldMesh/ShapeNet/'
+        data_type = '.obj'
+
+        rel_base_path_list = toRandomRelBasePathList(condition_root_folder_path,
+                                                     data_type,
+                                                     valid_objaverse_category_id_list,
+                                                     shapenet_per_category_sample_condition_num)
+        for rel_base_path in rel_base_path_list:
+            print('start sample for condition ' + rel_base_path + '...')
+            condition_file_path = condition_root_folder_path + rel_base_path + data_type
+            if not os.path.exists(condition_file_path):
                 continue
-            points = Mesh(mesh_file_path).toSamplePoints(8192)
+            points = Mesh(condition_file_path).toSamplePoints(8192)
             cfm_sampler.samplePipeline(
-                save_folder_path + 'ulip-points/' + points_id + '/',
+                save_folder_path + 'ulip-points/' + rel_base_path + '/',
                 'ulip-points',
                 points,
-                sample_num,
+                sample_conditioned_shape_num,
                 timestamp_num,
                 save_results_only)
 
@@ -210,10 +238,9 @@ def demo():
                 save_folder_path + 'ulip-text/' + str(i) + '/',
                 'ulip-text',
                 text,
-                sample_num,
+                sample_conditioned_shape_num,
                 timestamp_num,
                 save_results_only)
-            return
 
     if sample_fixed_anchor:
         mash_file_path_list = [
@@ -225,7 +252,7 @@ def demo():
             save_folder_path + 'category-fixed-anchors/' + categoty_id + '/',
             'category',
             CATEGORY_IDS[categoty_id],
-            sample_num,
+            sample_conditioned_shape_num,
             timestamp_num,
             save_results_only,
             mash_file_path_list)
