@@ -84,6 +84,9 @@ def demo():
     open_clip_model_file_path = model_root_path + 'CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
     dino_model_file_path = model_root_path + 'DINOv2/dinov2_vitb14_reg4_pretrain.pth'
 
+    # 24G GPU Memory required
+    occ_batch_size = 1200000
+
     save_folder_path = '/home/chli/chLi/Results/mash-diffusion/output/sample/' + getCurrentTime() + '/'
 
     objaverse_per_category_sample_condition_num = 100
@@ -150,6 +153,7 @@ def demo():
         ulip_model_file_path,
         open_clip_model_file_path,
         dino_model_file_path,
+        occ_batch_size
     )
 
     if sample_dino:

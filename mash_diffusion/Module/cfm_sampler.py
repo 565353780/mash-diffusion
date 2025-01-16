@@ -39,6 +39,7 @@ class CFMSampler(object):
         ulip_model_file_path: Union[str, None] = None,
         open_clip_model_file_path: Union[str, None] = None,
         dino_model_file_path: Union[str, None] = None,
+        occ_batch_size: int = 1200000,
     ) -> None:
         self.mash_channel = 400
         self.encoded_mash_channel = 25
@@ -92,7 +93,7 @@ class CFMSampler(object):
             self.occ_detector = OCCDetector(
                 model_file_path=occ_model_file_path,
                 use_ema=occ_use_ema,
-                batch_size=1200000,
+                batch_size=occ_batch_size,
                 resolution=128,
                 transformer_id='Objaverse_82K',
                 device=device)
