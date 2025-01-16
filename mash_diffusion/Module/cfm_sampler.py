@@ -363,7 +363,7 @@ class CFMSampler(object):
             os.makedirs(current_save_folder_path, exist_ok=True)
 
             if condition_type in ['dino', 'ulip-image']:
-                copyfile(image_file_path, current_save_folder_path + 'condition_image.png')
+                copyfile(image_file_path, current_save_folder_path + 'condition_image.' + image_file_path.split('.')[-1])
             elif condition_type == 'ulip-points':
                 pcd = o3d.geometry.PointCloud()
                 pcd.points = o3d.utility.Vector3dVector(points)
@@ -437,41 +437,83 @@ class CFMSampler(object):
                 is_background = True
                 gpu_id = 0
 
-                process = BlenderRenderer.renderFolder(
-                    shape_folder_path=current_save_pcd_folder_path,
-                    save_image_folder_path=current_save_render_pcd_folder_path,
-                    use_gpu=use_gpu,
-                    overwrite=overwrite,
-                    is_background=is_background,
-                    gpu_id=gpu_id,
-                )
-                if process is not None:
-                    process.start()
-                    self.process_list.append(process)
+                if condition_type == 'dino':
+                    render_image_num = 12
 
-                process = BlenderRenderer.renderFolder(
-                    shape_folder_path=current_save_recon_folder_path,
-                    save_image_folder_path=current_save_render_recon_folder_path,
-                    use_gpu=use_gpu,
-                    overwrite=overwrite,
-                    is_background=is_background,
-                    gpu_id=gpu_id,
-                )
-                if process is not None:
-                    process.start()
-                    self.process_list.append(process)
+                    process = BlenderRenderer.renderAroundFolder(
+                        shape_folder_path=current_save_pcd_folder_path,
+                        render_image_num=render_image_num,
+                        save_image_folder_path=current_save_render_pcd_folder_path,
+                        use_gpu=use_gpu,
+                        overwrite=overwrite,
+                        is_background=is_background,
+                        gpu_id=gpu_id,
+                    )
+                    if process is not None:
+                        process.start()
+                        self.process_list.append(process)
 
-                process = BlenderRenderer.renderFolder(
-                    shape_folder_path=current_save_recon_smooth_folder_path,
-                    save_image_folder_path=current_save_render_recon_smooth_folder_path,
-                    use_gpu=use_gpu,
-                    overwrite=overwrite,
-                    is_background=is_background,
-                    gpu_id=gpu_id,
-                )
-                if process is not None:
-                    process.start()
-                    self.process_list.append(process)
+                    process = BlenderRenderer.renderAroundFolder(
+                        shape_folder_path=current_save_recon_folder_path,
+                        render_image_num=render_image_num,
+                        save_image_folder_path=current_save_render_recon_folder_path,
+                        use_gpu=use_gpu,
+                        overwrite=overwrite,
+                        is_background=is_background,
+                        gpu_id=gpu_id,
+                    )
+                    if process is not None:
+                        process.start()
+                        self.process_list.append(process)
+
+                    process = BlenderRenderer.renderAroundFolder(
+                        shape_folder_path=current_save_recon_smooth_folder_path,
+                        render_image_num=render_image_num,
+                        save_image_folder_path=current_save_render_recon_smooth_folder_path,
+                        use_gpu=use_gpu,
+                        overwrite=overwrite,
+                        is_background=is_background,
+                        gpu_id=gpu_id,
+                    )
+                    if process is not None:
+                        process.start()
+                        self.process_list.append(process)
+                else:
+                    process = BlenderRenderer.renderFolder(
+                        shape_folder_path=current_save_pcd_folder_path,
+                        save_image_folder_path=current_save_render_pcd_folder_path,
+                        use_gpu=use_gpu,
+                        overwrite=overwrite,
+                        is_background=is_background,
+                        gpu_id=gpu_id,
+                    )
+                    if process is not None:
+                        process.start()
+                        self.process_list.append(process)
+
+                    process = BlenderRenderer.renderFolder(
+                        shape_folder_path=current_save_recon_folder_path,
+                        save_image_folder_path=current_save_render_recon_folder_path,
+                        use_gpu=use_gpu,
+                        overwrite=overwrite,
+                        is_background=is_background,
+                        gpu_id=gpu_id,
+                    )
+                    if process is not None:
+                        process.start()
+                        self.process_list.append(process)
+
+                    process = BlenderRenderer.renderFolder(
+                        shape_folder_path=current_save_recon_smooth_folder_path,
+                        save_image_folder_path=current_save_render_recon_smooth_folder_path,
+                        use_gpu=use_gpu,
+                        overwrite=overwrite,
+                        is_background=is_background,
+                        gpu_id=gpu_id,
+                    )
+                    if process is not None:
+                        process.start()
+                        self.process_list.append(process)
 
         return True
 
