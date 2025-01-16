@@ -85,9 +85,14 @@ def demo():
     dino_model_file_path = model_root_path + 'DINOv2/dinov2_vitb14_reg4_pretrain.pth'
 
     save_folder_path = '/home/chli/chLi/Results/mash-diffusion/output/sample/' + getCurrentTime() + '/'
-    objaverse_per_category_sample_condition_num = 1
+
+    objaverse_per_category_sample_condition_num = 100
+    objaverse_sample_conditioned_shape_num = 4
+
     shapenet_per_category_sample_condition_num = 20
-    sample_conditioned_shape_num = 20
+    shapenet_category_sample_conditioned_shape_num = 100
+    shapenet_multi_modal_sample_conditioned_shape_num = 20
+
     timestamp_num = 2
     sample_dino = transformer_id == 'Objaverse_82K'
     sample_category = False and (transformer_id == 'ShapeNet')
@@ -164,7 +169,7 @@ def demo():
                 save_folder_path + 'dino/' + rel_base_path + '/',
                 'dino',
                 condition_file_path,
-                sample_conditioned_shape_num,
+                objaverse_sample_conditioned_shape_num,
                 timestamp_num,
                 save_results_only)
 
@@ -175,7 +180,7 @@ def demo():
                 save_folder_path + 'category/' + categoty_id + '/',
                 'category',
                 CATEGORY_IDS[categoty_id],
-                sample_conditioned_shape_num,
+                shapenet_category_sample_conditioned_shape_num,
                 timestamp_num,
                 save_results_only)
 
@@ -196,7 +201,7 @@ def demo():
                 save_folder_path + 'ulip-condition/' + rel_base_path + '/',
                 'ulip-condition',
                 condition_file_path,
-                sample_conditioned_shape_num,
+                shapenet_multi_modal_sample_conditioned_shape_num,
                 timestamp_num,
                 save_results_only)
 
@@ -218,7 +223,7 @@ def demo():
                 save_folder_path + 'ulip-points/' + rel_base_path + '/',
                 'ulip-points',
                 points,
-                sample_conditioned_shape_num,
+                shapenet_multi_modal_sample_conditioned_shape_num,
                 timestamp_num,
                 save_results_only)
 
@@ -238,7 +243,7 @@ def demo():
                 save_folder_path + 'ulip-text/' + str(i) + '/',
                 'ulip-text',
                 text,
-                sample_conditioned_shape_num,
+                shapenet_multi_modal_sample_conditioned_shape_num,
                 timestamp_num,
                 save_results_only)
 
@@ -252,7 +257,7 @@ def demo():
             save_folder_path + 'category-fixed-anchors/' + categoty_id + '/',
             'category',
             CATEGORY_IDS[categoty_id],
-            sample_conditioned_shape_num,
+            shapenet_multi_modal_sample_conditioned_shape_num,
             timestamp_num,
             save_results_only,
             mash_file_path_list)
