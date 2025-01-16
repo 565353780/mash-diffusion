@@ -104,8 +104,8 @@ class CFMTrainer(BaseDiffusionTrainer):
         init_mash_params = torch.randn_like(mash_params)
 
         if is_training and self.fix_params:
-            fixed_prob = 2.0 * np.random.rand() - 1.0
-            fixed_prob = max(fixed_prob, 0.0)
+            fixed_prob = 1.25 * np.random.rand() - 0.25
+            fixed_prob = np.clip(fixed_prob, 0.0, 1.0)
 
             if fixed_prob > 0:
                 fixed_mask = torch.rand_like(mash_params) <= fixed_prob

@@ -60,7 +60,7 @@ class BaseDiffusionTrainer(BaseTrainer):
             self.n_heads = 8
             self.d_head = 64
             self.depth = 24
-            self.fix_params = False
+            self.fix_params = True
         elif training_mode in ['dino']:
             self.context_dim = 768
             self.n_heads = 8
