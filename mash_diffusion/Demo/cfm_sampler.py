@@ -95,7 +95,7 @@ def demo():
 
     shapenet_per_category_sample_condition_num = 20
     shapenet_category_sample_conditioned_shape_num = 100
-    shapenet_multi_modal_sample_conditioned_shape_num = 20
+    shapenet_multi_modal_sample_conditioned_shape_num = 40
 
     timestamp_num = 2
     sample_dino = transformer_id == 'Objaverse_82K'
@@ -103,7 +103,8 @@ def demo():
     sample_ulip_image = False and (transformer_id == 'ShapeNet')
     sample_ulip_points = False and (transformer_id == 'ShapeNet')
     sample_ulip_text = False and (transformer_id == 'ShapeNet')
-    sample_fixed_anchor = True and (transformer_id == 'ShapeNet')
+    sample_fixed_anchor = False and (transformer_id == 'ShapeNet')
+    sample_combined_anchor = True and (transformer_id == 'ShapeNet')
     save_results_only = True
 
     recon_wnnc = True
@@ -274,6 +275,11 @@ def demo():
     if sample_fixed_anchor:
         part_mash_folder_path = '/home/chli/chLi/Results/ma-sh/output/part_mash/'
         mash_rel_path_list = [
+            '02691156/595556bad291028733de69c9cd670995/part_mash_anc-70.npy',
+            '02691156/6f96517661cf1b6799ed03445864bd37/part_mash_anc-116.npy',
+            '02691156/73f6ccf1468de18d381fd507da445af6/part_mash_anc-83.npy',
+            '02691156/a75ab6e99a3542eb203936772104a82d/part_mash_anc-62.npy',
+            '02691156/cc9b7118034278fcb4cdad9a5bf52dd5/part_mash_anc-87.npy',
             '03001627/a75e83a3201cf5ac745004c6a29b0df0/part_mash_anc-128.npy',
             '03001627/d29445f24bbf1b1814c05b481f895c37/part_mash_anc-88.npy',
             '03001627/d3302b7fa6504cab1a461b43b8f257f/part_mash_anc-97.npy',
@@ -294,6 +300,47 @@ def demo():
                 timestamp_num,
                 save_results_only,
                 [mash_file_path])
+
+    if sample_combined_anchor:
+        part_mash_folder_path = '/home/chli/chLi/Results/ma-sh/output/part_mash/'
+        mash_rel_path_list = [
+            '02691156/595556bad291028733de69c9cd670995/part_mash_anc-70.npy',
+            '02691156/6f96517661cf1b6799ed03445864bd37/part_mash_anc-116.npy',
+            '02691156/73f6ccf1468de18d381fd507da445af6/part_mash_anc-83.npy',
+            '02691156/a75ab6e99a3542eb203936772104a82d/part_mash_anc-62.npy',
+            '02691156/cc9b7118034278fcb4cdad9a5bf52dd5/part_mash_anc-87.npy',
+            '03001627/a75e83a3201cf5ac745004c6a29b0df0/part_mash_anc-128.npy',
+            '03001627/d29445f24bbf1b1814c05b481f895c37/part_mash_anc-88.npy',
+            '03001627/d3302b7fa6504cab1a461b43b8f257f/part_mash_anc-97.npy',
+            '03001627/d3ff300de7ab36bfc8528ab560ff5e59/part_mash_anc-103.npy',
+        ]
+
+        combined_mash_ids_list = [
+            [0, 1],
+            [0, 2],
+            [0, 3],
+            [0, 4],
+            [5, 6],
+            [5, 7],
+            [8, 6],
+            [8, 7],
+        ]
+        for i, combined_mash_ids in enumerate(combined_mash_ids_list):
+            print('start sample for combined anchor ' + str(i) + '...')
+            mash_file_path_list = [
+                    part_mash_folder_path + mash_rel_path_list[combined_mash_id]
+                        for combined_mash_id in combined_mash_ids
+            ]
+            category_id = mash_rel_path_list[combined_mash_ids[0]].split('/')[0]
+            mash_id = str(i)
+            cfm_sampler.samplePipeline(
+                save_folder_path + 'category-combined-anchors/' + category_id + '/' + mash_id + '/',
+                'category',
+                CATEGORY_IDS[category_id],
+                shapenet_multi_modal_sample_conditioned_shape_num,
+                timestamp_num,
+                save_results_only,
+                mash_file_path_list)
 
     cfm_sampler.waitRender()
 

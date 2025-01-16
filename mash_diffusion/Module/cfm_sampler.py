@@ -445,7 +445,7 @@ class CFMSampler(object):
                             tmp_xyz_file_path,
                             current_save_wnnc_xyz_file_path,
                             current_save_wnnc_mesh_file_path,
-                            width_tag='l4',
+                            width_tag='l1',
                             wsmin=0.01,
                             wsmax=0.04,
                             iters=40,
