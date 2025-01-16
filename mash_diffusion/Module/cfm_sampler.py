@@ -9,11 +9,13 @@ from math import sqrt, ceil
 from shutil import copyfile
 
 from ma_sh.Model.mash import Mash
+from ma_sh.Method.io import loadMashFileParamsTensor
 from ma_sh.Method.transformer import getTransformer
 from ma_sh.Module.local_editor import LocalEditor
 
 from mash_occ_decoder.Module.detector import Detector as OCCDetector
 
+from wn_nc.Module.wnnc_reconstructor import WNNCReconstructor
 from wn_nc.Module.mesh_smoother import MeshSmoother
 
 from ulip_manage.Module.detector import Detector as ULIPDetector
@@ -40,11 +42,31 @@ class CFMSampler(object):
         open_clip_model_file_path: Union[str, None] = None,
         dino_model_file_path: Union[str, None] = None,
         occ_batch_size: int = 1200000,
+        recon_wnnc: bool = True,
+        recon_occ: bool = True,
+        smooth_wnnc: bool = True,
+        smooth_occ: bool = True,
+        render_pcd: bool = True,
+        render_wnnc: bool = True,
+        render_wnnc_smooth: bool = True,
+        render_occ: bool = True,
+        render_occ_smooth: bool = True,
+
     ) -> None:
         self.mash_channel = 400
         self.encoded_mash_channel = 25
         self.mask_degree = 3
         self.sh_degree = 2
+
+        self.recon_wnnc = recon_wnnc
+        self.recon_occ = recon_occ
+        self.smooth_wnnc = smooth_wnnc
+        self.smooth_occ = smooth_occ
+        self.render_pcd = render_pcd
+        self.render_wnnc = render_wnnc
+        self.render_wnnc_smooth = render_wnnc_smooth
+        self.render_occ = render_occ
+        self.render_occ_smooth = render_occ_smooth
 
         if transformer_id in ['ShapeNet', 'ShapeNet_03001627']:
             self.context_dim = 512
@@ -98,6 +120,7 @@ class CFMSampler(object):
                 transformer_id='Objaverse_82K',
                 device=device)
 
+        self.wnnc_reconstructor = WNNCReconstructor()
         self.mesh_smoother = MeshSmoother()
 
         self.process_list = []
@@ -238,36 +261,23 @@ class CFMSampler(object):
             print('\t toCombinedMash failed!')
             return None
         '''
-        combined_mash = Mash.fromParamsFile(
-            mash_file_path_list[0],
-            10,
-            10,
-            1.0,
-            torch.int64,
-            torch.float64,
-            self.device,
-        )
 
-        fixed_ortho_poses = combined_mash.toOrtho6DPoses().detach().clone().float()
-        fixed_positions = combined_mash.positions.detach().clone().float()
-        fixed_mask_params = combined_mash.mask_params.detach().clone().float()
-        fixed_sh_params = combined_mash.sh_params.detach().clone().float()
+        mash_params_list = []
+        for mash_file_path in mash_file_path_list:
+            mash_params = loadMashFileParamsTensor(mash_file_path, torch.float32, 'cpu')
+            mash_params_list.append(mash_params)
 
-        fixed_x_init = torch.cat((
-            fixed_ortho_poses,
-            fixed_positions,
-            fixed_mask_params,
-            fixed_sh_params,
-        ), dim=1).view(1, combined_mash.anchor_num, 25).expand(condition_tensor.shape[0], combined_mash.anchor_num, 25)
+        fixed_mash_params = torch.cat(mash_params_list, dim=0).view(1, -1, 25)
+        fixed_mash_params = fixed_mash_params.repeat(*([condition_tensor.shape[0]] + [1] * (fixed_mash_params.ndim - 1)))
 
-        fixed_x_init = self.transformer.transform(fixed_x_init)
+        fixed_x_init = self.transformer.transform(fixed_mash_params).to(self.device)
 
-        random_x_init = torch.randn(condition_tensor.shape[0], 400 - combined_mash.anchor_num, 25, device=self.device)
+        random_x_init = torch.randn(condition_tensor.shape[0], 400 - fixed_x_init.shape[1], 25, device=self.device)
 
         x_init = torch.cat((fixed_x_init, random_x_init), dim=1)
 
         fixed_anchor_mask = torch.zeros_like(x_init, dtype=torch.bool)
-        fixed_anchor_mask[:, :combined_mash.anchor_num, :] = True
+        fixed_anchor_mask[:, :fixed_x_init.shape[1], :] = True
 
         traj = torchdiffeq.odeint(
             lambda t, x: self.model.forwardWithFixedAnchors(x, condition_tensor, t, fixed_anchor_mask),
@@ -374,11 +384,16 @@ class CFMSampler(object):
 
             current_save_mash_folder_path = current_save_folder_path + 'mash/'
             current_save_pcd_folder_path = current_save_folder_path + 'pcd/'
-            current_save_recon_folder_path = current_save_folder_path + 'recon/'
-            current_save_recon_smooth_folder_path = current_save_folder_path + 'recon_smooth/'
+            current_save_wnnc_normal_folder_path = current_save_folder_path + 'wnnc_normal/'
+            current_save_wnnc_folder_path = current_save_folder_path + 'wnnc/'
+            current_save_wnnc_smooth_folder_path = current_save_folder_path + 'wnnc_smooth/'
+            current_save_occ_folder_path = current_save_folder_path + 'occ/'
+            current_save_occ_smooth_folder_path = current_save_folder_path + 'occ_smooth/'
             current_save_render_pcd_folder_path = current_save_folder_path + 'render_pcd/'
-            current_save_render_recon_folder_path = current_save_folder_path + 'render_recon/'
-            current_save_render_recon_smooth_folder_path = current_save_folder_path + 'render_recon_smooth/'
+            current_save_render_wnnc_folder_path = current_save_folder_path + 'render_wnnc/'
+            current_save_render_wnnc_smooth_folder_path = current_save_folder_path + 'render_wnnc_smooth/'
+            current_save_render_occ_folder_path = current_save_folder_path + 'render_occ/'
+            current_save_render_occ_smooth_folder_path = current_save_folder_path + 'render_occ_smooth/'
 
             print("start create mash files,", j + 1, '/', sampled_array.shape[0], "...")
             for i in tqdm(range(sample_num)):
@@ -409,27 +424,58 @@ class CFMSampler(object):
                 mash_model.translate(translate)
 
                 current_save_mash_file_path = current_save_mash_folder_path + 'sample_' + str(i+1) + '_mash.npy'
-                current_save_pcd_file_path = current_save_pcd_folder_path + 'sample_' + str(i+1) + '_pcd.ply'
-                current_save_recon_mesh_file_path = current_save_recon_folder_path + 'sample_' + str(i+1) + '_mesh.ply'
-                current_save_recon_smooth_mesh_file_path = current_save_recon_smooth_folder_path + 'sample_' + str(i+1) + '_mesh.ply'
+                current_save_pcd_file_path = current_save_pcd_folder_path + 'sample_' + str(i+1) + '_pcd.xyz'
+                current_save_wnnc_xyz_file_path = current_save_wnnc_normal_folder_path + 'sample_' + str(i+1) + '_pcd.xyz'
+                current_save_wnnc_mesh_file_path = current_save_wnnc_folder_path + 'sample_' + str(i+1) + '_mesh.ply'
+                current_save_wnnc_smooth_mesh_file_path = current_save_wnnc_smooth_folder_path + 'sample_' + str(i+1) + '_mesh.ply'
+                current_save_occ_mesh_file_path = current_save_occ_folder_path + 'sample_' + str(i+1) + '_mesh.ply'
+                current_save_occ_smooth_mesh_file_path = current_save_occ_smooth_folder_path + 'sample_' + str(i+1) + '_mesh.ply'
 
                 mash_model.saveParamsFile(current_save_mash_file_path, True)
                 mash_model.saveAsPcdFile(current_save_pcd_file_path, True)
 
-                if self.occ_detector is not None:
-                    mesh = self.occ_detector.detectFile(current_save_mash_file_path)
-                    createFileFolder(current_save_recon_mesh_file_path)
-                    mesh.export(current_save_recon_mesh_file_path)
+                if self.recon_wnnc:
+                    if os.path.exists(current_save_pcd_file_path):
+                        self.wnnc_reconstructor.autoReconstructSurface(
+                            current_save_pcd_file_path,
+                            current_save_wnnc_xyz_file_path,
+                            current_save_wnnc_mesh_file_path,
+                            width_tag='l0',
+                            wsmin=0.01,
+                            wsmax=0.04,
+                            iters=40,
+                            use_gpu=True,
+                            print_progress=True,
+                            overwrite=True)
 
-                if os.path.exists(current_save_recon_mesh_file_path):
-                    self.mesh_smoother.smoothMesh(
-                        current_save_recon_mesh_file_path,
-                        current_save_recon_smooth_mesh_file_path,
-                        n_iter=10,
-                        pass_band=0.01,
-                        edge_angle=15.0,
-                        feature_angle=45.0,
-                        overwrite=True)
+                if self.recon_occ:
+                    if os.path.exists(current_save_pcd_file_path):
+                        if self.occ_detector is not None:
+                            mesh = self.occ_detector.detectFile(current_save_mash_file_path)
+                            createFileFolder(current_save_occ_mesh_file_path)
+                            mesh.export(current_save_occ_mesh_file_path)
+
+                if self.smooth_wnnc:
+                    if os.path.exists(current_save_wnnc_mesh_file_path):
+                        self.mesh_smoother.smoothMesh(
+                            current_save_wnnc_mesh_file_path,
+                            current_save_wnnc_smooth_mesh_file_path,
+                            n_iter=10,
+                            pass_band=0.01,
+                            edge_angle=15.0,
+                            feature_angle=45.0,
+                            overwrite=True)
+
+                if self.smooth_occ:
+                    if os.path.exists(current_save_occ_mesh_file_path):
+                        self.mesh_smoother.smoothMesh(
+                            current_save_occ_mesh_file_path,
+                            current_save_occ_smooth_mesh_file_path,
+                            n_iter=10,
+                            pass_band=0.01,
+                            edge_angle=15.0,
+                            feature_angle=45.0,
+                            overwrite=True)
 
             if BlenderRenderer.isValid():
                 use_gpu = False
@@ -440,80 +486,150 @@ class CFMSampler(object):
                 if condition_type == 'dino':
                     render_image_num = 12
 
-                    process = BlenderRenderer.renderAroundFolder(
-                        shape_folder_path=current_save_pcd_folder_path,
-                        render_image_num=render_image_num,
-                        save_image_folder_path=current_save_render_pcd_folder_path,
-                        use_gpu=use_gpu,
-                        overwrite=overwrite,
-                        is_background=is_background,
-                        gpu_id=gpu_id,
-                    )
-                    if process is not None:
-                        process.start()
-                        self.process_list.append(process)
+                    if self.render_pcd:
+                        if os.path.exists(current_save_pcd_folder_path):
+                            process = BlenderRenderer.renderAroundFolder(
+                                shape_folder_path=current_save_pcd_folder_path,
+                                render_image_num=render_image_num,
+                                save_image_folder_path=current_save_render_pcd_folder_path,
+                                use_gpu=use_gpu,
+                                overwrite=overwrite,
+                                is_background=is_background,
+                                gpu_id=gpu_id,
+                            )
+                            if process is not None:
+                                process.start()
+                                self.process_list.append(process)
 
-                    process = BlenderRenderer.renderAroundFolder(
-                        shape_folder_path=current_save_recon_folder_path,
-                        render_image_num=render_image_num,
-                        save_image_folder_path=current_save_render_recon_folder_path,
-                        use_gpu=use_gpu,
-                        overwrite=overwrite,
-                        is_background=is_background,
-                        gpu_id=gpu_id,
-                    )
-                    if process is not None:
-                        process.start()
-                        self.process_list.append(process)
+                    if self.render_wnnc:
+                        if os.path.exists(current_save_wnnc_folder_path):
+                            process = BlenderRenderer.renderAroundFolder(
+                                shape_folder_path=current_save_wnnc_folder_path,
+                                render_image_num=render_image_num,
+                                save_image_folder_path=current_save_render_wnnc_folder_path,
+                                use_gpu=use_gpu,
+                                overwrite=overwrite,
+                                is_background=is_background,
+                                gpu_id=gpu_id,
+                            )
+                            if process is not None:
+                                process.start()
+                                self.process_list.append(process)
 
-                    process = BlenderRenderer.renderAroundFolder(
-                        shape_folder_path=current_save_recon_smooth_folder_path,
-                        render_image_num=render_image_num,
-                        save_image_folder_path=current_save_render_recon_smooth_folder_path,
-                        use_gpu=use_gpu,
-                        overwrite=overwrite,
-                        is_background=is_background,
-                        gpu_id=gpu_id,
-                    )
-                    if process is not None:
-                        process.start()
-                        self.process_list.append(process)
+                    if self.render_wnnc_smooth:
+                        if os.path.exists(current_save_wnnc_smooth_folder_path):
+                            process = BlenderRenderer.renderAroundFolder(
+                                shape_folder_path=current_save_wnnc_smooth_folder_path,
+                                render_image_num=render_image_num,
+                                save_image_folder_path=current_save_render_wnnc_smooth_folder_path,
+                                use_gpu=use_gpu,
+                                overwrite=overwrite,
+                                is_background=is_background,
+                                gpu_id=gpu_id,
+                            )
+                            if process is not None:
+                                process.start()
+                                self.process_list.append(process)
+
+                    if self.render_occ:
+                        if os.path.exists(current_save_occ_folder_path):
+                            process = BlenderRenderer.renderAroundFolder(
+                                shape_folder_path=current_save_occ_folder_path,
+                                render_image_num=render_image_num,
+                                save_image_folder_path=current_save_render_occ_folder_path,
+                                use_gpu=use_gpu,
+                                overwrite=overwrite,
+                                is_background=is_background,
+                                gpu_id=gpu_id,
+                            )
+                            if process is not None:
+                                process.start()
+                                self.process_list.append(process)
+
+                    if self.render_occ_smooth:
+                        if os.path.exists(current_save_occ_smooth_folder_path):
+                            process = BlenderRenderer.renderAroundFolder(
+                                shape_folder_path=current_save_occ_smooth_folder_path,
+                                render_image_num=render_image_num,
+                                save_image_folder_path=current_save_render_occ_smooth_folder_path,
+                                use_gpu=use_gpu,
+                                overwrite=overwrite,
+                                is_background=is_background,
+                                gpu_id=gpu_id,
+                            )
+                            if process is not None:
+                                process.start()
+                                self.process_list.append(process)
                 else:
-                    process = BlenderRenderer.renderFolder(
-                        shape_folder_path=current_save_pcd_folder_path,
-                        save_image_folder_path=current_save_render_pcd_folder_path,
-                        use_gpu=use_gpu,
-                        overwrite=overwrite,
-                        is_background=is_background,
-                        gpu_id=gpu_id,
-                    )
-                    if process is not None:
-                        process.start()
-                        self.process_list.append(process)
+                    if self.render_pcd:
+                        if os.path.exists(current_save_pcd_folder_path):
+                            process = BlenderRenderer.renderFolder(
+                                shape_folder_path=current_save_pcd_folder_path,
+                                save_image_folder_path=current_save_render_pcd_folder_path,
+                                use_gpu=use_gpu,
+                                overwrite=overwrite,
+                                is_background=is_background,
+                                gpu_id=gpu_id,
+                            )
+                            if process is not None:
+                                process.start()
+                                self.process_list.append(process)
 
-                    process = BlenderRenderer.renderFolder(
-                        shape_folder_path=current_save_recon_folder_path,
-                        save_image_folder_path=current_save_render_recon_folder_path,
-                        use_gpu=use_gpu,
-                        overwrite=overwrite,
-                        is_background=is_background,
-                        gpu_id=gpu_id,
-                    )
-                    if process is not None:
-                        process.start()
-                        self.process_list.append(process)
+                    if self.render_wnnc:
+                        if os.path.exists(current_save_wnnc_folder_path):
+                            process = BlenderRenderer.renderFolder(
+                                shape_folder_path=current_save_wnnc_folder_path,
+                                save_image_folder_path=current_save_render_wnnc_folder_path,
+                                use_gpu=use_gpu,
+                                overwrite=overwrite,
+                                is_background=is_background,
+                                gpu_id=gpu_id,
+                            )
+                            if process is not None:
+                                process.start()
+                                self.process_list.append(process)
 
-                    process = BlenderRenderer.renderFolder(
-                        shape_folder_path=current_save_recon_smooth_folder_path,
-                        save_image_folder_path=current_save_render_recon_smooth_folder_path,
-                        use_gpu=use_gpu,
-                        overwrite=overwrite,
-                        is_background=is_background,
-                        gpu_id=gpu_id,
-                    )
-                    if process is not None:
-                        process.start()
-                        self.process_list.append(process)
+                    if self.render_wnnc_smooth:
+                        if os.path.exists(current_save_wnnc_smooth_folder_path):
+                            process = BlenderRenderer.renderFolder(
+                                shape_folder_path=current_save_wnnc_smooth_folder_path,
+                                save_image_folder_path=current_save_render_wnnc_smooth_folder_path,
+                                use_gpu=use_gpu,
+                                overwrite=overwrite,
+                                is_background=is_background,
+                                gpu_id=gpu_id,
+                            )
+                            if process is not None:
+                                process.start()
+                                self.process_list.append(process)
+
+                    if self.render_occ:
+                        if os.path.exists(current_save_occ_folder_path):
+                            process = BlenderRenderer.renderFolder(
+                                shape_folder_path=current_save_occ_folder_path,
+                                save_image_folder_path=current_save_render_occ_folder_path,
+                                use_gpu=use_gpu,
+                                overwrite=overwrite,
+                                is_background=is_background,
+                                gpu_id=gpu_id,
+                            )
+                            if process is not None:
+                                process.start()
+                                self.process_list.append(process)
+
+                    if self.render_occ_smooth:
+                        if os.path.exists(current_save_occ_smooth_folder_path):
+                            process = BlenderRenderer.renderFolder(
+                                shape_folder_path=current_save_occ_smooth_folder_path,
+                                save_image_folder_path=current_save_render_occ_smooth_folder_path,
+                                use_gpu=use_gpu,
+                                overwrite=overwrite,
+                                is_background=is_background,
+                                gpu_id=gpu_id,
+                            )
+                            if process is not None:
+                                process.start()
+                                self.process_list.append(process)
 
         return True
 

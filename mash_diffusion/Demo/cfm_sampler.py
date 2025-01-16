@@ -67,6 +67,7 @@ def demo():
     # Objaverse_82K: sample_dino
     # ShapeNet: sample_category, sample_ulip_image, sample_ulip_points, sample_ulip_text, sample_fixed_anchor
     transformer_id = 'Objaverse_82K'
+    transformer_id = 'ShapeNet'
 
     if transformer_id == 'Objaverse_82K':
         cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image-0116/model_last.pth'
@@ -104,6 +105,16 @@ def demo():
     sample_ulip_text = False and (transformer_id == 'ShapeNet')
     sample_fixed_anchor = True and (transformer_id == 'ShapeNet')
     save_results_only = True
+
+    recon_wnnc = True
+    recon_occ = True
+    smooth_wnnc = True
+    smooth_occ = True
+    render_pcd = True
+    render_wnnc = True
+    render_wnnc_smooth = True
+    render_occ = True
+    render_occ_smooth = True
 
     if not sample_dino:
         dino_model_file_path = None
@@ -153,7 +164,16 @@ def demo():
         ulip_model_file_path,
         open_clip_model_file_path,
         dino_model_file_path,
-        occ_batch_size
+        occ_batch_size,
+        recon_wnnc,
+        recon_occ,
+        smooth_wnnc,
+        smooth_occ,
+        render_pcd,
+        render_wnnc,
+        render_wnnc_smooth,
+        render_occ,
+        render_occ_smooth,
     )
 
     if sample_dino:
@@ -252,19 +272,28 @@ def demo():
                 save_results_only)
 
     if sample_fixed_anchor:
-        mash_file_path_list = [
-            '/home/chli/chLi/Results/ma-sh/output/combined_mash.npy',
+        part_mash_folder_path = '/home/chli/chLi/Results/ma-sh/output/part_mash/'
+        mash_rel_path_list = [
+            '03001627/a75e83a3201cf5ac745004c6a29b0df0/part_mash_anc-128.npy',
+            '03001627/d29445f24bbf1b1814c05b481f895c37/part_mash_anc-88.npy',
+            '03001627/d3302b7fa6504cab1a461b43b8f257f/part_mash_anc-97.npy',
+            '03001627/d3ff300de7ab36bfc8528ab560ff5e59/part_mash_anc-103.npy',
         ]
-        categoty_id = '03001627'
-        print('start sample for fixed anchor category ' + categoty_id + '...')
-        cfm_sampler.samplePipeline(
-            save_folder_path + 'category-fixed-anchors/' + categoty_id + '/',
-            'category',
-            CATEGORY_IDS[categoty_id],
-            shapenet_multi_modal_sample_conditioned_shape_num,
-            timestamp_num,
-            save_results_only,
-            mash_file_path_list)
+        for mash_rel_path in mash_rel_path_list:
+            print('start sample for fixed anchor for ' + mash_rel_path + '...')
+            mash_file_path = part_mash_folder_path + mash_rel_path
+            if not os.path.exists(mash_file_path):
+                continue
+            category_id = mash_rel_path.split('/')[0]
+            mash_id = mash_rel_path.split('/')[1]
+            cfm_sampler.samplePipeline(
+                save_folder_path + 'category-fixed-anchors/' + category_id + '/' + mash_id + '/',
+                'category',
+                CATEGORY_IDS[category_id],
+                shapenet_multi_modal_sample_conditioned_shape_num,
+                timestamp_num,
+                save_results_only,
+                [mash_file_path])
 
     cfm_sampler.waitRender()
 
