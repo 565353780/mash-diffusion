@@ -108,7 +108,7 @@ class CFMTrainer(BaseDiffusionTrainer):
             fixed_prob = np.clip(fixed_prob, 0.0, 1.0)
 
             if fixed_prob > 0:
-                fixed_mask = torch.rand_like(mash_params) <= fixed_prob
+                fixed_mask = torch.rand_like(mash_params) < fixed_prob
                 init_mash_params[fixed_mask] = mash_params[fixed_mask]
 
         if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
