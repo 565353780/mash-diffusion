@@ -501,6 +501,8 @@ class CFMSampler(object):
                                 overwrite=overwrite,
                                 is_background=is_background,
                                 gpu_id=gpu_id,
+                                mute=True,
+                                with_daemon=True,
                             )
                             if process is not None:
                                 process.start()
@@ -516,6 +518,8 @@ class CFMSampler(object):
                                 overwrite=overwrite,
                                 is_background=is_background,
                                 gpu_id=gpu_id,
+                                mute=True,
+                                with_daemon=True,
                             )
                             if process is not None:
                                 process.start()
@@ -531,6 +535,8 @@ class CFMSampler(object):
                                 overwrite=overwrite,
                                 is_background=is_background,
                                 gpu_id=gpu_id,
+                                mute=True,
+                                with_daemon=True,
                             )
                             if process is not None:
                                 process.start()
@@ -546,6 +552,8 @@ class CFMSampler(object):
                                 overwrite=overwrite,
                                 is_background=is_background,
                                 gpu_id=gpu_id,
+                                mute=True,
+                                with_daemon=True,
                             )
                             if process is not None:
                                 process.start()
@@ -561,6 +569,8 @@ class CFMSampler(object):
                                 overwrite=overwrite,
                                 is_background=is_background,
                                 gpu_id=gpu_id,
+                                mute=True,
+                                with_daemon=True,
                             )
                             if process is not None:
                                 process.start()
@@ -575,6 +585,8 @@ class CFMSampler(object):
                                 overwrite=overwrite,
                                 is_background=is_background,
                                 gpu_id=gpu_id,
+                                mute=True,
+                                with_daemon=True,
                             )
                             if process is not None:
                                 process.start()
@@ -589,6 +601,8 @@ class CFMSampler(object):
                                 overwrite=overwrite,
                                 is_background=is_background,
                                 gpu_id=gpu_id,
+                                mute=True,
+                                with_daemon=True,
                             )
                             if process is not None:
                                 process.start()
@@ -603,6 +617,8 @@ class CFMSampler(object):
                                 overwrite=overwrite,
                                 is_background=is_background,
                                 gpu_id=gpu_id,
+                                mute=True,
+                                with_daemon=True,
                             )
                             if process is not None:
                                 process.start()
@@ -617,6 +633,8 @@ class CFMSampler(object):
                                 overwrite=overwrite,
                                 is_background=is_background,
                                 gpu_id=gpu_id,
+                                mute=True,
+                                with_daemon=True,
                             )
                             if process is not None:
                                 process.start()
@@ -631,6 +649,8 @@ class CFMSampler(object):
                                 overwrite=overwrite,
                                 is_background=is_background,
                                 gpu_id=gpu_id,
+                                mute=True,
+                                with_daemon=True,
                             )
                             if process is not None:
                                 process.start()

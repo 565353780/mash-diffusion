@@ -66,20 +66,20 @@ def demo():
     # available sample modes:
     # Objaverse_82K: sample_dino
     # ShapeNet: sample_category, sample_ulip_image, sample_ulip_points, sample_ulip_text, sample_fixed_anchor
-    transformer_id = 'Objaverse_82K'
     transformer_id = 'ShapeNet'
+    # transformer_id = 'ShapeNet'
 
     if transformer_id == 'Objaverse_82K':
-        cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image-0116/model_last.pth'
+        cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image-0118/model_last.pth'
     elif transformer_id == 'ShapeNet':
-        cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-ShapeNet-multi_modal-0116/model_last.pth'
+        cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-ShapeNet-multi_modal-0118/model_last.pth'
     else:
         print('transformer id not valid!')
         return False
 
-    occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0116/model_last.pth'
-    cfm_use_ema = False
-    occ_use_ema = False
+    occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0118/model_last.pth'
+    cfm_use_ema = True
+    occ_use_ema = True
     device = 'cuda:0'
     ulip_model_file_path = model_root_path + 'ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
     open_clip_model_file_path = model_root_path + 'CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
@@ -93,29 +93,30 @@ def demo():
     objaverse_per_category_sample_condition_num = 100
     objaverse_sample_conditioned_shape_num = 4
 
-    shapenet_per_category_sample_condition_num = 20
-    shapenet_category_sample_conditioned_shape_num = 100
-    shapenet_multi_modal_sample_conditioned_shape_num = 40
+    shapenet_per_category_sample_multi_modal_condition_num = 40
+    shapenet_category_sample_batch_size = 40
+    shapenet_multi_modal_sample_batch_size = 40
 
     timestamp_num = 2
     sample_dino = transformer_id == 'Objaverse_82K'
-    sample_category = False and (transformer_id == 'ShapeNet')
-    sample_ulip_image = False and (transformer_id == 'ShapeNet')
-    sample_ulip_points = False and (transformer_id == 'ShapeNet')
-    sample_ulip_text = False and (transformer_id == 'ShapeNet')
-    sample_fixed_anchor = False and (transformer_id == 'ShapeNet')
+    sample_category = True and (transformer_id == 'ShapeNet')
+    sample_ulip_image = True and (transformer_id == 'ShapeNet')
+    sample_ulip_points = True and (transformer_id == 'ShapeNet')
+    sample_ulip_text = True and (transformer_id == 'ShapeNet')
+    sample_fixed_anchor = True and (transformer_id == 'ShapeNet')
     sample_combined_anchor = True and (transformer_id == 'ShapeNet')
     save_results_only = True
 
-    recon_wnnc = True
+    recon_wnnc = False
     recon_occ = True
-    smooth_wnnc = True
-    smooth_occ = True
-    render_pcd = True
-    render_wnnc = True
-    render_wnnc_smooth = True
-    render_occ = True
-    render_occ_smooth = True
+    render_pcd = False
+
+    smooth_wnnc = True and recon_wnnc
+    smooth_occ = True and recon_occ
+    render_wnnc = True and recon_wnnc
+    render_wnnc_smooth = True and recon_wnnc and smooth_wnnc
+    render_occ = True and recon_occ
+    render_occ_smooth = True and recon_occ and smooth_occ
 
     if not sample_dino:
         dino_model_file_path = None
@@ -205,7 +206,7 @@ def demo():
                 save_folder_path + 'category/' + categoty_id + '/',
                 'category',
                 CATEGORY_IDS[categoty_id],
-                shapenet_category_sample_conditioned_shape_num,
+                shapenet_category_sample_batch_size,
                 timestamp_num,
                 save_results_only)
 
@@ -216,7 +217,7 @@ def demo():
         rel_base_path_list = toRandomRelBasePathList(condition_root_folder_path,
                                                      data_type,
                                                      valid_objaverse_category_id_list,
-                                                     shapenet_per_category_sample_condition_num)
+                                                     shapenet_per_category_sample_multi_modal_condition_num)
         for rel_base_path in rel_base_path_list:
             print('start sample for condition ' + rel_base_path + '...')
             condition_file_path = condition_root_folder_path + rel_base_path + data_type
@@ -226,7 +227,7 @@ def demo():
                 save_folder_path + 'ulip-condition/' + rel_base_path + '/',
                 'ulip-condition',
                 condition_file_path,
-                shapenet_multi_modal_sample_conditioned_shape_num,
+                shapenet_multi_modal_sample_batch_size,
                 timestamp_num,
                 save_results_only)
 
@@ -237,7 +238,7 @@ def demo():
         rel_base_path_list = toRandomRelBasePathList(condition_root_folder_path,
                                                      data_type,
                                                      valid_objaverse_category_id_list,
-                                                     shapenet_per_category_sample_condition_num)
+                                                     shapenet_per_category_sample_multi_modal_condition_num)
         for rel_base_path in rel_base_path_list:
             print('start sample for condition ' + rel_base_path + '...')
             condition_file_path = condition_root_folder_path + rel_base_path + data_type
@@ -248,7 +249,7 @@ def demo():
                 save_folder_path + 'ulip-points/' + rel_base_path + '/',
                 'ulip-points',
                 points,
-                shapenet_multi_modal_sample_conditioned_shape_num,
+                shapenet_multi_modal_sample_batch_size,
                 timestamp_num,
                 save_results_only)
 
@@ -268,7 +269,7 @@ def demo():
                 save_folder_path + 'ulip-text/' + str(i) + '/',
                 'ulip-text',
                 text,
-                shapenet_multi_modal_sample_conditioned_shape_num,
+                shapenet_multi_modal_sample_batch_size,
                 timestamp_num,
                 save_results_only)
 
@@ -296,7 +297,7 @@ def demo():
                 save_folder_path + 'category-fixed-anchors/' + category_id + '/' + mash_id + '/',
                 'category',
                 CATEGORY_IDS[category_id],
-                shapenet_multi_modal_sample_conditioned_shape_num,
+                shapenet_multi_modal_sample_batch_size,
                 timestamp_num,
                 save_results_only,
                 [mash_file_path])
@@ -337,7 +338,7 @@ def demo():
                 save_folder_path + 'category-combined-anchors/' + category_id + '/' + mash_id + '/',
                 'category',
                 CATEGORY_IDS[category_id],
-                shapenet_multi_modal_sample_conditioned_shape_num,
+                shapenet_multi_modal_sample_batch_size,
                 timestamp_num,
                 save_results_only,
                 mash_file_path_list)
