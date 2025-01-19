@@ -499,7 +499,7 @@ class CFMSampler(object):
                                 self.blender_renderer.renderAroundFile(
                                     shape_file_path=current_save_pcd_file_path,
                                     render_image_num=render_image_num,
-                                    save_image_folder_path=current_save_render_pcd_folder_path + 'sample_' + str(i+1) + '/',
+                                    save_image_folder_path=current_save_render_pcd_folder_path,
                                     overwrite=overwrite,
                                 )
 
@@ -508,7 +508,7 @@ class CFMSampler(object):
                                 self.blender_renderer.renderAroundFile(
                                     shape_file_path=current_save_wnnc_mesh_file_path,
                                     render_image_num=render_image_num,
-                                    save_image_folder_path=current_save_render_wnnc_folder_path + 'sample_' + str(i+1) + '/',
+                                    save_image_folder_path=current_save_render_wnnc_folder_path,
                                     overwrite=overwrite,
                                 )
 
@@ -517,7 +517,7 @@ class CFMSampler(object):
                                 self.blender_renderer.renderAroundFile(
                                     shape_file_path=current_save_wnnc_smooth_mesh_file_path,
                                     render_image_num=render_image_num,
-                                    save_image_folder_path=current_save_render_wnnc_smooth_folder_path + 'sample_' + str(i+1) + '/',
+                                    save_image_folder_path=current_save_render_wnnc_smooth_folder_path,
                                     overwrite=overwrite,
                                 )
 
@@ -526,7 +526,7 @@ class CFMSampler(object):
                                 self.blender_renderer.renderAroundFile(
                                     shape_file_path=current_save_occ_mesh_file_path,
                                     render_image_num=render_image_num,
-                                    save_image_folder_path=current_save_render_occ_folder_path + 'sample_' + str(i+1) + '/',
+                                    save_image_folder_path=current_save_render_occ_folder_path,
                                     overwrite=overwrite,
                                 )
 
@@ -535,7 +535,7 @@ class CFMSampler(object):
                                 self.blender_renderer.renderAroundFile(
                                     shape_file_path=current_save_occ_smooth_mesh_file_path,
                                     render_image_num=render_image_num,
-                                    save_image_folder_path=current_save_render_occ_smooth_folder_path + 'sample_' + str(i+1) + '/',
+                                    save_image_folder_path=current_save_render_occ_smooth_folder_path,
                                     overwrite=overwrite,
                                 )
                     else:

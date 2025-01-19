@@ -83,15 +83,15 @@ def demo_dino():
 
     save_folder_path = '/home/chli/chLi/Results/mash-diffusion/output/sample/' + getCurrentTime() + '/'
 
-    objaverse_per_category_sample_condition_num = 100
-    objaverse_sample_conditioned_shape_num = 40
+    objaverse_per_category_sample_condition_num = 1
+    objaverse_sample_batch_size = 4
 
     timestamp_num = 2
     save_results_only = True
 
     recon_wnnc = False
     recon_occ = True
-    render_pcd = False
+    render_pcd = True
 
     smooth_wnnc = True and recon_wnnc
     smooth_occ = True and recon_occ
@@ -142,7 +142,7 @@ def demo_dino():
             save_folder_path + 'dino/' + rel_base_path + '/',
             'dino',
             condition_file_path,
-            objaverse_sample_conditioned_shape_num,
+            objaverse_sample_batch_size,
             timestamp_num,
             save_results_only)
 
@@ -170,22 +170,22 @@ def demo_multi_modal():
 
     save_folder_path = '/home/chli/chLi/Results/mash-diffusion/output/sample/' + getCurrentTime() + '/'
 
-    shapenet_per_category_sample_multi_modal_condition_num = 40
-    shapenet_category_sample_batch_size = 40
-    shapenet_multi_modal_sample_batch_size = 40
+    shapenet_per_category_sample_multi_modal_condition_num = 10
+    shapenet_category_sample_batch_size = 10
+    shapenet_multi_modal_sample_batch_size = 10
 
     timestamp_num = 2
     sample_category = False and (transformer_id == 'ShapeNet')
     sample_ulip_image = True and (transformer_id == 'ShapeNet')
-    sample_ulip_points = True and (transformer_id == 'ShapeNet')
-    sample_ulip_text = True and (transformer_id == 'ShapeNet')
+    sample_ulip_points = False and (transformer_id == 'ShapeNet')
+    sample_ulip_text = False and (transformer_id == 'ShapeNet')
     sample_fixed_anchor = True and (transformer_id == 'ShapeNet')
     sample_combined_anchor = True and (transformer_id == 'ShapeNet')
     save_results_only = True
 
     recon_wnnc = False
     recon_occ = True
-    render_pcd = False
+    render_pcd = True
 
     smooth_wnnc = True and recon_wnnc
     smooth_occ = True and recon_occ
@@ -198,34 +198,31 @@ def demo_multi_modal():
         ulip_model_file_path = None
 
     valid_shapenet_category_id_list = [
-        '02691156', # 0: airplane
-        '02773838', # 2: bag
-        '02828884', # 6: bench
-        '02876657', # 9: bottle
-        '02958343', # 16: car
+        #'02691156', # 0: airplane
+        #'02773838', # 2: bag
+        #'02828884', # 6: bench
+        #'02876657', # 9: bottle
+        #'02958343', # 16: car
         '03001627', # 18: chair
         '03211117', # 22: monitor
         '03261776', # 23: earphone
         '03325088', # 24: spigot
         '03467517', # 26: guitar
-        '03513137', # 27: helmet
         '03636649', # 30: lamp
-        '03710193', # 33: mailbox
         '03948459', # 40: gun
         '04090263', # 44: long-gun
-        '04225987', # 46: skateboard
         '04256520', # 47: sofa
         '04379243', # 49: table
         '04468005', # 52: train
         '04530566', # 53: watercraft
     ]
+    '''
     valid_shapenet_category_id_list = [
         '02691156', # 0: airplane
         '03001627', # 18: chair
         '04379243', # 49: table
     ]
-
-    tmp_dataset_root_path = '/home/chli/chLi2/Dataset/'
+    '''
 
     cfm_sampler = CFMSampler(
         cfm_model_file_path,
@@ -261,6 +258,7 @@ def demo_multi_modal():
                 save_results_only)
 
     if sample_ulip_image:
+        tmp_dataset_root_path = '/home/chli/chLi2/Dataset/'
         condition_root_folder_path = tmp_dataset_root_path + 'CapturedImage/ShapeNet/'
         data_type = '.png'
 
@@ -285,7 +283,7 @@ def demo_multi_modal():
                 save_results_only)
 
     if sample_ulip_points:
-        condition_root_folder_path = tmp_dataset_root_path + 'ManifoldMesh/ShapeNet/'
+        condition_root_folder_path = dataset_root_path + 'ManifoldMesh/ShapeNet/'
         data_type = '.obj'
 
         rel_base_path_list = toRandomRelBasePathList(condition_root_folder_path,
@@ -401,6 +399,7 @@ def demo_multi_modal():
     return True
 
 def demo():
-    #demo_dino()
+    demo_dino()
+    exit()
     torch.cuda.empty_cache()
     demo_multi_modal()
