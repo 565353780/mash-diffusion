@@ -9,6 +9,7 @@ sys.path.append("../mash-occ-decoder/")
 sys.path.append('../distribution-manage/')
 
 import os
+import torch
 import random
 from tqdm import tqdm
 from typing import Union
@@ -21,10 +22,13 @@ from mash_diffusion.Method.time import getCurrentTime
 from mash_diffusion.Module.cfm_sampler import CFMSampler
 
 
-def toRandomRelBasePathList(dataset_folder_path: str,
-                            data_type: str = '.npy',
-                            valid_category_id_list: Union[list, None]=None,
-                            per_category_sample_condition_num: int=100) -> list:
+def toRandomRelBasePathList(
+    dataset_folder_path: str,
+    data_type: str = '.npy',
+    valid_category_id_list: Union[list, None]=None,
+    per_category_sample_condition_num: int=100,
+    filter_tag: Union[str, None]=None,
+) -> list:
     random_rel_base_path_list = []
 
     if valid_category_id_list is None:
@@ -46,6 +50,10 @@ def toRandomRelBasePathList(dataset_folder_path: str,
                 if not file.endswith(data_type) or file.endswith('_tmp' + data_type):
                     continue
 
+                if filter_tag is not None:
+                    if filter_tag not in file:
+                        continue
+
                 rel_base_path_list.append(rel_folder_path + file[:-len(data_type)])
 
         if per_category_sample_condition_num >= len(rel_base_path_list):
@@ -55,34 +63,19 @@ def toRandomRelBasePathList(dataset_folder_path: str,
 
     return random_rel_base_path_list
 
-def demo():
+def demo_dino():
     dataset_root_path = toDatasetRootPath()
     model_root_path = toModelRootPath()
     assert dataset_root_path is not None
     assert model_root_path is not None
 
-    # this will decide the sample mode
-    # available ids: ['Objaverse_82K', 'ShapeNet']
-    # available sample modes:
-    # Objaverse_82K: sample_dino
-    # ShapeNet: sample_category, sample_ulip_image, sample_ulip_points, sample_ulip_text, sample_fixed_anchor
-    transformer_id = 'ShapeNet'
-    # transformer_id = 'ShapeNet'
+    transformer_id = 'Objaverse_82K'
 
-    if transformer_id == 'Objaverse_82K':
-        cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image-0118/model_last.pth'
-    elif transformer_id == 'ShapeNet':
-        cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-ShapeNet-multi_modal-0118/model_last.pth'
-    else:
-        print('transformer id not valid!')
-        return False
-
+    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image-0118/model_last.pth'
     occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0118/model_last.pth'
-    cfm_use_ema = True
+    cfm_use_ema = False
     occ_use_ema = True
     device = 'cuda:0'
-    ulip_model_file_path = model_root_path + 'ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
-    open_clip_model_file_path = model_root_path + 'CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
     dino_model_file_path = model_root_path + 'DINOv2/dinov2_vitb14_reg4_pretrain.pth'
 
     occ_batch_size = 1200000 # 24G GPU Memory required
@@ -91,15 +84,98 @@ def demo():
     save_folder_path = '/home/chli/chLi/Results/mash-diffusion/output/sample/' + getCurrentTime() + '/'
 
     objaverse_per_category_sample_condition_num = 100
-    objaverse_sample_conditioned_shape_num = 4
+    objaverse_sample_conditioned_shape_num = 40
+
+    timestamp_num = 2
+    save_results_only = True
+
+    recon_wnnc = False
+    recon_occ = True
+    render_pcd = False
+
+    smooth_wnnc = True and recon_wnnc
+    smooth_occ = True and recon_occ
+    render_wnnc = True and recon_wnnc
+    render_wnnc_smooth = True and recon_wnnc and smooth_wnnc
+    render_occ = True and recon_occ
+    render_occ_smooth = True and recon_occ and smooth_occ
+
+    valid_objaverse_category_id_list = [
+        '000-' + str(i).zfill(3) for i in range(160)
+    ]
+
+    cfm_sampler = CFMSampler(
+        cfm_model_file_path,
+        occ_model_file_path,
+        cfm_use_ema,
+        occ_use_ema,
+        device,
+        transformer_id,
+        None,
+        None,
+        dino_model_file_path,
+        occ_batch_size,
+        recon_wnnc,
+        recon_occ,
+        smooth_wnnc,
+        smooth_occ,
+        render_pcd,
+        render_wnnc,
+        render_wnnc_smooth,
+        render_occ,
+        render_occ_smooth,
+    )
+
+    condition_root_folder_path = dataset_root_path + 'Objaverse_82K/render_jpg/'
+    data_type = '.jpg'
+
+    rel_base_path_list = toRandomRelBasePathList(condition_root_folder_path,
+                                                    data_type,
+                                                    valid_objaverse_category_id_list,
+                                                    objaverse_per_category_sample_condition_num)
+    for rel_base_path in rel_base_path_list:
+        print('start sample for condition ' + rel_base_path + '...')
+        condition_file_path = condition_root_folder_path + rel_base_path + data_type
+        if not os.path.exists(condition_file_path):
+            continue
+        cfm_sampler.samplePipeline(
+            save_folder_path + 'dino/' + rel_base_path + '/',
+            'dino',
+            condition_file_path,
+            objaverse_sample_conditioned_shape_num,
+            timestamp_num,
+            save_results_only)
+
+    cfm_sampler.waitRender()
+    return True
+
+def demo_multi_modal():
+    dataset_root_path = toDatasetRootPath()
+    model_root_path = toModelRootPath()
+    assert dataset_root_path is not None
+    assert model_root_path is not None
+
+    transformer_id = 'ShapeNet'
+
+    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-ShapeNet-multi_modal-0118/model_last.pth'
+    occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0118/model_last.pth'
+    cfm_use_ema = False
+    occ_use_ema = True
+    device = 'cuda:0'
+    ulip_model_file_path = model_root_path + 'ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
+    open_clip_model_file_path = model_root_path + 'CLIP-ViT-bigG-14-laion2B-39B-b160k/open_clip_pytorch_model.bin'
+
+    occ_batch_size = 1200000 # 24G GPU Memory required
+    # occ_batch_size = 500000 # 12G GPU Memory required
+
+    save_folder_path = '/home/chli/chLi/Results/mash-diffusion/output/sample/' + getCurrentTime() + '/'
 
     shapenet_per_category_sample_multi_modal_condition_num = 40
     shapenet_category_sample_batch_size = 40
     shapenet_multi_modal_sample_batch_size = 40
 
     timestamp_num = 2
-    sample_dino = transformer_id == 'Objaverse_82K'
-    sample_category = True and (transformer_id == 'ShapeNet')
+    sample_category = False and (transformer_id == 'ShapeNet')
     sample_ulip_image = True and (transformer_id == 'ShapeNet')
     sample_ulip_points = True and (transformer_id == 'ShapeNet')
     sample_ulip_text = True and (transformer_id == 'ShapeNet')
@@ -118,14 +194,9 @@ def demo():
     render_occ = True and recon_occ
     render_occ_smooth = True and recon_occ and smooth_occ
 
-    if not sample_dino:
-        dino_model_file_path = None
     if not sample_ulip_image and not sample_ulip_points and not sample_ulip_text:
         ulip_model_file_path = None
 
-    valid_objaverse_category_id_list = [
-        '000-' + str(i).zfill(3) for i in range(160)
-    ]
     valid_shapenet_category_id_list = [
         '02691156', # 0: airplane
         '02773838', # 2: bag
@@ -150,8 +221,8 @@ def demo():
     ]
     valid_shapenet_category_id_list = [
         '02691156', # 0: airplane
-        '02958343', # 16: car
         '03001627', # 18: chair
+        '04379243', # 49: table
     ]
 
     tmp_dataset_root_path = '/home/chli/chLi2/Dataset/'
@@ -165,7 +236,7 @@ def demo():
         transformer_id,
         ulip_model_file_path,
         open_clip_model_file_path,
-        dino_model_file_path,
+        None,
         occ_batch_size,
         recon_wnnc,
         recon_occ,
@@ -177,27 +248,6 @@ def demo():
         render_occ,
         render_occ_smooth,
     )
-
-    if sample_dino:
-        condition_root_folder_path = dataset_root_path + 'Objaverse_82K/render_jpg/'
-        data_type = '.jpg'
-
-        rel_base_path_list = toRandomRelBasePathList(condition_root_folder_path,
-                                                     data_type,
-                                                     valid_objaverse_category_id_list,
-                                                     objaverse_per_category_sample_condition_num)
-        for rel_base_path in rel_base_path_list:
-            print('start sample for condition ' + rel_base_path + '...')
-            condition_file_path = condition_root_folder_path + rel_base_path + data_type
-            if not os.path.exists(condition_file_path):
-                continue
-            cfm_sampler.samplePipeline(
-                save_folder_path + 'dino/' + rel_base_path + '/',
-                'dino',
-                condition_file_path,
-                objaverse_sample_conditioned_shape_num,
-                timestamp_num,
-                save_results_only)
 
     if sample_category:
         for categoty_id in valid_shapenet_category_id_list:
@@ -214,18 +264,21 @@ def demo():
         condition_root_folder_path = tmp_dataset_root_path + 'CapturedImage/ShapeNet/'
         data_type = '.png'
 
-        rel_base_path_list = toRandomRelBasePathList(condition_root_folder_path,
-                                                     data_type,
-                                                     valid_objaverse_category_id_list,
-                                                     shapenet_per_category_sample_multi_modal_condition_num)
+        rel_base_path_list = toRandomRelBasePathList(
+            condition_root_folder_path,
+            data_type,
+            valid_shapenet_category_id_list,
+            shapenet_per_category_sample_multi_modal_condition_num,
+            'y_5_x_3',
+        )
         for rel_base_path in rel_base_path_list:
             print('start sample for condition ' + rel_base_path + '...')
             condition_file_path = condition_root_folder_path + rel_base_path + data_type
             if not os.path.exists(condition_file_path):
                 continue
             cfm_sampler.samplePipeline(
-                save_folder_path + 'ulip-condition/' + rel_base_path + '/',
-                'ulip-condition',
+                save_folder_path + 'ulip-image/' + rel_base_path + '/',
+                'ulip-image',
                 condition_file_path,
                 shapenet_multi_modal_sample_batch_size,
                 timestamp_num,
@@ -237,7 +290,7 @@ def demo():
 
         rel_base_path_list = toRandomRelBasePathList(condition_root_folder_path,
                                                      data_type,
-                                                     valid_objaverse_category_id_list,
+                                                     valid_shapenet_category_id_list,
                                                      shapenet_per_category_sample_multi_modal_condition_num)
         for rel_base_path in rel_base_path_list:
             print('start sample for condition ' + rel_base_path + '...')
@@ -346,3 +399,8 @@ def demo():
     cfm_sampler.waitRender()
 
     return True
+
+def demo():
+    #demo_dino()
+    torch.cuda.empty_cache()
+    demo_multi_modal()
