@@ -543,7 +543,7 @@ class CFMSampler(object):
                             if os.path.exists(current_save_pcd_folder_path):
                                 self.blender_renderer.renderFile(
                                     shape_file_path=current_save_pcd_file_path,
-                                    save_image_folder_path=current_save_render_pcd_folder_path + 'sample_' + str(i+1) + '/',
+                                    save_image_file_path=current_save_render_pcd_folder_path,
                                     overwrite=overwrite,
                                 )
 
@@ -551,7 +551,7 @@ class CFMSampler(object):
                             if os.path.exists(current_save_wnnc_folder_path):
                                 self.blender_renderer.renderFile(
                                     shape_file_path=current_save_wnnc_mesh_file_path,
-                                    save_image_folder_path=current_save_render_wnnc_folder_path + 'sample_' + str(i+1) + '/',
+                                    save_image_file_path=current_save_render_wnnc_folder_path,
                                     overwrite=overwrite,
                                 )
 
@@ -559,7 +559,7 @@ class CFMSampler(object):
                             if os.path.exists(current_save_wnnc_smooth_folder_path):
                                 self.blender_renderer.renderFile(
                                     shape_file_path=current_save_wnnc_smooth_mesh_file_path,
-                                    save_image_folder_path=current_save_render_wnnc_smooth_folder_path + 'sample_' + str(i+1) + '/',
+                                    save_image_file_path=current_save_render_wnnc_smooth_folder_path,
                                     overwrite=overwrite,
                                 )
 
@@ -567,7 +567,7 @@ class CFMSampler(object):
                             if os.path.exists(current_save_occ_folder_path):
                                 self.blender_renderer.renderFile(
                                     shape_file_path=current_save_occ_mesh_file_path,
-                                    save_image_folder_path=current_save_render_occ_folder_path + 'sample_' + str(i+1) + '/',
+                                    save_image_file_path=current_save_render_occ_folder_path,
                                     overwrite=overwrite,
                                 )
 
@@ -575,7 +575,7 @@ class CFMSampler(object):
                             if os.path.exists(current_save_occ_smooth_folder_path):
                                 self.blender_renderer.renderFile(
                                     shape_file_path=current_save_occ_smooth_mesh_file_path,
-                                    save_image_folder_path=current_save_render_occ_smooth_folder_path + 'sample_' + str(i+1) + '/',
+                                    save_image_file_path=current_save_render_occ_smooth_folder_path,
                                     overwrite=overwrite,
                                 )
 
