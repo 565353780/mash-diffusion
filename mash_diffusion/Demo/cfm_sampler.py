@@ -83,7 +83,7 @@ def demo_dino():
 
     save_folder_path = '/home/chli/chLi/Results/mash-diffusion/output/sample/' + getCurrentTime() + '/'
 
-    objaverse_per_category_sample_condition_num = 1
+    objaverse_per_category_sample_condition_num = 100
     objaverse_sample_batch_size = 4
 
     timestamp_num = 2
@@ -91,13 +91,13 @@ def demo_dino():
 
     recon_wnnc = False
     recon_occ = True
-    render_pcd = True
+    render_pcd = False
 
     smooth_wnnc = True and recon_wnnc
     smooth_occ = True and recon_occ
     render_wnnc = True and recon_wnnc
     render_wnnc_smooth = True and recon_wnnc and smooth_wnnc
-    render_occ = True and recon_occ
+    render_occ = False and recon_occ
     render_occ_smooth = True and recon_occ and smooth_occ
 
     valid_objaverse_category_id_list = [
@@ -126,7 +126,7 @@ def demo_dino():
         render_occ_smooth,
     )
 
-    condition_root_folder_path = dataset_root_path + 'Objaverse_82K/render_jpg/'
+    condition_root_folder_path = dataset_root_path + 'Objaverse_82K/render_jpg_v2/'
     data_type = '.jpg'
 
     rel_base_path_list = toRandomRelBasePathList(condition_root_folder_path,
@@ -147,6 +147,8 @@ def demo_dino():
             save_results_only)
 
     cfm_sampler.waitRender()
+
+    torch.cuda.empty_cache()
     return True
 
 def demo_multi_modal():
@@ -171,16 +173,16 @@ def demo_multi_modal():
     save_folder_path = '/home/chli/chLi/Results/mash-diffusion/output/sample/' + getCurrentTime() + '/'
 
     shapenet_per_category_sample_multi_modal_condition_num = 10
-    shapenet_category_sample_batch_size = 10
+    shapenet_category_sample_batch_size = 100
     shapenet_multi_modal_sample_batch_size = 10
 
     timestamp_num = 2
-    sample_category = False and (transformer_id == 'ShapeNet')
-    sample_ulip_image = True and (transformer_id == 'ShapeNet')
+    sample_category = True and (transformer_id == 'ShapeNet')
+    sample_ulip_image = False and (transformer_id == 'ShapeNet')
     sample_ulip_points = False and (transformer_id == 'ShapeNet')
     sample_ulip_text = False and (transformer_id == 'ShapeNet')
-    sample_fixed_anchor = True and (transformer_id == 'ShapeNet')
-    sample_combined_anchor = True and (transformer_id == 'ShapeNet')
+    sample_fixed_anchor = False and (transformer_id == 'ShapeNet')
+    sample_combined_anchor = False and (transformer_id == 'ShapeNet')
     save_results_only = True
 
     recon_wnnc = False
@@ -396,10 +398,9 @@ def demo_multi_modal():
 
     cfm_sampler.waitRender()
 
+    torch.cuda.empty_cache()
     return True
 
 def demo():
-    demo_dino()
-    exit()
-    torch.cuda.empty_cache()
+    # demo_dino()
     demo_multi_modal()

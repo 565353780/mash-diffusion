@@ -1,9 +1,10 @@
 import os
+from scipy.integrate import ode
 import torch
 import torchdiffeq
 import numpy as np
 import open3d as o3d
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from typing import Union
 from math import sqrt, ceil
 from shutil import copyfile
@@ -208,7 +209,8 @@ class CFMSampler(object):
         sample_num: int,
         condition: Union[int, np.ndarray, torch.Tensor] = 0,
         timestamp_num: int = 10,
-        ) -> np.ndarray:
+        step_size: Union[float, None] = None,
+    ) -> np.ndarray:
         self.model.eval()
 
         condition_tensor = self.getCondition(condition, sample_num)
@@ -223,13 +225,21 @@ class CFMSampler(object):
 
         x_init = torch.randn(condition_tensor.shape[0], 400, 25, device=self.device)
 
+        if step_size is None:
+            method = 'dopri5'
+            ode_opts = None
+        else:
+            method = 'euler'
+            ode_opts = {"step_size": step_size}
+
         traj = torchdiffeq.odeint(
             lambda t, x: self.model.forwardData(x, condition_tensor, t),
             x_init,
             query_t,
             atol=1e-4,
             rtol=1e-4,
-            method="dopri5",
+            method=method,
+            options=ode_opts,
         )
 
         return traj.cpu().numpy()
@@ -241,6 +251,7 @@ class CFMSampler(object):
         sample_num: int,
         condition: Union[int, np.ndarray] = 0,
         timestamp_num: int = 10,
+        step_size: Union[float, None] = None,
     ) -> Union[np.ndarray, None]:
         self.model.eval()
 
@@ -285,13 +296,21 @@ class CFMSampler(object):
         fixed_anchor_mask = torch.zeros_like(x_init, dtype=torch.bool)
         fixed_anchor_mask[:, :fixed_x_init.shape[1], :] = True
 
+        if step_size is None:
+            method = 'dopri5'
+            ode_opts = None
+        else:
+            method = 'euler'
+            ode_opts = {"step_size": step_size}
+
         traj = torchdiffeq.odeint(
             lambda t, x: self.model.forwardWithFixedAnchors(x, condition_tensor, t, fixed_anchor_mask),
             x_init,
             query_t,
             atol=1e-4,
             rtol=1e-4,
-            method="dopri5",
+            method=method,
+            options=ode_opts,
         )
 
         return traj.cpu().numpy()
@@ -305,6 +324,7 @@ class CFMSampler(object):
         timestamp_num: int = 10,
         save_results_only: bool = True,
         mash_file_path_list: Union[list, None]=None,
+        step_size: Union[float, None]=None,
     ) -> bool:
         assert condition_type in ['category', 'dino', 'ulip-image', 'ulip-points', 'ulip-text']
 
@@ -359,9 +379,20 @@ class CFMSampler(object):
 
         print("start diffuse", sample_num, "mashs....")
         if mash_file_path_list is None:
-            sampled_array = self.sample(sample_num, condition, timestamp_num)
+            sampled_array = self.sample(
+                sample_num,
+                condition,
+                timestamp_num,
+                step_size=step_size,
+            )
         else:
-            sampled_array = self.sampleWithFixedAnchors(mash_file_path_list, sample_num, condition, timestamp_num)
+            sampled_array = self.sampleWithFixedAnchors(
+                mash_file_path_list,
+                sample_num,
+                condition,
+                timestamp_num,
+                step_size=step_size,
+            )
 
         object_dist = [0, 0, 0]
 
@@ -462,9 +493,10 @@ class CFMSampler(object):
                 if self.recon_occ:
                     if os.path.exists(current_save_pcd_file_path):
                         if self.occ_detector is not None:
-                            mesh = self.occ_detector.detectFile(current_save_mash_file_path)
-                            createFileFolder(current_save_occ_mesh_file_path)
-                            mesh.export(current_save_occ_mesh_file_path)
+                            for i in trange(100):
+                                mesh = self.occ_detector.detectFile(current_save_mash_file_path)
+                                createFileFolder(current_save_occ_mesh_file_path)
+                                mesh.export(current_save_occ_mesh_file_path)
 
                 if self.smooth_wnnc:
                     if os.path.exists(current_save_wnnc_mesh_file_path):
