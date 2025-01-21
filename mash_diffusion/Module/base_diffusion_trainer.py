@@ -148,7 +148,7 @@ class BaseDiffusionTrainer(BaseTrainer):
                 "dataset": ImageDataset(
                     self.dataset_root_folder_path,
                     "Objaverse_82K/manifold_mash",
-                    "Objaverse_82K/render_jpg",
+                    "Objaverse_82K/render_jpg_v2",
                     self.dino_detector.transform,
                     "train",
                     'Objaverse_82K',
@@ -250,7 +250,7 @@ class BaseDiffusionTrainer(BaseTrainer):
                 "dataset": ImageDataset(
                     self.dataset_root_folder_path,
                     "Objaverse_82K/manifold_mash",
-                    "Objaverse_82K/render_jpg",
+                    "Objaverse_82K/render_jpg_v2",
                     self.dino_detector.transform,
                     "eval",
                     'Objaverse_82K',
