@@ -72,7 +72,7 @@ def demo_dino():
     transformer_id = 'Objaverse_82K'
 
     cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image-0122/model_last.pth'
-    occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0122/model_last.pth'
+    occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0118/model_best.pth'
     cfm_use_ema = False
     occ_use_ema = True
     device = 'cuda:0'
@@ -395,5 +395,5 @@ def demo_multi_modal():
     return True
 
 def demo():
-    # demo_dino()
-    demo_multi_modal()
+    demo_dino()
+    #demo_multi_modal()
