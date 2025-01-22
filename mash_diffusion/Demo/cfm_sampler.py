@@ -71,8 +71,8 @@ def demo_dino():
 
     transformer_id = 'Objaverse_82K'
 
-    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image-0118/model_last.pth'
-    occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0118/model_last.pth'
+    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image-0122/model_last.pth'
+    occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0122/model_last.pth'
     cfm_use_ema = False
     occ_use_ema = True
     device = 'cuda:0'
@@ -159,8 +159,8 @@ def demo_multi_modal():
 
     transformer_id = 'ShapeNet'
 
-    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-ShapeNet-multi_modal-0118/model_last.pth'
-    occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0118/model_last.pth'
+    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-ShapeNet-category-0122/model_last.pth'
+    occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0118/model_best.pth'
     cfm_use_ema = False
     occ_use_ema = True
     device = 'cuda:0'
@@ -181,8 +181,8 @@ def demo_multi_modal():
     sample_ulip_image = False and (transformer_id == 'ShapeNet')
     sample_ulip_points = False and (transformer_id == 'ShapeNet')
     sample_ulip_text = False and (transformer_id == 'ShapeNet')
-    sample_fixed_anchor = False and (transformer_id == 'ShapeNet')
-    sample_combined_anchor = False and (transformer_id == 'ShapeNet')
+    sample_fixed_anchor = True and (transformer_id == 'ShapeNet')
+    sample_combined_anchor = True and (transformer_id == 'ShapeNet')
     save_results_only = True
 
     recon_wnnc = False
@@ -218,13 +218,6 @@ def demo_multi_modal():
         '04468005', # 52: train
         '04530566', # 53: watercraft
     ]
-    '''
-    valid_shapenet_category_id_list = [
-        '02691156', # 0: airplane
-        '03001627', # 18: chair
-        '04379243', # 49: table
-    ]
-    '''
 
     cfm_sampler = CFMSampler(
         cfm_model_file_path,

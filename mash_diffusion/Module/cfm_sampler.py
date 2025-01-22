@@ -1,10 +1,9 @@
 import os
-from scipy.integrate import ode
 import torch
 import torchdiffeq
 import numpy as np
 import open3d as o3d
-from tqdm import tqdm, trange
+from tqdm import tqdm
 from typing import Union
 from math import sqrt, ceil
 from shutil import copyfile
@@ -493,10 +492,9 @@ class CFMSampler(object):
                 if self.recon_occ:
                     if os.path.exists(current_save_pcd_file_path):
                         if self.occ_detector is not None:
-                            for i in trange(100):
-                                mesh = self.occ_detector.detectFile(current_save_mash_file_path)
-                                createFileFolder(current_save_occ_mesh_file_path)
-                                mesh.export(current_save_occ_mesh_file_path)
+                            mesh = self.occ_detector.detectFile(current_save_mash_file_path)
+                            createFileFolder(current_save_occ_mesh_file_path)
+                            mesh.export(current_save_occ_mesh_file_path)
 
                 if self.smooth_wnnc:
                     if os.path.exists(current_save_wnnc_mesh_file_path):
