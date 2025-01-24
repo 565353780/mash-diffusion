@@ -131,7 +131,7 @@ class BaseDiffusionTrainer(BaseTrainer):
                 "repeat_num": 1,
             }
 
-        if self.training_mode in ['category', 'multi_modal']:
+        if self.training_mode in ['category']:
             self.dataloader_dict['category'] = {
                 "dataset": MashDataset(
                     self.dataset_root_folder_path,

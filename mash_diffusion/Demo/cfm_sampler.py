@@ -98,7 +98,7 @@ def demo_dino():
     render_wnnc = True and recon_wnnc
     render_wnnc_smooth = True and recon_wnnc and smooth_wnnc
     render_occ = False and recon_occ
-    render_occ_smooth = True and recon_occ and smooth_occ
+    render_occ_smooth = False and recon_occ and smooth_occ
 
     valid_objaverse_category_id_list = [
         '000-' + str(i).zfill(3) for i in range(160)
@@ -159,9 +159,9 @@ def demo_multi_modal():
 
     transformer_id = 'ShapeNet'
 
-    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-ShapeNet-category-0122/model_last.pth'
-    occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0118/model_best.pth'
-    cfm_use_ema = False
+    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-ShapeNet-multi_modal-0118/model_last.pth'
+    occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0118/model_last.pth'
+    cfm_use_ema = True
     occ_use_ema = True
     device = 'cuda:0'
     ulip_model_file_path = model_root_path + 'ULIP2/pretrained_models_ckpt_zero-sho_classification_pointbert_ULIP-2.pt'
@@ -174,49 +174,50 @@ def demo_multi_modal():
 
     shapenet_per_category_sample_multi_modal_condition_num = 10
     shapenet_category_sample_batch_size = 100
-    shapenet_multi_modal_sample_batch_size = 10
+    shapenet_multi_modal_sample_batch_size = 100
 
     timestamp_num = 2
-    sample_category = True and (transformer_id == 'ShapeNet')
-    sample_ulip_image = False and (transformer_id == 'ShapeNet')
+    sample_category = False and (transformer_id == 'ShapeNet')
+    sample_ulip_image = True and (transformer_id == 'ShapeNet')
     sample_ulip_points = False and (transformer_id == 'ShapeNet')
     sample_ulip_text = False and (transformer_id == 'ShapeNet')
-    sample_fixed_anchor = True and (transformer_id == 'ShapeNet')
-    sample_combined_anchor = True and (transformer_id == 'ShapeNet')
+    sample_fixed_anchor = False and (transformer_id == 'ShapeNet')
+    sample_combined_anchor = False and (transformer_id == 'ShapeNet')
     save_results_only = True
 
-    recon_wnnc = False
-    recon_occ = True
-    render_pcd = True
+    render_pcd = False
 
+    recon_wnnc = False
     smooth_wnnc = True and recon_wnnc
-    smooth_occ = True and recon_occ
-    render_wnnc = True and recon_wnnc
+    render_wnnc = False and recon_wnnc
     render_wnnc_smooth = True and recon_wnnc and smooth_wnnc
-    render_occ = True and recon_occ
+
+    recon_occ = True
+    smooth_occ = True and recon_occ
+    render_occ = False and recon_occ
     render_occ_smooth = True and recon_occ and smooth_occ
 
     if not sample_ulip_image and not sample_ulip_points and not sample_ulip_text:
         ulip_model_file_path = None
 
     valid_shapenet_category_id_list = [
-        #'02691156', # 0: airplane
+        '02691156', # 0: airplane
         #'02773838', # 2: bag
         #'02828884', # 6: bench
         #'02876657', # 9: bottle
         #'02958343', # 16: car
-        '03001627', # 18: chair
-        '03211117', # 22: monitor
-        '03261776', # 23: earphone
-        '03325088', # 24: spigot
-        '03467517', # 26: guitar
-        '03636649', # 30: lamp
-        '03948459', # 40: gun
-        '04090263', # 44: long-gun
-        '04256520', # 47: sofa
-        '04379243', # 49: table
-        '04468005', # 52: train
-        '04530566', # 53: watercraft
+        #'03001627', # 18: chair
+        #'03211117', # 22: monitor
+        #'03261776', # 23: earphone
+        #'03325088', # 24: spigot
+        #'03467517', # 26: guitar
+        #'03636649', # 30: lamp
+        #'03948459', # 40: gun
+        #'04090263', # 44: long-gun
+        #'04256520', # 47: sofa
+        #'04379243', # 49: table
+        #'04468005', # 52: train
+        #'04530566', # 53: watercraft
     ]
 
     cfm_sampler = CFMSampler(
@@ -253,8 +254,7 @@ def demo_multi_modal():
                 save_results_only)
 
     if sample_ulip_image:
-        tmp_dataset_root_path = '/home/chli/chLi2/Dataset/'
-        condition_root_folder_path = tmp_dataset_root_path + 'CapturedImage/ShapeNet/'
+        condition_root_folder_path = dataset_root_path + 'CapturedImage/ShapeNet/'
         data_type = '.png'
 
         rel_base_path_list = toRandomRelBasePathList(
@@ -319,19 +319,52 @@ def demo_multi_modal():
                 timestamp_num,
                 save_results_only)
 
+    part_mash_folder_path = '/home/chli/chLi/Results/ma-sh/output/part_mash/'
+    mash_id_list_1 = [
+        '02691156/595556bad291028733de69c9cd670995',
+        '02691156/166d333d38897d1513d521050081b441',
+        '02691156/cc9b7118034278fcb4cdad9a5bf52dd5',
+        '02691156/73f6ccf1468de18d381fd507da445af6',
+        '02691156/a75ab6e99a3542eb203936772104a82d',
+        '02691156/6f96517661cf1b6799ed03445864bd37',
+    ]
+
+    mash_id_list_2 = [
+        '02828884/fc3865756db954685896bab37ddebe7',
+
+        #'02828884/bdc3a9776cd0d69b26abe89c4547d5f1',
+        #'02828884/d8b87f36fde3f2f3bc5996932c1238cd',
+    ]
+
+    mash_id_list_3 = [
+        '03001627/d3302b7fa6504cab1a461b43b8f257f',
+        '03001627/a75e83a3201cf5ac745004c6a29b0df0',
+        '03001627/d3ff300de7ab36bfc8528ab560ff5e59',
+        '03001627/d29445f24bbf1b1814c05b481f895c37',
+        #'03001627/433c6c88f1a43ab73ebe788797b18766',
+        #'03001627/9d9b5f5b3fd41136244d7c2690850fc2',
+        #'03001627/f2af2483f9fb980cb237f85c0ae7ac77',
+        #'03001627/3c27660aacbcf99886327adaa986dff',
+        #'03001627/7ae6518311bf2f66e1a0327ca4c4d5a5',
+    ]
+
+    mash_id_list = mash_id_list_1
+
+    mash_rel_path_list = []
+    for mash_id in mash_id_list:
+        curr_part_mash_folder_path = part_mash_folder_path + mash_id + '/'
+        curr_part_mash_filename_list = os.listdir(curr_part_mash_folder_path)
+        if len(curr_part_mash_filename_list) == 0:
+            continue
+
+        for file in curr_part_mash_filename_list:
+            if not file.endswith('.npy') or not file.startswith('part'):
+                continue
+
+            mash_rel_path_list.append(mash_id + '/' + file)
+            break
+
     if sample_fixed_anchor:
-        part_mash_folder_path = '/home/chli/chLi/Results/ma-sh/output/part_mash/'
-        mash_rel_path_list = [
-            '02691156/595556bad291028733de69c9cd670995/part_mash_anc-70.npy',
-            '02691156/6f96517661cf1b6799ed03445864bd37/part_mash_anc-116.npy',
-            '02691156/73f6ccf1468de18d381fd507da445af6/part_mash_anc-83.npy',
-            '02691156/a75ab6e99a3542eb203936772104a82d/part_mash_anc-62.npy',
-            '02691156/cc9b7118034278fcb4cdad9a5bf52dd5/part_mash_anc-87.npy',
-            '03001627/a75e83a3201cf5ac745004c6a29b0df0/part_mash_anc-128.npy',
-            '03001627/d29445f24bbf1b1814c05b481f895c37/part_mash_anc-88.npy',
-            '03001627/d3302b7fa6504cab1a461b43b8f257f/part_mash_anc-97.npy',
-            '03001627/d3ff300de7ab36bfc8528ab560ff5e59/part_mash_anc-103.npy',
-        ]
         for mash_rel_path in mash_rel_path_list:
             print('start sample for fixed anchor for ' + mash_rel_path + '...')
             mash_file_path = part_mash_folder_path + mash_rel_path
@@ -349,36 +382,36 @@ def demo_multi_modal():
                 [mash_file_path])
 
     if sample_combined_anchor:
-        part_mash_folder_path = '/home/chli/chLi/Results/ma-sh/output/part_mash/'
-        mash_rel_path_list = [
-            '02691156/595556bad291028733de69c9cd670995/part_mash_anc-70.npy',
-            '02691156/6f96517661cf1b6799ed03445864bd37/part_mash_anc-116.npy',
-            '02691156/73f6ccf1468de18d381fd507da445af6/part_mash_anc-83.npy',
-            '02691156/a75ab6e99a3542eb203936772104a82d/part_mash_anc-62.npy',
-            '02691156/cc9b7118034278fcb4cdad9a5bf52dd5/part_mash_anc-87.npy',
-            '03001627/a75e83a3201cf5ac745004c6a29b0df0/part_mash_anc-128.npy',
-            '03001627/d29445f24bbf1b1814c05b481f895c37/part_mash_anc-88.npy',
-            '03001627/d3302b7fa6504cab1a461b43b8f257f/part_mash_anc-97.npy',
-            '03001627/d3ff300de7ab36bfc8528ab560ff5e59/part_mash_anc-103.npy',
-        ]
-
         combined_mash_ids_list = [
-            [0, 1],
-            [0, 2],
-            [0, 3],
-            [0, 4],
-            [5, 6],
-            [5, 7],
-            [8, 6],
-            [8, 7],
+            #['02691156/5955', '02691156/166d'],
+            #['02691156/5955', '02691156/73f6'],
+            #['02691156/5955', '02691156/cc96'],
+            ['02691156/5955', '02691156/6f96'],
+            ['02691156/5955', '02691156/a75a'],
+            #['02691156/73f6', '02691156/6f96'],
+
+            ['02828884/bdc3', '02828884/fc38'],
+            ['02828884/bdc3', '02828884/d8b8'],
+            ['02828884/fc38', '02828884/d8b8'],
+
+            ['03001627/d294', '03001627/a75e'],
+            ['03001627/d294', '03001627/9d9b'],
+            ['03001627/d294', '03001627/7ae6'],
+            ['03001627/d294', '03001627/3c27'],
+            ['03001627/433c', '03001627/9d9b'],
+            ['03001627/433c', '03001627/a75e'],
+            ['03001627/433c', '03001627/3c27'],
+            ['03001627/433c', '03001627/f2af'],
         ]
         for i, combined_mash_ids in enumerate(combined_mash_ids_list):
             print('start sample for combined anchor ' + str(i) + '...')
             mash_file_path_list = [
-                    part_mash_folder_path + mash_rel_path_list[combined_mash_id]
-                        for combined_mash_id in combined_mash_ids
+                    part_mash_folder_path + mash_rel_path for mash_rel_path in mash_rel_path_list
+                if mash_rel_path.startswith(combined_mash_ids[0]) or mash_rel_path.startswith(combined_mash_ids[1])
             ]
-            category_id = mash_rel_path_list[combined_mash_ids[0]].split('/')[0]
+            if len(mash_file_path_list) < 2:
+                continue
+            category_id = combined_mash_ids[0].split('/')[0]
             mash_id = str(i)
             cfm_sampler.samplePipeline(
                 save_folder_path + 'category-combined-anchors/' + category_id + '/' + mash_id + '/',
@@ -395,5 +428,5 @@ def demo_multi_modal():
     return True
 
 def demo():
-    demo_dino()
-    #demo_multi_modal()
+    #demo_dino()
+    demo_multi_modal()
