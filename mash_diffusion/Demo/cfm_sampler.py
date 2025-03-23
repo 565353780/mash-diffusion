@@ -11,6 +11,8 @@ sys.path.append('../distribution-manage/')
 import os
 import torch
 import random
+import numpy as np
+import open3d as o3d
 from tqdm import tqdm
 from typing import Union
 
@@ -73,7 +75,7 @@ def demo_dino():
 
     cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-Objaverse_82K-single_image-0122/model_last.pth'
     occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0118/model_best.pth'
-    cfm_use_ema = False
+    cfm_use_ema = True
     occ_use_ema = True
     device = 'cuda:0'
     dino_model_file_path = model_root_path + 'DINOv2/dinov2_vitb14_reg4_pretrain.pth'
@@ -159,7 +161,7 @@ def demo_multi_modal():
 
     transformer_id = 'ShapeNet'
 
-    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-ShapeNet-multi_modal-0118/model_last.pth'
+    cfm_model_file_path = model_root_path + 'MashDiffusion/cfm-ShapeNet-multi_modal-0122/model_last.pth'
     occ_model_file_path = model_root_path + 'MashOCCDecoder/noise_1-0118/model_last.pth'
     cfm_use_ema = True
     occ_use_ema = True
@@ -172,17 +174,17 @@ def demo_multi_modal():
 
     save_folder_path = '/home/chli/chLi/Results/mash-diffusion/output/sample/' + getCurrentTime() + '/'
 
-    shapenet_per_category_sample_multi_modal_condition_num = 10
-    shapenet_category_sample_batch_size = 100
-    shapenet_multi_modal_sample_batch_size = 100
+    shapenet_per_category_sample_multi_modal_condition_num = 30
+    shapenet_category_sample_batch_size = 10
+    shapenet_multi_modal_sample_batch_size = 10
 
     timestamp_num = 2
-    sample_category = False and (transformer_id == 'ShapeNet')
-    sample_ulip_image = True and (transformer_id == 'ShapeNet')
-    sample_ulip_points = False and (transformer_id == 'ShapeNet')
-    sample_ulip_text = False and (transformer_id == 'ShapeNet')
-    sample_fixed_anchor = False and (transformer_id == 'ShapeNet')
-    sample_combined_anchor = False and (transformer_id == 'ShapeNet')
+    sample_category = False
+    sample_ulip_image = False
+    sample_ulip_points = True
+    sample_ulip_text = False
+    sample_fixed_anchor = False
+    sample_combined_anchor = False
     save_results_only = True
 
     render_pcd = False
@@ -201,12 +203,12 @@ def demo_multi_modal():
         ulip_model_file_path = None
 
     valid_shapenet_category_id_list = [
-        '02691156', # 0: airplane
+        #'02691156', # 0: airplane
         #'02773838', # 2: bag
         #'02828884', # 6: bench
         #'02876657', # 9: bottle
         #'02958343', # 16: car
-        #'03001627', # 18: chair
+        '03001627', # 18: chair
         #'03211117', # 22: monitor
         #'03261776', # 23: earphone
         #'03325088', # 24: spigot
@@ -278,19 +280,38 @@ def demo_multi_modal():
                 save_results_only)
 
     if sample_ulip_points:
-        condition_root_folder_path = dataset_root_path + 'ManifoldMesh/ShapeNet/'
-        data_type = '.obj'
+        condition_root_folder_path = dataset_root_path + 'ShapeNet/manifold_pcd-512_nonuniform/'
+        data_type = '.ply'
 
         rel_base_path_list = toRandomRelBasePathList(condition_root_folder_path,
                                                      data_type,
                                                      valid_shapenet_category_id_list,
                                                      shapenet_per_category_sample_multi_modal_condition_num)
         for rel_base_path in rel_base_path_list:
+            '''
+            valid = False
+            if '/2c052f' in rel_base_path:
+                valid = True
+            if '/3d4423' in rel_base_path:
+                valid = True
+            if '/4c1777' in rel_base_path:
+                valid = True
+            if '/8be809' in rel_base_path:
+                valid = True
+            if '/38c67c' in rel_base_path:
+                valid = True
+
+            if not valid:
+                continue
+            '''
+
             print('start sample for condition ' + rel_base_path + '...')
             condition_file_path = condition_root_folder_path + rel_base_path + data_type
             if not os.path.exists(condition_file_path):
                 continue
-            points = Mesh(condition_file_path).toSamplePoints(8192)
+            #points = Mesh(condition_file_path).toSamplePoints(8192)
+            points = np.asarray(o3d.io.read_point_cloud(condition_file_path).points)
+            points = np.vstack([points, points])
             cfm_sampler.samplePipeline(
                 save_folder_path + 'ulip-points/' + rel_base_path + '/',
                 'ulip-points',
@@ -428,5 +449,5 @@ def demo_multi_modal():
     return True
 
 def demo():
-    #demo_dino()
+    # demo_dino()
     demo_multi_modal()
