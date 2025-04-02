@@ -99,6 +99,16 @@ class CFMSampler(object):
                 depth=self.depth
             ).to(self.device)
 
+        '''
+        def count_parameters_in_B(model):
+            total_params = sum(p.numel() for p in model.parameters())  # 计算参数总数
+            total_params_B = total_params / 1e9  # 转换为 Billion（B）
+            return total_params, total_params_B
+
+        print(count_parameters_in_B(self.model))
+        exit()
+        '''
+
         if model_file_path is not None:
             self.loadModel(model_file_path)
 
