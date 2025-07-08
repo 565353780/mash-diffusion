@@ -5,8 +5,7 @@ import numpy as np
 from PIL import Image
 from torch.utils.data import Dataset
 
-from ma_sh.Method.io import loadMashFileParamsTensor
-from ma_sh.Method.transformer import getTransformer
+from mash_diffusion.Method.io import loadMashTensor
 
 
 class ImageDataset(Dataset):
@@ -17,8 +16,7 @@ class ImageDataset(Dataset):
         image_folder_name: str,
         transform,
         split: str = "train",
-        transformer_id: str = 'Objaverse_82K',
-        dtype = torch.float32,
+        dtype=torch.float32,
     ) -> None:
         self.dataset_root_folder_path = dataset_root_folder_path
         self.transform = transform
@@ -26,13 +24,12 @@ class ImageDataset(Dataset):
         self.dtype = dtype
 
         self.mash_folder_path = self.dataset_root_folder_path + mash_folder_name + "/"
-        self.image_root_folder_path = self.dataset_root_folder_path + image_folder_name + "/"
+        self.image_root_folder_path = (
+            self.dataset_root_folder_path + image_folder_name + "/"
+        )
 
         assert os.path.exists(self.mash_folder_path)
         assert os.path.exists(self.image_root_folder_path)
-
-        self.transformer = getTransformer(transformer_id)
-        assert self.transformer is not None
 
         self.output_error = False
 
@@ -70,12 +67,6 @@ class ImageDataset(Dataset):
         self.paths_list.sort(key=lambda x: x[0])
 
         return
-
-    def normalize(self, mash_params: torch.Tensor) -> torch.Tensor:
-        return self.transformer.transform(mash_params, False)
-
-    def normalizeInverse(self, mash_params: torch.Tensor) -> torch.Tensor:
-        return self.transformer.inverse_transform(mash_params, False)
 
     def __len__(self):
         return len(self.paths_list)
@@ -122,13 +113,14 @@ class ImageDataset(Dataset):
             new_idx = random.randint(0, len(self.paths_list) - 1)
             return self.__getitem__(new_idx)
 
-        image = image.convert('RGB')
+        image = image.convert("RGB")
 
         image = self.transform(image)
 
-        mash_params = loadMashFileParamsTensor(mash_file_path, torch.float32, "cpu")
-
-        mash_params = self.normalize(mash_params)
+        mash_params = loadMashTensor(mash_file_path)
+        assert mash_params is not None, (
+            "[ERROR][ImageDataset::__getitem__] mash_params is None!"
+        )
 
         permute_idxs = np.random.permutation(mash_params.shape[0])
 

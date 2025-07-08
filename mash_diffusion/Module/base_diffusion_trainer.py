@@ -1,10 +1,10 @@
+import os
 import torch
 from torch import nn
 from tqdm import trange
 from typing import Union
 from abc import abstractmethod
 
-from ma_sh.Config.custom_path import toModelRootPath
 from ma_sh.Model.mash import Mash
 
 from base_trainer.Module.base_trainer import BaseTrainer
@@ -12,24 +12,19 @@ from base_trainer.Module.base_trainer import BaseTrainer
 from dino_v2_detect.Module.detector import Detector as DINODetector
 
 from mash_diffusion.Dataset.image import ImageDataset
-from mash_diffusion.Dataset.mash import MashDataset
-from mash_diffusion.Dataset.embedding import EmbeddingDataset
-from mash_diffusion.Dataset.single_category import SingleCategoryDataset
-from mash_diffusion.Dataset.single_shape import SingleShapeDataset
 
 
 class BaseDiffusionTrainer(BaseTrainer):
     def __init__(
         self,
         dataset_root_folder_path: str,
-        training_mode: str = 'dino',
         batch_size: int = 5,
         accum_iter: int = 10,
         num_workers: int = 16,
         model_file_path: Union[str, None] = None,
         weights_only: bool = False,
         device: str = "cuda:0",
-        dtype = torch.float32,
+        dtype=torch.float32,
         warm_step_num: int = 2000,
         finetune_step_num: int = -1,
         lr: float = 2e-4,
@@ -46,29 +41,29 @@ class BaseDiffusionTrainer(BaseTrainer):
         quick_test: bool = False,
     ) -> None:
         self.dataset_root_folder_path = dataset_root_folder_path
-        self.training_mode = training_mode
+
+        self.anchor_num = 8192
+        self.mask_degree = 2
+        self.sh_degree = 2
+
+        self.context_dim = 1024
+        self.n_heads = 16
+        self.d_head = 64
+        self.depth = 16
 
         self.anchor_num = 400
         self.mask_degree = 3
         self.sh_degree = 2
-        self.anchor_channel = int(
-            9 + (2 * self.mask_degree + 1) + ((self.sh_degree + 1) ** 2)
-        )
-
-        if training_mode in ['single_shape', 'single_category', 'category', 'multi_modal']:
-            self.context_dim = 512
-            self.n_heads = 8
-            self.d_head = 64
-            self.depth = 24
-            self.fix_params = True
-        elif training_mode in ['dino']:
-            self.context_dim = 768
-            self.n_heads = 8
-            self.d_head = 64
-            self.depth = 24
-            self.fix_params = False
+        self.context_dim = 768
+        self.n_heads = 8
+        self.d_head = 64
+        self.depth = 16
 
         self.gt_sample_added_to_logger = False
+
+        mask_dim = 2 * self.mask_degree + 1
+        sh_dim = (self.sh_degree + 1) ** 2
+        self.anchor_channel = 9 + mask_dim + sh_dim
 
         super().__init__(
             batch_size,
@@ -96,169 +91,41 @@ class BaseDiffusionTrainer(BaseTrainer):
         return
 
     def createDatasets(self) -> bool:
-        if self.training_mode in ['dino']:
-            model_root_path = toModelRootPath()
-            assert model_root_path is not None
+        model_root_path = os.environ["HOME"] + "/chLi/Model/"
+        assert model_root_path is not None
 
-            model_type = 'base'
-            model_file_path = model_root_path + 'DINOv2/dinov2_vitb14_reg4_pretrain.pth'
-            dtype = 'auto'
+        model_type = "base"
+        model_file_path = model_root_path + "DINOv2/dinov2_vitb14_reg4_pretrain.pth"
+        dtype = "auto"
 
-            self.dino_detector = DINODetector(model_type, model_file_path, dtype, self.device)
+        self.dino_detector = DINODetector(
+            model_type, model_file_path, dtype, self.device
+        )
 
-        if self.training_mode in ['single_shape']:
-            mash_file_path = self.dataset_root_folder_path + \
-                "MashV4/ShapeNet/03636649/583a5a163e59e16da523f74182db8f2.npy"
-            self.dataloader_dict["single_shape"] = {
-                "dataset": SingleShapeDataset(
-                    mash_file_path,
-                    10000,
-                    self.dtype,
-                ),
-                "repeat_num": 1,
-            }
+        self.dataloader_dict["dino"] = {
+            "dataset": ImageDataset(
+                self.dataset_root_folder_path,
+                "Objaverse_82K/manifold_mash",
+                "Objaverse_82K/render_jpg_v2",
+                self.dino_detector.transform,
+                "train",
+                self.dtype,
+            ),
+            "repeat_num": 1,
+        }
 
-        if self.training_mode in ['single_category']:
-            self.dataloader_dict["single_category"] = {
-                "dataset": SingleCategoryDataset(
-                    self.dataset_root_folder_path,
-                    "MashV4/ShapeNet",
-                    '03001627',
-                    "train",
-                    'ShapeNet_03001627',
-                    self.dtype,
-                ),
-                "repeat_num": 1,
-            }
+        self.dataloader_dict["eval"] = {
+            "dataset": ImageDataset(
+                self.dataset_root_folder_path,
+                "Objaverse_82K/manifold_mash",
+                "Objaverse_82K/render_jpg_v2",
+                self.dino_detector.transform,
+                "eval",
+                self.dtype,
+            ),
+        }
 
-        if self.training_mode in ['category']:
-            self.dataloader_dict['category'] = {
-                "dataset": MashDataset(
-                    self.dataset_root_folder_path,
-                    "MashV4/ShapeNet",
-                    "train",
-                    'ShapeNet',
-                    self.dtype,
-                ),
-                "repeat_num": 1,
-            }
-
-        if self.training_mode in ['dino']:
-            self.dataloader_dict["dino"] = {
-                "dataset": ImageDataset(
-                    self.dataset_root_folder_path,
-                    "Objaverse_82K/manifold_mash",
-                    "Objaverse_82K/render_jpg_v2",
-                    self.dino_detector.transform,
-                    "train",
-                    'Objaverse_82K',
-                    self.dtype,
-                ),
-                "repeat_num": 1,
-            }
-
-        if self.training_mode in ['image', 'multi_modal']:
-            self.dataloader_dict['image'] = {
-                "dataset": EmbeddingDataset(
-                    self.dataset_root_folder_path,
-                    "MashV4/ShapeNet",
-                    "ImageEmbedding_ulip/ShapeNet",
-                    "random",
-                    "train",
-                    'ShapeNet',
-                    True,
-                    None,
-                    self.dtype,
-                ),
-                "repeat_num": 1,
-            }
-
-        if self.training_mode in ['point', 'multi_modal']:
-            self.dataloader_dict['point'] = {
-                "dataset": EmbeddingDataset(
-                    self.dataset_root_folder_path,
-                    "MashV4/ShapeNet",
-                    "PointsEmbedding/ShapeNet",
-                    "random",
-                    "train",
-                    'ShapeNet',
-                    True,
-                    None,
-                    self.dtype,
-                ),
-                "repeat_num": 1,
-            }
-
-        if self.training_mode in ['text', 'multi_modal']:
-            self.dataloader_dict['text'] = {
-                "dataset": EmbeddingDataset(
-                    self.dataset_root_folder_path,
-                    "MashV4/ShapeNet",
-                    "TextEmbedding_ShapeGlot/ShapeNet",
-                    "random",
-                    "train",
-                    'ShapeNet',
-                    True,
-                    None,
-                    self.dtype,
-                ),
-                "repeat_num": 10,
-            }
-
-        if self.training_mode in ['single_category']:
-            self.dataloader_dict["eval"] = {
-                "dataset": SingleCategoryDataset(
-                    self.dataset_root_folder_path,
-                    "MashV4/ShapeNet",
-                    '03001627',
-                    "eval",
-                    'ShapeNet_03001627',
-                    self.dtype,
-                ),
-                "repeat_num": 1,
-            }
-
-        elif self.training_mode in ['single_shape', 'category']:
-            self.dataloader_dict["eval"] = {
-                "dataset": MashDataset(
-                    self.dataset_root_folder_path,
-                    'MashV4/ShapeNet',
-                    "eval",
-                    'ShapeNet',
-                    self.dtype,
-                ),
-            }
-
-        elif self.training_mode in ['multi_modal']:
-            self.dataloader_dict['eval'] = {
-                "dataset": EmbeddingDataset(
-                    self.dataset_root_folder_path,
-                    "MashV4/ShapeNet",
-                    "PointsEmbedding/ShapeNet",
-                    "random",
-                    "eval",
-                    'ShapeNet',
-                    True,
-                    None,
-                    self.dtype,
-                ),
-                "repeat_num": 1,
-            }
-
-        elif self.training_mode in ['dino']:
-            self.dataloader_dict["eval"] = {
-                "dataset": ImageDataset(
-                    self.dataset_root_folder_path,
-                    "Objaverse_82K/manifold_mash",
-                    "Objaverse_82K/render_jpg_v2",
-                    self.dino_detector.transform,
-                    "eval",
-                    'Objaverse_82K',
-                    self.dtype,
-                ),
-            }
-
-        if 'eval' in self.dataloader_dict.keys():
+        if "eval" in self.dataloader_dict.keys():
             self.dataloader_dict["eval"]["dataset"].paths_list = self.dataloader_dict[
                 "eval"
             ]["dataset"].paths_list[:64]
@@ -297,12 +164,14 @@ class BaseDiffusionTrainer(BaseTrainer):
         return data_dict
 
     @abstractmethod
-    def preProcessDiffusionData(self, data_dict: dict, is_training: bool = False) -> dict:
-        '''
+    def preProcessDiffusionData(
+        self, data_dict: dict, is_training: bool = False
+    ) -> dict:
+        """
         if is_training:
             data_dict[new_name] = new_value
         return data_dict
-        '''
+        """
         pass
 
     def preProcessData(self, data_dict: dict, is_training: bool = False) -> dict:
@@ -319,11 +188,13 @@ class BaseDiffusionTrainer(BaseTrainer):
 
     @abstractmethod
     @torch.no_grad()
-    def sampleMashData(self, model: nn.Module, condition: torch.Tensor, sample_num: int) -> torch.Tensor:
-        '''
+    def sampleMashData(
+        self, model: nn.Module, condition: torch.Tensor, sample_num: int
+    ) -> torch.Tensor:
+        """
         mash_params = sample_func(model, condition, sample_num)
         return mash_params
-        '''
+        """
         pass
 
     @torch.no_grad()
@@ -332,23 +203,22 @@ class BaseDiffusionTrainer(BaseTrainer):
             return True
 
         sample_num = 3
-        if self.training_mode == 'multi_modal':
-            dataset = self.dataloader_dict['image']["dataset"]
-        else:
-            dataset = self.dataloader_dict[self.training_mode]["dataset"]
+        dataset = self.dataloader_dict["dino"]["dataset"]
 
         model.eval()
 
         data_dict = dataset.__getitem__(1)
         data_dict = self.getCondition(data_dict)
- 
-        condition = data_dict['condition']
+
+        condition = data_dict["condition"]
 
         if isinstance(condition, int):
             condition = torch.ones([sample_num]).long().to(self.device) * condition
         else:
-            condition = condition.type(self.dtype).to(self.device).repeat(
-                *([sample_num] + [1] * (condition.ndim - 1))
+            condition = (
+                condition.type(self.dtype)
+                .to(self.device)
+                .repeat(*([sample_num] + [1] * (condition.ndim - 1)))
             )
 
         print("[INFO][BaseDiffusionTrainer::sampleModelStep]")
@@ -360,29 +230,26 @@ class BaseDiffusionTrainer(BaseTrainer):
             self.anchor_num,
             self.mask_degree,
             self.sh_degree,
-            20,
-            800,
-            0.4,
-            dtype=torch.float64,
+            40,
+            40,
+            dtype=torch.float32,
             device=self.device,
         )
 
         if not self.gt_sample_added_to_logger:
-            gt_mash = data_dict['mash_params']
-
-            gt_mash = dataset.normalizeInverse(gt_mash)
+            gt_mash = data_dict["mash_params"]
 
             sh2d = 2 * self.mask_degree + 1
-            ortho_poses = gt_mash[:, :6]
-            positions = gt_mash[:, 6:9]
+            positions = gt_mash[:, :3]
+            ortho_poses = gt_mash[:, 3:9]
             mask_params = gt_mash[:, 9 : 9 + sh2d]
             sh_params = gt_mash[:, 9 + sh2d :]
 
             mash_model.loadParams(
                 mask_params=mask_params,
                 sh_params=sh_params,
+                ortho_poses=ortho_poses,
                 positions=positions,
-                ortho6d_poses=ortho_poses,
             )
 
             pcd = mash_model.toSamplePcd()
@@ -394,19 +261,17 @@ class BaseDiffusionTrainer(BaseTrainer):
         for i in trange(sample_num):
             mash_params = sampled_array[i]
 
-            mash_params = dataset.normalizeInverse(mash_params)
-
             sh2d = 2 * self.mask_degree + 1
-            ortho_poses = mash_params[:, :6]
-            positions = mash_params[:, 6:9]
+            positions = mash_params[:, :3]
+            ortho_poses = mash_params[:, 3:9]
             mask_params = mash_params[:, 9 : 9 + sh2d]
             sh_params = mash_params[:, 9 + sh2d :]
 
             mash_model.loadParams(
                 mask_params=mask_params,
                 sh_params=sh_params,
+                ortho_poses=ortho_poses,
                 positions=positions,
-                ortho6d_poses=ortho_poses,
             )
 
             pcd = mash_model.toSamplePcd()

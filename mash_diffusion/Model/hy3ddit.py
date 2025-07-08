@@ -395,8 +395,7 @@ class Hunyuan3DDiT(nn.Module):
             print("unexpected keys:", unexpected)
             print("missing keys:", missing)
 
-    def forward(self, x, t, contexts, **kwargs) -> Tensor:
-        cond = contexts["main"]
+    def forward(self, x, t, cond, **kwargs) -> Tensor:
         latent = self.latent_in(x)
 
         vec = self.time_in(

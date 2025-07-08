@@ -1,5 +1,4 @@
 import torch
-import numpy as np
 from torch import nn
 from typing import Union
 
@@ -15,14 +14,13 @@ class EDMTrainer(BaseDiffusionTrainer):
     def __init__(
         self,
         dataset_root_folder_path: str,
-        training_mode: str = 'dino',
         batch_size: int = 5,
         accum_iter: int = 10,
         num_workers: int = 16,
         model_file_path: Union[str, None] = None,
         weights_only: bool = False,
         device: str = "cuda:0",
-        dtype = torch.float32,
+        dtype=torch.float32,
         warm_step_num: int = 2000,
         finetune_step_num: int = -1,
         lr: float = 2e-4,
@@ -42,7 +40,6 @@ class EDMTrainer(BaseDiffusionTrainer):
 
         super().__init__(
             dataset_root_folder_path,
-            training_mode,
             batch_size,
             accum_iter,
             num_workers,
@@ -70,9 +67,7 @@ class EDMTrainer(BaseDiffusionTrainer):
     def createModel(self) -> bool:
         model_id = 2
         if model_id == 1:
-            self.model = MashUNet(
-                self.context_dim
-            ).to(self.device, dtype=self.dtype)
+            self.model = MashUNet(self.context_dim).to(self.device, dtype=self.dtype)
         elif model_id == 2:
             self.model = EDMLatentTransformer(
                 n_latents=self.anchor_num,
@@ -84,28 +79,23 @@ class EDMTrainer(BaseDiffusionTrainer):
             ).to(self.device, dtype=self.dtype)
         return True
 
-    def preProcessDiffusionData(self, data_dict: dict, is_training: bool = False) -> dict:
+    def preProcessDiffusionData(
+        self, data_dict: dict, is_training: bool = False
+    ) -> dict:
         mash_params = data_dict["mash_params"]
 
         noise, sigma, weight = self.loss_func(mash_params, not is_training)
 
-        data_dict['noise'] = noise
-        data_dict['sigma'] = sigma
-        data_dict['weight'] = weight
-
-        if is_training and self.fix_params:
-            fixed_prob = 2.0 * np.random.rand() - 1.0
-            fixed_prob = max(fixed_prob, 0.0)
-            data_dict['fixed_prob'] = fixed_prob
-        else:
-            data_dict['fixed_prob'] = 0.0
+        data_dict["noise"] = noise
+        data_dict["sigma"] = sigma
+        data_dict["weight"] = weight
 
         return data_dict
 
     def getLossDict(self, data_dict: dict, result_dict: dict) -> dict:
-        inputs = data_dict['mash_params']
-        D_yn = result_dict['D_x']
-        weight = data_dict['weight']
+        inputs = data_dict["mash_params"]
+        D_yn = result_dict["D_x"]
+        weight = data_dict["weight"]
 
         loss = weight * ((D_yn - inputs) ** 2)
 
@@ -118,18 +108,23 @@ class EDMTrainer(BaseDiffusionTrainer):
         return loss_dict
 
     @torch.no_grad()
-    def sampleMashData(self, model: nn.Module, condition: torch.Tensor, sample_num: int) -> torch.Tensor:
+    def sampleMashData(
+        self, model: nn.Module, condition: torch.Tensor, sample_num: int
+    ) -> torch.Tensor:
         timestamp_num = 18
 
         batch_seeds = torch.arange(sample_num)
         rnd = StackedRandomGenerator(self.device, batch_seeds)
-        latents = rnd.randn([sample_num, self.anchor_num, self.anchor_channel], device=self.device)
+        latents = rnd.randn(
+            [sample_num, self.anchor_num, self.anchor_channel], device=self.device
+        )
 
         sampled_array = edm_sampler(
             model,
             latents,
             condition,
             randn_like=rnd.randn_like,
-            num_steps=timestamp_num)[-1]
+            num_steps=timestamp_num,
+        )[-1]
 
         return sampled_array

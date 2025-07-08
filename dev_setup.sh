@@ -1,23 +1,11 @@
 cd ..
-git clone git@github.com:565353780/point-cept.git
-git clone git@github.com:565353780/ma-sh.git
-git clone git@github.com:565353780/ulip-manage.git
 git clone git@github.com:565353780/base-trainer.git
 git clone git@github.com:565353780/dino-v2-detect.git
 git clone git@github.com:565353780/mash-occ-decoder.git
 git clone git@github.com:565353780/wn-nc.git
 git clone git@github.com:565353780/blender-manage.git
 
-cd point-cept
-./dev_setup.sh
-
-cd ../ma-sh
-./dev_setup.sh
-
-cd ../ulip-manage
-./dev_setup.sh
-
-cd ../base-trainer
+cd base-trainer
 ./dev_setup.sh
 
 cd ../dino-v2-detect
@@ -35,5 +23,3 @@ cd ../blender-manage
 pip install -U timm einops diffusers flow_matching thop torchcfm
 
 pip install -U cupy-cuda12x
-
-pip install git+https://github.com/openai/CLIP.git

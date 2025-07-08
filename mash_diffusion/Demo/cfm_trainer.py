@@ -1,34 +1,36 @@
 import sys
+
 sys.path.append("../ma-sh/")
 sys.path.append("../base-trainer/")
 sys.path.append("../dino-v2-detect/")
-sys.path.append("../distribution-manage/")
 
+import os
 import torch
-
-from ma_sh.Config.custom_path import toDatasetRootPath
 
 from mash_diffusion.Module.cfm_trainer import CFMTrainer
 
 
 def demo():
-    dataset_root_folder_path = toDatasetRootPath()
+    dataset_root_folder_path = os.environ["HOME"] + "/chLi/Dataset/"
     assert dataset_root_folder_path is not None
     print(dataset_root_folder_path)
 
-    training_mode = 'multi_modal'
-    batch_size = 12
-    accum_iter = 2
+    batch_size = 3
+    accum_iter = 10
     num_workers = 16
+    model_file_path = (
+        "../../output/cfm-Objaverse_82K-single_image-v10/model_last.pth".replace(
+            "../../", "./"
+        )
+    )
     model_file_path = None
-    # model_file_path = "../../output/cfm-ShapeNet_03001627-512cond-inpainting-v2/model_last.pth".replace('../../', './')
     weights_only = False
     device = "auto"
     dtype = torch.float32
     warm_step_num = 2000
     finetune_step_num = -1
-    lr = 2e-4
-    lr_batch_size = 256
+    lr = 1e-5
+    lr_batch_size = 1024
     ema_start_step = 5000
     ema_decay_init = 0.99
     ema_decay = 0.9999
@@ -37,37 +39,11 @@ def demo():
     best_model_metric_name = None
     is_metric_lower_better = True
     sample_results_freq = 1
-    use_amp = False
-    quick_test = False
-
-    if training_mode == 'single_category':
-        batch_size = 24
-        accum_iter = 2
-        model_file_path = "../../output/cfm-ShapeNet_03001627-v3/model_last.pth".replace('../../', './')
-        lr = 2e-6
-    elif training_mode == 'category':
-        batch_size = 24
-        accum_iter = 8
-        model_file_path = "../../output/cfm-ShapeNet-multi_modal-v14/model_last.pth".replace('../../', './')
-        lr = 2e-6
-    elif training_mode == 'multi_modal':
-        batch_size = 20
-        accum_iter = 9
-        model_file_path = "../../output/cfm-ShapeNet-multi_modal-v14/model_last.pth".replace('../../', './')
-        lr = 1e-5
-        lr_batch_size = 1024
-    elif training_mode == 'dino':
-        batch_size = 13
-        accum_iter = 10
-        model_file_path = "../../output/cfm-Objaverse_82K-single_image-v10/model_last.pth".replace('../../', './')
-        lr = 1e-5
-        lr_batch_size = 1024
-    else:
-        exit()
+    use_amp = True
+    quick_test = True
 
     cfm_trainer = CFMTrainer(
         dataset_root_folder_path,
-        training_mode,
         batch_size,
         accum_iter,
         num_workers,
