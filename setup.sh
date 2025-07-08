@@ -1,4 +1,5 @@
 cd ..
+git clone https://github.com/565353780/point-cept.git
 git clone https://github.com/565353780/ma-sh.git
 git clone https://github.com/565353780/ulip-manage.git
 git clone https://github.com/565353780/base-trainer.git
@@ -7,7 +8,10 @@ git clone https://github.com/565353780/mash-occ-decoder.git
 git clone https://github.com/565353780/wn-nc.git
 git clone https://github.com/565353780/blender-manage.git
 
-cd ma-sh
+cd point-cept
+./setup.sh
+
+cd ../ma-sh
 ./setup.sh
 
 cd ../ulip-manage

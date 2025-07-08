@@ -55,39 +55,45 @@ class EDMLatentTransformer(nn.Module):
         D_x = c_skip * x + c_out * F_x.to(torch.float32)
 
         result_dict = {
-            'D_x': D_x,
+            "D_x": D_x,
         }
 
         return result_dict
 
-    def forwardData(self, x: torch.Tensor, sigma: torch.Tensor, condition: torch.Tensor) -> torch.Tensor:
+    def forwardData(
+        self, x: torch.Tensor, sigma: torch.Tensor, condition: torch.Tensor
+    ) -> torch.Tensor:
         if condition.dtype == torch.float32:
-            condition = condition + 0.0 * self.emb_category(torch.zeros([x.shape[0]], dtype=torch.long, device=x.device))
+            condition = condition + 0.0 * self.emb_category(
+                torch.zeros([x.shape[0]], dtype=torch.long, device=x.device)
+            )
         else:
             condition = self.emb_category(condition)
 
         result_dict = self.forwardCondition(x, sigma, condition)
 
-        return result_dict['D_x']
+        return result_dict["D_x"]
 
     def forward(self, data_dict: dict):
-        x = data_dict['noise']
-        sigma = data_dict['sigma']
-        condition = data_dict['condition']
-        drop_prob = data_dict['drop_prob']
-        fixed_prob = data_dict['fixed_prob']
+        x = data_dict["noise"]
+        sigma = data_dict["sigma"]
+        condition = data_dict["condition"]
+        drop_prob = data_dict["drop_prob"]
+        fixed_prob = data_dict["fixed_prob"]
 
         if condition.dtype == torch.long:
             condition = self.emb_category(condition)
         else:
-            condition = condition + 0.0 * self.emb_category(torch.zeros([x.shape[0]], dtype=torch.long, device=x.device))
+            condition = condition + 0.0 * self.emb_category(
+                torch.zeros([x.shape[0]], dtype=torch.long, device=x.device)
+            )
 
         if drop_prob > 0:
             drop_mask = torch.rand_like(condition) <= drop_prob
             condition[drop_mask] = 0
 
         if fixed_prob > 0:
-            mash_params = data_dict['mash_params']
+            mash_params = data_dict["mash_params"]
 
             fixed_mask = torch.rand_like(mash_params) <= fixed_prob
 
