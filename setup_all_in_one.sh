@@ -13,13 +13,14 @@ pip install -U torch torchvision torchaudio
 pip install -U opencv-python omegaconf torchmetrics fvcore iopath \
   xformers submitit cuml-cu12 trimesh Cython pykdtree timm einops \
   scikit-image open3d tensorboard prefetch_generator tqdm pyvista \
-  PyMCubes diffusers flow_matching thop torchcfm cupy-cuda12x
+  PyMCubes diffusers flow_matching thop torchcfm cupy-cuda12x \
+  tos crcmod
 
 cd light-field-distance
 pip install .
 
-# cd ../SageAttention
-# pip install .
+cd ../SageAttention
+pip install .
 
 cd ../ma-sh
 pip install .

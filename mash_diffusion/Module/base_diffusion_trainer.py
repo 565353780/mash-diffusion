@@ -230,8 +230,8 @@ class BaseDiffusionTrainer(BaseTrainer):
             self.anchor_num,
             self.mask_degree,
             self.sh_degree,
-            40,
-            40,
+            10,
+            10,
             dtype=torch.float32,
             device=self.device,
         )

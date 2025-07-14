@@ -20,6 +20,7 @@ cd ../wn-nc
 cd ../blender-manage
 ./dev_setup.sh
 
-pip install -U timm einops diffusers flow_matching thop torchcfm
+pip install -U timm einops diffusers flow_matching thop torchcfm \
+  tos crcmod
 
 pip install -U cupy-cuda12x
