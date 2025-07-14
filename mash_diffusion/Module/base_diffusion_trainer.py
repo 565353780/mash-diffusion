@@ -65,6 +65,14 @@ class BaseDiffusionTrainer(BaseTrainer):
         sh_dim = (self.sh_degree + 1) ** 2
         self.anchor_channel = 9 + mask_dim + sh_dim
 
+        model_type = "base"
+        model_file_path = "./data/dinov2_vitb14_reg4_pretrain.pth"
+        dtype = "auto"
+
+        self.dino_detector = DINODetector(
+            model_type, model_file_path, dtype, self.device
+        )
+
         super().__init__(
             batch_size,
             accum_iter,
@@ -91,17 +99,6 @@ class BaseDiffusionTrainer(BaseTrainer):
         return
 
     def createDatasets(self) -> bool:
-        model_root_path = os.environ["HOME"] + "/chLi/Model/"
-        assert model_root_path is not None
-
-        model_type = "base"
-        model_file_path = model_root_path + "DINOv2/dinov2_vitb14_reg4_pretrain.pth"
-        dtype = "auto"
-
-        self.dino_detector = DINODetector(
-            model_type, model_file_path, dtype, self.device
-        )
-
         self.dataloader_dict["dino"] = {
             "dataset": ImageDataset(
                 self.dataset_root_folder_path,

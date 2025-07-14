@@ -1,4 +1,5 @@
 import tos
+from typing import Union
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
@@ -36,20 +37,23 @@ def isFileExist(client: tos.TosClientV2, bucket: str, file_key: str) -> bool:
         if e.status_code == 404:
             return False
         else:
-            print(f"[ERROR] {key} 异常：{e}")
+            print(f"[ERROR] {file_key} 异常：{e}")
             return False
 
 
 def filterExistFiles(
     client: tos.TosClientV2,
-    bucket: str,
+    bucket: Union[str, dict],
     file_key_pairs: list,
     max_workers: int = 64,
 ) -> list:
     def check_exists(file_key_pair):
         file, key = file_key_pair
         try:
-            client.head_object(bucket=bucket, key=key)
+            if isinstance(bucket, dict):
+                client.head_object(bucket=bucket[file], key=key)
+            else:
+                client.head_object(bucket=bucket, key=key)
             return file, True
         except tos.exceptions.TosServerError as e:
             if e.status_code == 404:

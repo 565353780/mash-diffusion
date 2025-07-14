@@ -5,6 +5,7 @@ import torch
 import random
 import numpy as np
 from PIL import Image
+from typing import Union
 from random import choice
 from torch.utils.data import Dataset
 
@@ -38,6 +39,25 @@ view_candidates = [
 ]
 
 
+def loadImageBucketDict() -> Union[dict, None]:
+    bucket_txt_file_path = "./data/uids_bucket.txt"
+    if not os.path.exists(bucket_txt_file_path):
+        print("[ERROR][TOSImageDataset::loadImageBucketDict]")
+        print("\t bucket txt file not exist!")
+        print("\t bucket_txt_file_path:", bucket_txt_file_path)
+        return None
+
+    image_bucket_dict = {}
+    with open(bucket_txt_file_path, "r") as f:
+        lines = f.readlines()
+
+    for line in lines:
+        shape_id, bucket = line.split()
+        image_bucket_dict[shape_id] = bucket
+
+    return image_bucket_dict
+
+
 def getMashFileKey(rel_mash_folder_path: str, shape_id: str) -> str:
     return rel_mash_folder_path + shape_id + ".npy"
 
@@ -58,15 +78,17 @@ def getRandomImageFileKey(rel_image_folder_path: str, shape_id: str) -> str:
 class TOSImageDataset(Dataset):
     def __init__(
         self,
-        bucket: str,
+        mash_bucket: str,
         mash_folder_key: str,
+        image_bucket: str,
         image_folder_key: str,
         transform,
         split: str = "train",
         dtype=torch.float32,
     ) -> None:
-        self.dataset_root_folder_path = bucket
+        self.mash_bucket = mash_bucket
         self.mash_folder_key = mash_folder_key
+        self.image_bucket = image_bucket
         self.image_folder_key = image_folder_key
         self.transform = transform
         self.split = split
@@ -80,7 +102,15 @@ class TOSImageDataset(Dataset):
             print("\t createClient failed!")
             exit()
 
-        self.mash_file_keys = listdirTOS(self.client, bucket, "mash/")
+        self.image_bucket_dict = loadImageBucketDict()
+        if self.image_bucket_dict is None:
+            print("[ERROR][TOSImageDataset::__init__]")
+            print("\t loadBucketDict failed!")
+            exit()
+
+        self.mash_file_keys = listdirTOS(
+            self.client, self.mash_bucket, self.mash_folder_key
+        )
 
         self.shape_id_list = []
         for mash_file_key in self.mash_file_keys:
@@ -91,10 +121,15 @@ class TOSImageDataset(Dataset):
         shape_image_pairs = []
         for shape_id in self.shape_id_list:
             image_file_key = getRandomImageFileKey(self.image_folder_key, shape_id)
+
+            image_bucket = self.image_bucket_dict[shape_id]
+            if image_bucket.endswith("v2"):
+                image_file_key = "data/" + image_file_key
+
             shape_image_pairs.append([shape_id, image_file_key])
 
         self.valid_shape_id_list = filterExistFiles(
-            self.client, bucket, shape_image_pairs, max_workers=64
+            self.client, self.image_bucket_dict, shape_image_pairs, max_workers=64
         )
 
         print(len(self.shape_id_list), "mash files found")
@@ -141,10 +176,15 @@ class TOSImageDataset(Dataset):
 
         shape_id = self.valid_shape_id_list[index]
 
+        image_bucket = self.image_bucket_dict[shape_id]
+
         mash_file_key = getMashFileKey(self.mash_folder_key, shape_id)
         image_file_key = getRandomImageFileKey(self.image_folder_key, shape_id)
 
-        if not isFileExist(self.client, self.bucket, image_file_key):
+        if image_bucket.endswith("v2"):
+            image_file_key = "data/" + image_file_key
+
+        if not isFileExist(self.client, image_bucket, image_file_key):
             if self.output_error:
                 print("[ERROR][TOSImageDataset::__getitem__]")
                 print("\t this image file is not valid!")
@@ -153,8 +193,8 @@ class TOSImageDataset(Dataset):
         if image_file_key in self.invalid_image_file_keys:
             return self.getRandomItem()
 
-        mash_stream = self.client.get_object(self.bucket, mash_file_key)
-        image_stream = self.client.get_object(self.bucket, image_file_key)
+        mash_stream = self.client.get_object(self.mash_bucket, mash_file_key)
+        image_stream = self.client.get_object(image_bucket, image_file_key)
 
         mash_data = mash_stream.read()
 

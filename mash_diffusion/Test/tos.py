@@ -9,8 +9,9 @@ from mash_diffusion.Dataset.tos_image import TOSImageDataset
 
 def test():
     tos_image_dataset = TOSImageDataset(
-        bucket="mm-data-general-model-trellis",
+        mash_bucket="mm-data-general-model-trellis",
         mash_folder_key="mash/",
+        image_bucket="mm-data-general-model-v2",
         image_folder_key="rendering/orient_cam72_base/",
         transform=None,
         split="train",
