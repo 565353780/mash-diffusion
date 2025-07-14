@@ -8,7 +8,11 @@ git clone https://github.com/565353780/blender-manage.git
 git clone https://github.com/kacperkan/light-field-distance.git
 git clone https://github.com/thu-ml/SageAttention.git
 
-pip install -U torch torchvision torchaudio
+conda install cmake conda-pack -y
+
+#pip install -U torch torchvision torchaudio
+pip3 install torch torchvision torchaudio \
+  --index-url https://download.pytorch.org/whl/cu124
 
 pip install -U opencv-python omegaconf torchmetrics fvcore iopath \
   xformers submitit cuml-cu12 trimesh Cython pykdtree timm einops \
@@ -25,8 +29,8 @@ pip install .
 cd ../ma-sh
 pip install .
 
-cd ../blender-manage
-./setup.sh
+#cd ../blender-manage
+#./setup.sh
 
 cd ../wn-nc/wn_nc/Lib/ANN/
 
