@@ -48,11 +48,9 @@ class BaseDiffusionTrainer(BaseTrainer):
         self.sh_degree = 2
 
         self.context_dim = 1024
-        self.n_heads = 16
-        self.d_head = 64
+        self.n_heads = 8  # 16
+        self.d_head = 16  # 64
         self.depth = 16
-
-        self.context_dim = 768
 
         self.gt_sample_added_to_logger = False
 
@@ -86,8 +84,8 @@ class BaseDiffusionTrainer(BaseTrainer):
         return
 
     def createDatasets(self) -> bool:
-        model_type = "base"
-        model_file_path = "./data/dinov2_vitb14_reg4_pretrain.pth"
+        model_type = "large"
+        model_file_path = "./data/dinov2_vitl14_reg4_pretrain.pth"
         dtype = "auto"
 
         if not os.path.exists(model_file_path):

@@ -12,9 +12,9 @@ def test():
         n_latents=8192,
         mask_degree=2,
         sh_degree=2,
-        context_dim=768,
-        n_heads=16,
-        d_head=64,
+        context_dim=1024,
+        n_heads=8,
+        d_head=16,
         depth=16,
     )
 

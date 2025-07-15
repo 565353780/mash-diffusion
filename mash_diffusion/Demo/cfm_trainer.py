@@ -16,7 +16,7 @@ def demo():
     print(dataset_root_folder_path)
 
     batch_size = 1
-    accum_iter = 256
+    accum_iter = 8
     num_workers = 16
     model_file_path = (
         "../../output/cfm-Objaverse_82K-single_image-v10/model_last.pth".replace(
