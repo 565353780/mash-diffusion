@@ -4,6 +4,8 @@ sys.path.append("../ma-sh/")
 sys.path.append("../base-trainer/")
 sys.path.append("../dino-v2-detect/")
 
+import MFSClient
+
 import os
 import torch
 
@@ -15,8 +17,8 @@ def demo():
     assert dataset_root_folder_path is not None
     print(dataset_root_folder_path)
 
-    batch_size = 1
-    accum_iter = 8
+    batch_size = 6
+    accum_iter = 4
     num_workers = 16
     model_file_path = (
         "../../output/cfm-Objaverse_82K-single_image-v10/model_last.pth".replace(

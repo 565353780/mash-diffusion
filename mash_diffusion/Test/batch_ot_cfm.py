@@ -1,17 +1,17 @@
-import sys
-sys.path.append('../ma-sh/')
-
+import torch
 import numpy as np
 
-from ma_sh.Method.random_mash import sampleRandomMashParams
+from mash_diffusion.Module.batch_ot_cfm import (
+    BatchExactOptimalTransportConditionalFlowMatcher,
+)
 
-from mash_diffusion.Module.batch_ot_cfm import BatchExactOptimalTransportConditionalFlowMatcher
 
 def test():
     sigma = 0.0
     target_dim = [6, 7, 8]
+    dtype = torch.bfloat16
 
-    x0 = sampleRandomMashParams(400, 3, 2, 10, 'cpu', False)
+    x0 = torch.randn([4, 8192, 23], dtype=dtype).cuda()
 
     permute_idxs = np.random.permutation(x0.shape[0])
     x1 = x0[permute_idxs] * 4.0

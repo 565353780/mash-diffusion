@@ -14,8 +14,9 @@ def test():
         sh_degree=2,
         context_dim=1024,
         n_heads=8,
-        d_head=16,
-        depth=16,
+        d_head=64,
+        depth=8,
+        depth_single_blocks=16,
     )
 
     total, trainable = count_parameters(model)

@@ -6,7 +6,9 @@ from mash_diffusion.Module.target_ot_plan_sampler import TargetOTPlanSampler
 
 
 class BatchExactOptimalTransportConditionalFlowMatcher(object):
-    def __init__(self, sigma: Union[float, int] = 0.0, target_dim: Union[list, None]=None):
+    def __init__(
+        self, sigma: Union[float, int] = 0.0, target_dim: Union[list, None] = None
+    ):
         self.sigma = sigma
         self.ot_sampler = TargetOTPlanSampler(method="exact", target_dim=target_dim)
         return
@@ -47,11 +49,14 @@ class BatchExactOptimalTransportConditionalFlowMatcher(object):
     ):
         x0_list, x1_list, y0_list, y1_list = [], [], [], []
         for i in range(x0.shape[0]):
-            curr_x0, curr_x1, curr_y0, curr_y1 = self.ot_sampler.sample_plan_with_labels(
-                x0[i],
-                x1[i],
-                y0[i] if y0 is not None else None,
-                y1[i] if y1 is not None else None)
+            curr_x0, curr_x1, curr_y0, curr_y1 = (
+                self.ot_sampler.sample_plan_with_labels(
+                    x0[i],
+                    x1[i],
+                    y0[i] if y0 is not None else None,
+                    y1[i] if y1 is not None else None,
+                )
+            )
             x0_list.append(curr_x0)
             x1_list.append(curr_x1)
             y0_list.append(curr_y0)

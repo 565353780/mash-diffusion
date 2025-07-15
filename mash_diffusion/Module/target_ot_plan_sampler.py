@@ -16,7 +16,7 @@ class TargetOTPlanSampler(OTPlanSampler):
         normalize_cost: bool = False,
         num_threads: Union[int, str] = 1,
         warn: bool = True,
-        target_dim: Union[list, None]=None
+        target_dim: Union[list, None] = None,
     ) -> None:
         super().__init__(method, reg, reg_m, normalize_cost, num_threads, warn)
         self.target_dim = target_dim
@@ -39,7 +39,7 @@ class TargetOTPlanSampler(OTPlanSampler):
         M = torch.cdist(target_x0, target_x1) ** 2
         if self.normalize_cost:
             M = M / M.max()  # should not be normalized when using minibatches
-        p = self.ot_fn(a, b, M.detach().cpu().numpy())
+        p = self.ot_fn(a, b, M.detach().cpu().to(torch.float32).numpy())
         if not np.all(np.isfinite(p)):
             print("ERROR: p is not finite")
             print(p)

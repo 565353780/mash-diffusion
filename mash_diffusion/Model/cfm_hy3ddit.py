@@ -12,6 +12,7 @@ class CFMHunyuan3DDiT(BaseCFM):
         n_heads=16,
         d_head=64,
         depth=16,
+        depth_single_blocks=32,
     ):
         super().__init__()
         self.n_latents = n_latents
@@ -29,7 +30,7 @@ class CFMHunyuan3DDiT(BaseCFM):
             mlp_ratio=4.0,
             num_heads=n_heads,
             depth=depth,
-            depth_single_blocks=32,
+            depth_single_blocks=depth_single_blocks,
             axes_dim=[d_head],
             theta=10_000,
             qkv_bias=True,

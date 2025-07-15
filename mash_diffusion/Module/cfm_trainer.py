@@ -45,7 +45,7 @@ class CFMTrainer(BaseDiffusionTrainer):
         use_amp: bool = False,
         quick_test: bool = False,
     ) -> None:
-        fm_id = 2
+        fm_id = 1
         if fm_id == 1:
             self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
         elif fm_id == 2:
@@ -102,6 +102,7 @@ class CFMTrainer(BaseDiffusionTrainer):
                 n_heads=self.n_heads,
                 d_head=self.d_head,
                 depth=self.depth,
+                depth_single_blocks=self.depth_single_blocks,
             ).to(self.device, dtype=self.dtype)
 
         return True

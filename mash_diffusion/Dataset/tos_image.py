@@ -80,6 +80,7 @@ def getRandomImageFileKey(rel_image_folder_path: str, shape_id: str) -> str:
 class TOSImageDataset(Dataset):
     def __init__(
         self,
+        client,
         mash_bucket: str,
         mash_folder_key: str,
         image_bucket: str,
@@ -98,13 +99,7 @@ class TOSImageDataset(Dataset):
         self.split = split
         self.dtype = dtype
 
-        self.client = None
-
-        self.createClient()
-        if not isinstance(self.client, tos.TosClientV2):
-            print("[ERROR][TOSImageDataset::__init__]")
-            print("\t createClient failed!")
-            exit()
+        self.client = client
 
         self.paths_list = []
         if paths_file_path is not None:
@@ -232,27 +227,36 @@ class TOSImageDataset(Dataset):
 
         mash_file_key, image_bucket, image_file_key = self.paths_list[index]
 
+        """
         if not isFileExist(self.client, image_bucket, image_file_key):
             if self.output_error:
                 print("[ERROR][TOSImageDataset::__getitem__]")
                 print("\t this image file is not valid!")
             return self.getRandomItem()
+        """
 
         if image_file_key in self.invalid_image_file_keys:
             return self.getRandomItem()
 
+        """
         mash_stream = self.client.get_object(self.mash_bucket, mash_file_key)
         image_stream = self.client.get_object(image_bucket, image_file_key)
-
         mash_data = mash_stream.read()
+        image_data = image_stream.read()
+        """
+
+        mash_data = self.client.request_file(
+            "shumei_mash", self.mash_bucket + "/" + mash_file_key
+        )
+        image_data = self.client.request_file(
+            "shumei_mash", image_bucket + "/" + image_file_key
+        )
 
         mash_params_dict = np.load(io.BytesIO(mash_data), allow_pickle=True).item()
         mash_params = toMashTensor(mash_params_dict)
         assert mash_params is not None, (
             "[ERROR][TOSImageDataset::__getitem__] mash_params is None!"
         )
-
-        image_data = image_stream.read()
 
         try:
             image = Image.open(io.BytesIO(image_data))

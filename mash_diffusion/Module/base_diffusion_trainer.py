@@ -1,3 +1,5 @@
+import MFSClient
+
 import os
 import torch
 from torch import nn
@@ -49,8 +51,9 @@ class BaseDiffusionTrainer(BaseTrainer):
 
         self.context_dim = 1024
         self.n_heads = 8  # 16
-        self.d_head = 16  # 64
-        self.depth = 16
+        self.d_head = 64
+        self.depth = 8  # 16
+        self.depth_single_blocks = 16  # 32
 
         self.gt_sample_added_to_logger = False
 
@@ -102,10 +105,13 @@ class BaseDiffusionTrainer(BaseTrainer):
         # FIXME: skip eval for faster training on slurm
         eval = False
         if use_tos:
+            client = MFSClient.MFSClient2()
+
             paths_file_path = "./data/tos_paths_list.npy"
 
             self.dataloader_dict["dino"] = {
                 "dataset": TOSImageDataset(
+                    client,
                     mash_bucket="mm-data-general-model-trellis",
                     mash_folder_key="mash/",
                     image_bucket="mm-data-general-model-v1",
@@ -121,6 +127,7 @@ class BaseDiffusionTrainer(BaseTrainer):
             if eval:
                 self.dataloader_dict["eval"] = {
                     "dataset": TOSImageDataset(
+                        client,
                         mash_bucket="mm-data-general-model-trellis",
                         mash_folder_key="mash/",
                         image_bucket="mm-data-general-model-v1",
