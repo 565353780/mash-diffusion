@@ -101,6 +101,8 @@ class BaseDiffusionTrainer(BaseTrainer):
         )
 
         use_tos = True
+        # FIXME: skip eval for faster training on slurm
+        eval = False
         if use_tos:
             paths_file_path = "./data/tos_paths_list.npy"
 
@@ -118,18 +120,19 @@ class BaseDiffusionTrainer(BaseTrainer):
                 "repeat_num": 1,
             }
 
-            self.dataloader_dict["eval"] = {
-                "dataset": TOSImageDataset(
-                    mash_bucket="mm-data-general-model-trellis",
-                    mash_folder_key="mash/",
-                    image_bucket="mm-data-general-model-v1",
-                    image_folder_key="rendering/orient_cam72_base/",
-                    transform=self.dino_detector.transform,
-                    split="eval",
-                    dtype=self.dtype,
-                    paths_file_path=paths_file_path,
-                ),
-            }
+            if eval:
+                self.dataloader_dict["eval"] = {
+                    "dataset": TOSImageDataset(
+                        mash_bucket="mm-data-general-model-trellis",
+                        mash_folder_key="mash/",
+                        image_bucket="mm-data-general-model-v1",
+                        image_folder_key="rendering/orient_cam72_base/",
+                        transform=self.dino_detector.transform,
+                        split="eval",
+                        dtype=self.dtype,
+                        paths_file_path=paths_file_path,
+                    ),
+                }
         else:
             self.dataloader_dict["dino"] = {
                 "dataset": ImageDataset(
@@ -143,16 +146,17 @@ class BaseDiffusionTrainer(BaseTrainer):
                 "repeat_num": 1,
             }
 
-            self.dataloader_dict["eval"] = {
-                "dataset": ImageDataset(
-                    self.dataset_root_folder_path,
-                    "Objaverse_82K/manifold_mash",
-                    "Objaverse_82K/render_jpg_v2",
-                    self.dino_detector.transform,
-                    "eval",
-                    self.dtype,
-                ),
-            }
+            if eval:
+                self.dataloader_dict["eval"] = {
+                    "dataset": ImageDataset(
+                        self.dataset_root_folder_path,
+                        "Objaverse_82K/manifold_mash",
+                        "Objaverse_82K/render_jpg_v2",
+                        self.dino_detector.transform,
+                        "eval",
+                        self.dtype,
+                    ),
+                }
 
         self.dataloader_dict["dino"]["dataset"].paths_list = self.dataloader_dict[
             "dino"
@@ -232,8 +236,8 @@ class BaseDiffusionTrainer(BaseTrainer):
 
     @torch.no_grad()
     def sampleModelStep(self, model: nn.Module, model_name: str) -> bool:
-        if self.local_rank != 0:
-            return True
+        # FIXME: skip this since it will occur NCCL error
+        return True
 
         sample_num = 3
         dataset = self.dataloader_dict["dino"]["dataset"]
