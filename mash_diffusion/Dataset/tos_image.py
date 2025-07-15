@@ -4,12 +4,14 @@ import tos
 import torch
 import random
 import numpy as np
+from tqdm import tqdm
 from PIL import Image
 from typing import Union
 from random import choice
 from torch.utils.data import Dataset
 
 from mash_diffusion.Method.io import toMashTensor
+from mash_diffusion.Method.path import createFileFolder, renameFile, removeFile
 from mash_diffusion.Method.tos import listdirTOS, isFileExist, filterExistFiles
 
 view_candidates = [
@@ -85,6 +87,7 @@ class TOSImageDataset(Dataset):
         transform,
         split: str = "train",
         dtype=torch.float32,
+        paths_file_path: Union[str, None] = None,
         empty: bool = False,
     ) -> None:
         self.mash_bucket = mash_bucket
@@ -103,56 +106,11 @@ class TOSImageDataset(Dataset):
             print("\t createClient failed!")
             exit()
 
-        if not empty:
-            image_bucket_dict = loadImageBucketDict()
-            if image_bucket_dict is None:
-                print("[ERROR][TOSImageDataset::__init__]")
-                print("\t loadBucketDict failed!")
-                exit()
-
-            mash_file_keys = listdirTOS(
-                self.client, self.mash_bucket, self.mash_folder_key
-            )
-
-            shape_id_list = []
-            for mash_file_key in mash_file_keys:
-                shape_id_list.append(
-                    mash_file_key.split(self.mash_folder_key)[1].split(".")[0]
-                )
-
-            shape_image_pairs = []
-            for shape_id in shape_id_list:
-                image_file_key = getRandomImageFileKey(self.image_folder_key, shape_id)
-
-                image_bucket = image_bucket_dict[shape_id]
-                if image_bucket.endswith("v2"):
-                    image_file_key = "data/" + image_file_key
-
-                shape_image_pairs.append([shape_id, image_file_key])
-
-            valid_shape_id_list = filterExistFiles(
-                self.client, image_bucket_dict, shape_image_pairs, max_workers=64
-            )
-
-            self.paths_list = []
-            for valid_shape_id in valid_shape_id_list:
-                mash_file_key = getMashFileKey(self.mash_folder_key, valid_shape_id)
-                image_file_key = getRandomImageFileKey(
-                    self.image_folder_key, valid_shape_id
-                )
-
-                image_bucket = image_bucket_dict[valid_shape_id]
-                if image_bucket.endswith("v2"):
-                    image_file_key = "data/" + image_file_key
-
-                self.paths_list.append([mash_file_key, image_bucket, image_file_key])
-
-            print(len(shape_id_list), "mashes found")
-            print(len(self.paths_list), "valid mash image pairs found")
-            if len(self.paths_list) == 0:
-                print("[ERROR][TOSImageDataset::__init__]")
-                print("\t valid mash image pairs not found!")
-                exit()
+        self.paths_list = []
+        if paths_file_path is not None:
+            self.loadPathsFromFile(paths_file_path)
+        elif not empty:
+            self.loadTOSDatasetHeader()
 
         self.output_error = True
 
@@ -169,9 +127,92 @@ class TOSImageDataset(Dataset):
         self.client = tos.TosClientV2(ak, sk, endpoint, region)
         return True
 
-    def closeClient(self) -> bool:
-        if isinstance(self.client, tos.TosClientV2):
-            self.client.close()
+    def loadTOSDatasetHeader(self) -> bool:
+        image_bucket_dict = loadImageBucketDict()
+        if image_bucket_dict is None:
+            print("[ERROR][TOSImageDataset::loadTOSDatasetHeader]")
+            print("\t loadBucketDict failed!")
+            exit()
+
+        mash_file_keys = listdirTOS(self.client, self.mash_bucket, self.mash_folder_key)
+
+        print("[INFO][TOSImageDataset::loadTOSDatasetHeader]")
+        print("\t start extract shape id...")
+        shape_id_list = []
+        for mash_file_key in tqdm(mash_file_keys):
+            shape_id_list.append(
+                mash_file_key.split(self.mash_folder_key)[1].split(".")[0]
+            )
+
+        print("[INFO][TOSImageDataset::loadTOSDatasetHeader]")
+        print("\t start create image path for shape...")
+        shape_image_pairs = []
+        for shape_id in tqdm(shape_id_list):
+            image_file_key = getRandomImageFileKey(self.image_folder_key, shape_id)
+
+            image_bucket = image_bucket_dict[shape_id]
+            if image_bucket.endswith("v2"):
+                image_file_key = "data/" + image_file_key
+
+            shape_image_pairs.append([shape_id, image_file_key])
+
+        print("[INFO][TOSImageDataset::loadTOSDatasetHeader]")
+        print("\t start search image for shape...")
+        valid_shape_id_list = filterExistFiles(
+            self.client, image_bucket_dict, shape_image_pairs, max_workers=64
+        )
+
+        print("[INFO][TOSImageDataset::loadTOSDatasetHeader]")
+        print("\t start create training paths...")
+        self.paths_list = []
+        for valid_shape_id in valid_shape_id_list:
+            mash_file_key = getMashFileKey(self.mash_folder_key, valid_shape_id)
+            image_file_key = getRandomImageFileKey(
+                self.image_folder_key, valid_shape_id
+            )
+
+            image_bucket = image_bucket_dict[valid_shape_id]
+            if image_bucket.endswith("v2"):
+                image_file_key = "data/" + image_file_key
+
+            self.paths_list.append([mash_file_key, image_bucket, image_file_key])
+
+        print(len(shape_id_list), "mashes found")
+        print(len(self.paths_list), "valid mash image pairs found")
+        if len(self.paths_list) == 0:
+            print("[ERROR][TOSImageDataset::loadTOSDatasetHeader]")
+            print("\t valid mash image pairs not found!")
+            exit()
+
+        return True
+
+    def loadPathsFromFile(self, paths_file_path: str) -> bool:
+        if not os.path.exists(paths_file_path):
+            print("[ERROR][TOSImageDataset::loadPathsFromFile]")
+            print("\t paths file not exist!")
+            print("\t paths_file_path:", paths_file_path)
+            return False
+
+        self.paths_list = np.load(paths_file_path, allow_pickle=True).tolist()
+        return True
+
+    def savePaths(self, save_paths_file_path: str, overwrite: bool = False) -> bool:
+        if os.path.exists(save_paths_file_path):
+            if not overwrite:
+                return True
+
+            removeFile(save_paths_file_path)
+
+        createFileFolder(save_paths_file_path)
+
+        tmp_save_paths_file_path = (
+            save_paths_file_path[:-4] + "_tmp" + save_paths_file_path[-4:]
+        )
+
+        save_paths = np.array(self.paths_list, dtype=object)
+
+        np.save(tmp_save_paths_file_path, save_paths)
+        renameFile(tmp_save_paths_file_path, save_paths_file_path)
         return True
 
     def __len__(self):

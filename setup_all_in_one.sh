@@ -50,4 +50,4 @@ rm -rf bin
 ./wn_nc/Bash/build_GR_cuda.sh
 
 cd wn_nc/Cpp
-pip install -e .
+pip install .

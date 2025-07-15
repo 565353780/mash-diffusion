@@ -102,6 +102,8 @@ class BaseDiffusionTrainer(BaseTrainer):
 
         use_tos = True
         if use_tos:
+            paths_file_path = "./data/tos_paths_list.npy"
+
             self.dataloader_dict["dino"] = {
                 "dataset": TOSImageDataset(
                     mash_bucket="mm-data-general-model-trellis",
@@ -111,6 +113,7 @@ class BaseDiffusionTrainer(BaseTrainer):
                     transform=self.dino_detector.transform,
                     split="train",
                     dtype=self.dtype,
+                    paths_file_path=paths_file_path,
                 ),
                 "repeat_num": 1,
             }
@@ -124,12 +127,9 @@ class BaseDiffusionTrainer(BaseTrainer):
                     transform=self.dino_detector.transform,
                     split="eval",
                     dtype=self.dtype,
-                    empty=True,
+                    paths_file_path=paths_file_path,
                 ),
             }
-            self.dataloader_dict["eval"]["dataset"].paths_list = self.dataloader_dict[
-                "dino"
-            ]["dataset"].paths_list
         else:
             self.dataloader_dict["dino"] = {
                 "dataset": ImageDataset(
@@ -154,10 +154,14 @@ class BaseDiffusionTrainer(BaseTrainer):
                 ),
             }
 
+        self.dataloader_dict["dino"]["dataset"].paths_list = self.dataloader_dict[
+            "dino"
+        ]["dataset"].paths_list[:16]
+
         if "eval" in self.dataloader_dict.keys():
             self.dataloader_dict["eval"]["dataset"].paths_list = self.dataloader_dict[
                 "eval"
-            ]["dataset"].paths_list[:64]
+            ]["dataset"].paths_list[:4]
 
         return True
 
