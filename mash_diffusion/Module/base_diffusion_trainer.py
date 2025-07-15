@@ -158,10 +158,6 @@ class BaseDiffusionTrainer(BaseTrainer):
                     ),
                 }
 
-        self.dataloader_dict["dino"]["dataset"].paths_list = self.dataloader_dict[
-            "dino"
-        ]["dataset"].paths_list[:16]
-
         if "eval" in self.dataloader_dict.keys():
             self.dataloader_dict["eval"]["dataset"].paths_list = self.dataloader_dict[
                 "eval"
