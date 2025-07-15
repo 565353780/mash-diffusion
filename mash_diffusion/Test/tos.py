@@ -11,7 +11,7 @@ def test():
     tos_image_dataset = TOSImageDataset(
         mash_bucket="mm-data-general-model-trellis",
         mash_folder_key="mash/",
-        image_bucket="mm-data-general-model-v2",
+        image_bucket="mm-data-general-model-v1",
         image_folder_key="rendering/orient_cam72_base/",
         transform=None,
         split="train",

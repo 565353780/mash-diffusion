@@ -20,7 +20,6 @@ def listdirTOS(client: tos.TosClientV2, bucket: str, prefix: str) -> list:
         for item in result.contents:
             file_name_list.append(item.key)
 
-        print(len(file_name_list), "files found")
         truncated = result.is_truncated
         continuation_token = result.next_continuation_token
         # FIXME: for test only

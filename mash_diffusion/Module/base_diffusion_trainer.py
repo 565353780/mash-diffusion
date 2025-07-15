@@ -12,6 +12,7 @@ from base_trainer.Module.base_trainer import BaseTrainer
 from dino_v2_detect.Module.detector import Detector as DINODetector
 
 from mash_diffusion.Dataset.image import ImageDataset
+from mash_diffusion.Dataset.tos_image import TOSImageDataset
 
 
 class BaseDiffusionTrainer(BaseTrainer):
@@ -51,27 +52,13 @@ class BaseDiffusionTrainer(BaseTrainer):
         self.d_head = 64
         self.depth = 16
 
-        self.anchor_num = 400
-        self.mask_degree = 3
-        self.sh_degree = 2
         self.context_dim = 768
-        self.n_heads = 8
-        self.d_head = 64
-        self.depth = 16
 
         self.gt_sample_added_to_logger = False
 
         mask_dim = 2 * self.mask_degree + 1
         sh_dim = (self.sh_degree + 1) ** 2
         self.anchor_channel = 9 + mask_dim + sh_dim
-
-        model_type = "base"
-        model_file_path = "./data/dinov2_vitb14_reg4_pretrain.pth"
-        dtype = "auto"
-
-        self.dino_detector = DINODetector(
-            model_type, model_file_path, dtype, self.device
-        )
 
         super().__init__(
             batch_size,
@@ -99,28 +86,73 @@ class BaseDiffusionTrainer(BaseTrainer):
         return
 
     def createDatasets(self) -> bool:
-        self.dataloader_dict["dino"] = {
-            "dataset": ImageDataset(
-                self.dataset_root_folder_path,
-                "Objaverse_82K/manifold_mash",
-                "Objaverse_82K/render_jpg_v2",
-                self.dino_detector.transform,
-                "train",
-                self.dtype,
-            ),
-            "repeat_num": 1,
-        }
+        model_type = "base"
+        model_file_path = "./data/dinov2_vitb14_reg4_pretrain.pth"
+        dtype = "auto"
 
-        self.dataloader_dict["eval"] = {
-            "dataset": ImageDataset(
-                self.dataset_root_folder_path,
-                "Objaverse_82K/manifold_mash",
-                "Objaverse_82K/render_jpg_v2",
-                self.dino_detector.transform,
-                "eval",
-                self.dtype,
-            ),
-        }
+        if not os.path.exists(model_file_path):
+            print("[ERROR][BaseDiffusionTrainer::createDatasets]")
+            print("\t DINOv2 model not found!")
+            print("\t model_file_path:", model_file_path)
+            exit()
+
+        self.dino_detector = DINODetector(
+            model_type, model_file_path, dtype, self.device
+        )
+
+        use_tos = True
+        if use_tos:
+            self.dataloader_dict["dino"] = {
+                "dataset": TOSImageDataset(
+                    mash_bucket="mm-data-general-model-trellis",
+                    mash_folder_key="mash/",
+                    image_bucket="mm-data-general-model-v1",
+                    image_folder_key="rendering/orient_cam72_base/",
+                    transform=self.dino_detector.transform,
+                    split="train",
+                    dtype=self.dtype,
+                ),
+                "repeat_num": 1,
+            }
+
+            self.dataloader_dict["eval"] = {
+                "dataset": TOSImageDataset(
+                    mash_bucket="mm-data-general-model-trellis",
+                    mash_folder_key="mash/",
+                    image_bucket="mm-data-general-model-v1",
+                    image_folder_key="rendering/orient_cam72_base/",
+                    transform=self.dino_detector.transform,
+                    split="eval",
+                    dtype=self.dtype,
+                    empty=True,
+                ),
+            }
+            self.dataloader_dict["eval"]["dataset"].paths_list = self.dataloader_dict[
+                "dino"
+            ]["dataset"].paths_list
+        else:
+            self.dataloader_dict["dino"] = {
+                "dataset": ImageDataset(
+                    self.dataset_root_folder_path,
+                    "Objaverse_82K/manifold_mash",
+                    "Objaverse_82K/render_jpg_v2",
+                    self.dino_detector.transform,
+                    "train",
+                    self.dtype,
+                ),
+                "repeat_num": 1,
+            }
+
+            self.dataloader_dict["eval"] = {
+                "dataset": ImageDataset(
+                    self.dataset_root_folder_path,
+                    "Objaverse_82K/manifold_mash",
+                    "Objaverse_82K/render_jpg_v2",
+                    self.dino_detector.transform,
+                    "eval",
+                    self.dtype,
+                ),
+            }
 
         if "eval" in self.dataloader_dict.keys():
             self.dataloader_dict["eval"]["dataset"].paths_list = self.dataloader_dict[

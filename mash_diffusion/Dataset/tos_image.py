@@ -85,6 +85,7 @@ class TOSImageDataset(Dataset):
         transform,
         split: str = "train",
         dtype=torch.float32,
+        empty: bool = False,
     ) -> None:
         self.mash_bucket = mash_bucket
         self.mash_folder_key = mash_folder_key
@@ -102,42 +103,56 @@ class TOSImageDataset(Dataset):
             print("\t createClient failed!")
             exit()
 
-        self.image_bucket_dict = loadImageBucketDict()
-        if self.image_bucket_dict is None:
-            print("[ERROR][TOSImageDataset::__init__]")
-            print("\t loadBucketDict failed!")
-            exit()
+        if not empty:
+            image_bucket_dict = loadImageBucketDict()
+            if image_bucket_dict is None:
+                print("[ERROR][TOSImageDataset::__init__]")
+                print("\t loadBucketDict failed!")
+                exit()
 
-        self.mash_file_keys = listdirTOS(
-            self.client, self.mash_bucket, self.mash_folder_key
-        )
-
-        self.shape_id_list = []
-        for mash_file_key in self.mash_file_keys:
-            self.shape_id_list.append(
-                mash_file_key.split(self.mash_folder_key)[1].split(".")[0]
+            mash_file_keys = listdirTOS(
+                self.client, self.mash_bucket, self.mash_folder_key
             )
 
-        shape_image_pairs = []
-        for shape_id in self.shape_id_list:
-            image_file_key = getRandomImageFileKey(self.image_folder_key, shape_id)
+            shape_id_list = []
+            for mash_file_key in mash_file_keys:
+                shape_id_list.append(
+                    mash_file_key.split(self.mash_folder_key)[1].split(".")[0]
+                )
 
-            image_bucket = self.image_bucket_dict[shape_id]
-            if image_bucket.endswith("v2"):
-                image_file_key = "data/" + image_file_key
+            shape_image_pairs = []
+            for shape_id in shape_id_list:
+                image_file_key = getRandomImageFileKey(self.image_folder_key, shape_id)
 
-            shape_image_pairs.append([shape_id, image_file_key])
+                image_bucket = image_bucket_dict[shape_id]
+                if image_bucket.endswith("v2"):
+                    image_file_key = "data/" + image_file_key
 
-        self.valid_shape_id_list = filterExistFiles(
-            self.client, self.image_bucket_dict, shape_image_pairs, max_workers=64
-        )
+                shape_image_pairs.append([shape_id, image_file_key])
 
-        print(len(self.shape_id_list), "mash files found")
-        print(len(self.valid_shape_id_list), "valid mash files found")
-        if len(self.valid_shape_id_list) == 0:
-            print("[ERROR][TOSImageDataset::__init__]")
-            print("\t rendered images not found!")
-            exit()
+            valid_shape_id_list = filterExistFiles(
+                self.client, image_bucket_dict, shape_image_pairs, max_workers=64
+            )
+
+            self.paths_list = []
+            for valid_shape_id in valid_shape_id_list:
+                mash_file_key = getMashFileKey(self.mash_folder_key, valid_shape_id)
+                image_file_key = getRandomImageFileKey(
+                    self.image_folder_key, valid_shape_id
+                )
+
+                image_bucket = image_bucket_dict[valid_shape_id]
+                if image_bucket.endswith("v2"):
+                    image_file_key = "data/" + image_file_key
+
+                self.paths_list.append([mash_file_key, image_bucket, image_file_key])
+
+            print(len(shape_id_list), "mashes found")
+            print(len(self.paths_list), "valid mash image pairs found")
+            if len(self.paths_list) == 0:
+                print("[ERROR][TOSImageDataset::__init__]")
+                print("\t valid mash image pairs not found!")
+                exit()
 
         self.output_error = True
 
@@ -160,29 +175,21 @@ class TOSImageDataset(Dataset):
         return True
 
     def __len__(self):
-        return len(self.valid_shape_id_list)
+        return len(self.paths_list)
 
     def getRandomItem(self):
-        random_idx = random.randint(0, len(self.valid_shape_id_list) - 1)
+        random_idx = random.randint(0, len(self.paths_list) - 1)
         return self.__getitem__(random_idx)
 
     def __getitem__(self, index):
-        index = index % len(self.valid_shape_id_list)
+        index = index % len(self.paths_list)
 
         if self.split == "train":
             np.random.seed()
         else:
             np.random.seed(1234)
 
-        shape_id = self.valid_shape_id_list[index]
-
-        image_bucket = self.image_bucket_dict[shape_id]
-
-        mash_file_key = getMashFileKey(self.mash_folder_key, shape_id)
-        image_file_key = getRandomImageFileKey(self.image_folder_key, shape_id)
-
-        if image_bucket.endswith("v2"):
-            image_file_key = "data/" + image_file_key
+        mash_file_key, image_bucket, image_file_key = self.paths_list[index]
 
         if not isFileExist(self.client, image_bucket, image_file_key):
             if self.output_error:

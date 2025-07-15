@@ -15,8 +15,8 @@ def demo():
     assert dataset_root_folder_path is not None
     print(dataset_root_folder_path)
 
-    batch_size = 3
-    accum_iter = 10
+    batch_size = 1
+    accum_iter = 256
     num_workers = 16
     model_file_path = (
         "../../output/cfm-Objaverse_82K-single_image-v10/model_last.pth".replace(
@@ -40,7 +40,7 @@ def demo():
     is_metric_lower_better = True
     sample_results_freq = 1
     use_amp = True
-    quick_test = True
+    quick_test = False
 
     cfm_trainer = CFMTrainer(
         dataset_root_folder_path,
