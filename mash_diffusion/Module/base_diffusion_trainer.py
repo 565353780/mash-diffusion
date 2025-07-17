@@ -171,9 +171,7 @@ class BaseDiffusionTrainer(BaseTrainer):
         return True
 
     def getCondition(self, data_dict: dict) -> dict:
-        if "category_id" in data_dict.keys():
-            data_dict["condition"] = data_dict["category_id"]
-        elif "image" in data_dict.keys():
+        if "image" in data_dict.keys():
             image = data_dict["image"]
             if image.ndim == 3:
                 image = image.unsqueeze(0)

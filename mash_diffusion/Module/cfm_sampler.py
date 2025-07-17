@@ -1,3 +1,4 @@
+import io
 import os
 import torch
 import torchdiffeq
@@ -6,10 +7,8 @@ import open3d as o3d
 from tqdm import tqdm
 from typing import Union
 from math import sqrt, ceil
-from shutil import copyfile
 
 from ma_sh.Model.mash import Mash
-from ma_sh.Module.local_editor import LocalEditor
 
 from mash_occ_decoder.Module.detector import Detector as OCCDetector
 
@@ -21,22 +20,19 @@ from dino_v2_detect.Module.detector import Detector as DINODetector
 from blender_manage.Module.blender_renderer import BlenderRenderer
 
 from mash_diffusion.Model.cfm_latent_transformer import CFMLatentTransformer
-from mash_diffusion.Method.io import loadMashTensor
+from mash_diffusion.Model.cfm_hy3ddit import CFMHunyuan3DDiT
 from mash_diffusion.Method.path import removeFile, createFileFolder
 
 
 class CFMSampler(object):
     def __init__(
         self,
-        model_file_path: Union[str, None] = None,
+        model_file_path: str,
+        dino_model_file_path: str,
         occ_model_file_path: Union[str, None] = None,
         cfm_use_ema: bool = True,
         occ_use_ema: bool = True,
         device: str = "cpu",
-        transformer_id: str = "Objaverse_82K",
-        ulip_model_file_path: Union[str, None] = None,
-        open_clip_model_file_path: Union[str, None] = None,
-        dino_model_file_path: Union[str, None] = None,
         occ_batch_size: int = 1200000,
         recon_wnnc: bool = True,
         recon_occ: bool = True,
@@ -48,9 +44,9 @@ class CFMSampler(object):
         render_occ: bool = True,
         render_occ_smooth: bool = True,
     ) -> None:
-        self.mash_channel = 400
-        self.encoded_mash_channel = 25
-        self.mask_degree = 3
+        self.anchor_num = 8192
+        self.encoded_mash_channel = 23
+        self.mask_degree = 2
         self.sh_degree = 2
 
         self.recon_wnnc = recon_wnnc
@@ -63,26 +59,19 @@ class CFMSampler(object):
         self.render_occ = render_occ
         self.render_occ_smooth = render_occ_smooth
 
-        if transformer_id in ["ShapeNet", "ShapeNet_03001627"]:
-            self.context_dim = 512
-            self.n_heads = 8
-            self.d_head = 64
-            self.depth = 24
-        elif transformer_id == "Objaverse_82K":
-            self.context_dim = 768
-            self.n_heads = 8
-            self.d_head = 64
-            self.depth = 24
+        self.context_dim = 1024
+        self.n_heads = 8
+        self.d_head = 64
+        self.depth = 8
+        self.depth_single_blocks = 16
 
         self.use_ema = cfm_use_ema
         self.device = device
 
         model_id = 2
         if model_id == 1:
-            self.model = MashUNet(self.context_dim).to(self.device)
-        elif model_id == 2:
             self.model = CFMLatentTransformer(
-                n_latents=self.mash_channel,
+                n_latents=self.anchor_num,
                 mask_degree=self.mask_degree,
                 sh_degree=self.sh_degree,
                 context_dim=self.context_dim,
@@ -90,25 +79,25 @@ class CFMSampler(object):
                 d_head=self.d_head,
                 depth=self.depth,
             ).to(self.device)
+        elif model_id == 2:
+            self.model = CFMHunyuan3DDiT(
+                n_latents=self.anchor_num,
+                mask_degree=self.mask_degree,
+                sh_degree=self.sh_degree,
+                context_dim=self.context_dim,
+                n_heads=self.n_heads,
+                d_head=self.d_head,
+                depth=self.depth,
+                depth_single_blocks=self.depth_single_blocks,
+            ).to(self.device)
 
-        """
-        def count_parameters_in_B(model):
-            total_params = sum(p.numel() for p in model.parameters())  # 计算参数总数
-            total_params_B = total_params / 1e9  # 转换为 Billion（B）
-            return total_params, total_params_B
+        self.loadModel(model_file_path)
 
-        print(count_parameters_in_B(self.model))
-        exit()
-        """
-
-        if model_file_path is not None:
-            self.loadModel(model_file_path)
-
-        self.dino_detector = None
-        if dino_model_file_path is not None:
-            self.dino_detector = DINODetector(
-                "base", dino_model_file_path, "auto", device
-            )
+        model_type = "large"
+        dtype = "auto"
+        self.dino_detector = DINODetector(
+            model_type, dino_model_file_path, dtype, device
+        )
 
         self.occ_detector = None
         if occ_model_file_path is not None:
@@ -117,7 +106,6 @@ class CFMSampler(object):
                 use_ema=occ_use_ema,
                 batch_size=occ_batch_size,
                 resolution=128,
-                transformer_id="Objaverse_82K",
                 device=device,
             )
 
@@ -138,13 +126,12 @@ class CFMSampler(object):
             device = self.device
 
         mash_model = Mash(
-            self.mash_channel,
+            self.anchor_num,
             self.mask_degree,
             self.sh_degree,
-            20,
-            800,
-            0.4,
-            dtype=torch.float64,
+            10,
+            10,
+            dtype=torch.float32,
             device=device,
         )
         return mash_model
@@ -156,7 +143,9 @@ class CFMSampler(object):
             print("\t model_file_path:", model_file_path)
             return False
 
-        model_dict = torch.load(model_file_path, map_location=torch.device(self.device))
+        model_dict = torch.load(
+            model_file_path, map_location=torch.device(self.device), weights_only=False
+        )
 
         if self.use_ema:
             self.model.load_state_dict(model_dict["ema_model"])
@@ -170,45 +159,21 @@ class CFMSampler(object):
 
     def getCondition(
         self,
-        condition: Union[int, np.ndarray, torch.Tensor],
+        condition: torch.Tensor,
         batch_size: int = 1,
-    ) -> Union[torch.Tensor, None]:
-        if isinstance(condition, int):
-            condition_tensor = (
-                torch.ones([batch_size]).long().to(self.device) * condition
-            )
-        elif isinstance(condition, np.ndarray):
-            condition_tensor = (
-                torch.from_numpy(condition).type(torch.float32).to(self.device)
-            )
+    ) -> torch.Tensor:
+        condition_tensor = condition.type(torch.float32).to(self.device)
 
-            if condition_tensor.ndim == 1:
-                condition_tensor = condition_tensor.view(1, 1, -1)
-            elif condition_tensor.ndim == 2:
-                condition_tensor = condition_tensor.unsqueeze(1)
-            elif condition_tensor.ndim == 4:
-                condition_tensor = torch.squeeze(condition_tensor, dim=1)
+        if condition_tensor.ndim == 1:
+            condition_tensor = condition_tensor.view(1, 1, -1)
+        elif condition_tensor.ndim == 2:
+            condition_tensor = condition_tensor.unsqueeze(1)
+        elif condition_tensor.ndim == 4:
+            condition_tensor = torch.squeeze(condition_tensor, dim=1)
 
-            condition_tensor = condition_tensor.repeat(
-                *([batch_size] + [1] * (condition_tensor.ndim - 1))
-            )
-        elif isinstance(condition, torch.Tensor):
-            condition_tensor = condition.type(torch.float32).to(self.device)
-
-            if condition_tensor.ndim == 1:
-                condition_tensor = condition_tensor.view(1, 1, -1)
-            elif condition_tensor.ndim == 2:
-                condition_tensor = condition_tensor.unsqueeze(1)
-            elif condition_tensor.ndim == 4:
-                condition_tensor = torch.squeeze(condition_tensor, dim=1)
-
-            condition_tensor = condition_tensor.repeat(
-                *([batch_size] + [1] * (condition_tensor.ndim - 1))
-            )
-        else:
-            print("[ERROR][CFMSampler::getCondition]")
-            print("\t condition type not valid!")
-            return None
+        condition_tensor = condition_tensor.repeat(
+            *([batch_size] + [1] * (condition_tensor.ndim - 1))
+        )
 
         return condition_tensor
 
@@ -216,18 +181,13 @@ class CFMSampler(object):
     def sample(
         self,
         sample_num: int,
-        condition: Union[int, np.ndarray, torch.Tensor] = 0,
+        condition: torch.Tensor,
         timestamp_num: int = 10,
         step_size: Union[float, None] = None,
     ) -> np.ndarray:
         self.model.eval()
 
         condition_tensor = self.getCondition(condition, sample_num)
-
-        if condition_tensor is None:
-            print("[ERROR][CFMSampler::sample]")
-            print("\t getCondition failed!")
-            return np.ndarray([])
 
         query_t = torch.linspace(0, 1, timestamp_num).to(self.device)
         query_t = torch.pow(query_t, 0.5)
@@ -253,121 +213,40 @@ class CFMSampler(object):
 
         return traj.cpu().numpy()
 
-    @torch.no_grad()
-    def sampleWithFixedAnchors(
-        self,
-        mash_file_path_list: list,
-        sample_num: int,
-        condition: Union[int, np.ndarray] = 0,
-        timestamp_num: int = 10,
-        step_size: Union[float, None] = None,
-    ) -> Union[np.ndarray, None]:
-        self.model.eval()
-
-        condition_tensor = self.getCondition(condition, sample_num)
-
-        if condition_tensor is None:
-            print("[ERROR][CFMSampler::sampleWithFixedAnchors]")
-            print("\t getCondition failed!")
-            return np.ndarray([])
-
-        query_t = torch.linspace(0, 1, timestamp_num).to(self.device)
-        query_t = torch.pow(query_t, 1.0 / 2.0)
-
-        """
-        local_editor = LocalEditor(self.device)
-        if not local_editor.loadMashFiles(mash_file_path_list):
-            print('[ERROR][CFMSampler::sampleWithFixedAnchors]')
-            print('\t loadMashFiles failed!')
-            return None
-
-        combined_mash = local_editor.toCombinedMash()
-        if combined_mash is None:
-            print('[ERROR][CFMSampler::sampleWithFixedAnchors]')
-            print('\t toCombinedMash failed!')
-            return None
-        """
-
-        mash_params_list = []
-        for mash_file_path in mash_file_path_list:
-            mash_params = loadMashTensor(mash_file_path, torch.float32, "cpu")
-            mash_params_list.append(mash_params)
-
-        fixed_mash_params = torch.cat(mash_params_list, dim=0).view(1, -1, 25)
-        fixed_x_init = fixed_mash_params.repeat(
-            *([condition_tensor.shape[0]] + [1] * (fixed_mash_params.ndim - 1))
-        )
-
-        random_x_init = torch.randn(
-            condition_tensor.shape[0],
-            400 - fixed_x_init.shape[1],
-            25,
-            device=self.device,
-        )
-
-        x_init = torch.cat((fixed_x_init, random_x_init), dim=1)
-
-        fixed_anchor_mask = torch.zeros_like(x_init, dtype=torch.bool)
-        fixed_anchor_mask[:, : fixed_x_init.shape[1], :] = True
-
-        if step_size is None:
-            method = "dopri5"
-            ode_opts = None
-        else:
-            method = "euler"
-            ode_opts = {"step_size": step_size}
-
-        traj = torchdiffeq.odeint(
-            lambda t, x: self.model.forwardWithFixedAnchors(
-                x, condition_tensor, t, fixed_anchor_mask
-            ),
-            x_init,
-            query_t,
-            atol=1e-4,
-            rtol=1e-4,
-            method=method,
-            options=ode_opts,
-        )
-
-        return traj.cpu().numpy()
-
     def samplePipeline(
         self,
+        data_dict: dict,
         save_folder_path: str,
-        condition_value: Union[int, str, np.ndarray] = 18,
         sample_num: int = 9,
         timestamp_num: int = 10,
         save_results_only: bool = True,
-        mash_file_path_list: Union[list, None] = None,
         step_size: Union[float, None] = None,
     ) -> bool:
-        assert self.dino_detector is not None
-        assert isinstance(condition_value, str)
+        os.makedirs(save_folder_path, exist_ok=True)
 
-        image_file_path = condition_value
-        if not os.path.exists(image_file_path):
-            print("[ERROR][CFMSampler::demoCondition]")
-            print("\t condition image file not exist!")
-            return False
+        with open(save_folder_path + "condition_image.jpg", "wb") as f:
+            f.write(io.BytesIO(data_dict["image_data"]).read())
 
-        condition = self.dino_detector.detectFile(image_file_path)
+        with open(save_folder_path + "gt_mash.npy", "wb") as f:
+            f.write(io.BytesIO(data_dict["mash_data"]).read())
+
+        image = data_dict["image"]
+        if image.ndim == 3:
+            image = image.unsqueeze(0)
+
+        image = image.to(self.device)
+
+        print("create image")
+        condition = self.dino_detector.detect(image)
+        print("finish dino")
 
         print("start diffuse", sample_num, "mashs....")
-        if mash_file_path_list is None:
-            sampled_array = self.sample(
-                sample_num,
-                condition,
-                timestamp_num,
-                step_size=step_size,
-            )
-        else:
-            sampled_array = self.sampleWithFixedAnchors(
-                mash_file_path_list,
-                sample_num,
-                condition,
-                timestamp_num,
-                step_size=step_size,
-            )
+        sampled_array = self.sample(
+            sample_num,
+            condition,
+            timestamp_num,
+            step_size=step_size,
+        )
 
         object_dist = [0, 0, 0]
 
@@ -383,13 +262,6 @@ class CFMSampler(object):
             current_save_folder_path = save_folder_path + "iter_" + str(j) + "/"
 
             os.makedirs(current_save_folder_path, exist_ok=True)
-
-            copyfile(
-                image_file_path,
-                current_save_folder_path
-                + "condition_image."
-                + image_file_path.split(".")[-1],
-            )
 
             current_save_mash_folder_path = current_save_folder_path + "mash/"
             current_save_pcd_folder_path = current_save_folder_path + "pcd/"

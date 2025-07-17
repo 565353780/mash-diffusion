@@ -90,6 +90,7 @@ class TOSImageDataset(Dataset):
         dtype=torch.float32,
         paths_file_path: Union[str, None] = None,
         empty: bool = False,
+        return_raw_data: bool = False,
     ) -> None:
         self.mash_bucket = mash_bucket
         self.mash_folder_key = mash_folder_key
@@ -110,6 +111,8 @@ class TOSImageDataset(Dataset):
         self.output_error = True
 
         self.invalid_image_file_keys = []
+
+        self.return_raw_data = return_raw_data
         return
 
     def createClient(self) -> bool:
@@ -286,5 +289,9 @@ class TOSImageDataset(Dataset):
             "mash_params": mash_params.to(self.dtype),
             "image": image.to(self.dtype),
         }
+
+        if self.return_raw_data:
+            data["mash_data"] = mash_data
+            data["image_data"] = image_data
 
         return data
