@@ -129,8 +129,8 @@ class CFMSampler(object):
             self.anchor_num,
             self.mask_degree,
             self.sh_degree,
-            10,
-            10,
+            4,
+            4,
             dtype=torch.float32,
             device=device,
         )

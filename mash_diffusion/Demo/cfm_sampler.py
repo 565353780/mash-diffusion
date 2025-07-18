@@ -12,7 +12,7 @@ import torch
 from mash_diffusion.Module.cfm_sampler import CFMSampler
 
 
-def demo():
+def demo(timestamp: str):
     cfm_model_file_path = "/vepfs-cnbja62d5d769987/lichanghao/github/MASH/mash-diffusion/output/test/model_last.pth"
     dino_model_file_path = "./data/dinov2_vitl14_reg4_pretrain.pth"
     occ_model_file_path = None
@@ -23,7 +23,7 @@ def demo():
     occ_batch_size = 1200000  # 24G GPU Memory required
     # occ_batch_size = 500000 # 12G GPU Memory required
 
-    timestamp = "20250718_14:06:54"
+    # timestamp = "20250718_14:06:54"
     sample_data_folder_path = "./output/sample/" + timestamp + "/"
     if not os.path.exists(sample_data_folder_path):
         print("[ERROR][cfm_sampler::demo]")

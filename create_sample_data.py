@@ -1,18 +1,25 @@
+# similar to TOS, you can replace this with your TOS bucket setting
 import MFSClient
 
 import io
 import os
+import sys
 import random
 from tqdm import tqdm
 
 from mash_diffusion.Dataset.tos_image import TOSImageDataset
-from mash_diffusion.Method.time import getCurrentTime
 
 
 if __name__ == "__main__":
-    save_folder_path = "./output/sample/" + getCurrentTime() + "/"
+    if len(sys.argv) < 2:
+        print("Usage: python create_sample_data.py <timestamp>")
+        sys.exit(1)
 
-    sample_shape_num = 100
+    timestamp = sys.argv[1]
+
+    save_folder_path = "./output/sample/" + timestamp + "/"
+
+    sample_shape_num = 10
 
     client = MFSClient.MFSClient2()
 
