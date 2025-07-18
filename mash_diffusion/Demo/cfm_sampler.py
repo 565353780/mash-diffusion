@@ -1,38 +1,36 @@
-import MFSClient
-
 import sys
 
 sys.path.append("../ma-sh/")
 sys.path.append("../wn-nc/")
-sys.path.append("../ulip-manage/")
 sys.path.append("../blender-manage/")
 sys.path.append("../dino-v2-detect/")
 sys.path.append("../mash-occ-decoder/")
-sys.path.append("../distribution-manage/")
 
+import os
 import torch
-import random
 
-from mash_diffusion.Dataset.tos_image import TOSImageDataset
-from mash_diffusion.Method.time import getCurrentTime
 from mash_diffusion.Module.cfm_sampler import CFMSampler
 
 
 def demo():
     cfm_model_file_path = "/vepfs-cnbja62d5d769987/lichanghao/github/MASH/mash-diffusion/output/test/model_last.pth"
+    dino_model_file_path = "./data/dinov2_vitl14_reg4_pretrain.pth"
     occ_model_file_path = None
     cfm_use_ema = False
     occ_use_ema = True
     device = "cuda:0"
-    dino_model_file_path = "./data/dinov2_vitl14_reg4_pretrain.pth"
 
     occ_batch_size = 1200000  # 24G GPU Memory required
     # occ_batch_size = 500000 # 12G GPU Memory required
 
-    save_folder_path = "./output/sample/" + getCurrentTime() + "/"
+    timestamp = "20250718_14:06:54"
+    sample_data_folder_path = "./output/sample/" + timestamp + "/"
+    if not os.path.exists(sample_data_folder_path):
+        print("[ERROR][cfm_sampler::demo]")
+        print("\t sample data folder not exist!")
+        return False
 
-    sample_shape_num = 100
-    sample_mash_per_shape = 4
+    sample_mash_per_shape = 1
 
     timestamp_num = 2
     save_results_only = True
@@ -67,31 +65,18 @@ def demo():
         render_occ_smooth,
     )
 
-    client = MFSClient.MFSClient2()
+    shape_idxs = os.listdir(sample_data_folder_path)
+    shape_idxs.sort(key=int)
 
-    dataset = TOSImageDataset(
-        client,
-        mash_bucket="mm-data-general-model-trellis",
-        mash_folder_key="mash/",
-        image_bucket="mm-data-general-model-v1",
-        image_folder_key="rendering/orient_cam72_base/",
-        transform=cfm_sampler.dino_detector.transform,
-        paths_file_path="./data/tos_paths_list.npy",
-        return_raw_data=True,
-    )
-
-    all_shape_num = len(dataset)
-    if sample_shape_num >= all_shape_num:
-        random_shape_idxs = list(range(all_shape_num))
-    else:
-        random_shape_idxs = random.sample(range(all_shape_num), sample_shape_num)
-
-    for shape_idx in random_shape_idxs:
+    for shape_idx in shape_idxs:
         print("start sample for shape No." + str(shape_idx) + " ...")
-        data_dict = dataset[shape_idx]
+
+        current_data_folder_path = sample_data_folder_path + shape_idx + "/"
+        # gt_mash_file_path = current_data_folder_path + "gt_mash.npy"
+        condition_image_file_path = current_data_folder_path + "condition_image.jpg"
         cfm_sampler.samplePipeline(
-            data_dict,
-            save_folder_path + str(shape_idx) + "/",
+            condition_image_file_path,
+            current_data_folder_path,
             sample_mash_per_shape,
             timestamp_num,
             save_results_only,

@@ -255,6 +255,14 @@ class TOSImageDataset(Dataset):
             "shumei_mash", image_bucket + "/" + image_file_key
         )
 
+        if self.return_raw_data:
+            data = {
+                "mash_data": mash_data,
+                "image_data": image_data,
+            }
+
+            return data
+
         mash_params_dict = np.load(io.BytesIO(mash_data), allow_pickle=True).item()
         mash_params = toMashTensor(mash_params_dict)
         assert mash_params is not None, (
@@ -289,9 +297,5 @@ class TOSImageDataset(Dataset):
             "mash_params": mash_params.to(self.dtype),
             "image": image.to(self.dtype),
         }
-
-        if self.return_raw_data:
-            data["mash_data"] = mash_data
-            data["image_data"] = image_data
 
         return data

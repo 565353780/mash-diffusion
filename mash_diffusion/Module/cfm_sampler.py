@@ -192,7 +192,12 @@ class CFMSampler(object):
         query_t = torch.linspace(0, 1, timestamp_num).to(self.device)
         query_t = torch.pow(query_t, 0.5)
 
-        x_init = torch.randn(condition_tensor.shape[0], 400, 25, device=self.device)
+        x_init = torch.randn(
+            condition_tensor.shape[0],
+            self.model.n_latents,
+            self.model.channels,
+            device=self.device,
+        )
 
         if step_size is None:
             method = "dopri5"
@@ -215,30 +220,22 @@ class CFMSampler(object):
 
     def samplePipeline(
         self,
-        data_dict: dict,
+        condition_image_file_path: str,
         save_folder_path: str,
         sample_num: int = 9,
         timestamp_num: int = 10,
         save_results_only: bool = True,
         step_size: Union[float, None] = None,
     ) -> bool:
+        if not os.path.exists(condition_image_file_path):
+            print("[ERROR][CFMSampler::samplePipeline]")
+            print("\t condition image file not exist!")
+            print("\t condition_image_file_path:", condition_image_file_path)
+            return False
+
         os.makedirs(save_folder_path, exist_ok=True)
 
-        with open(save_folder_path + "condition_image.jpg", "wb") as f:
-            f.write(io.BytesIO(data_dict["image_data"]).read())
-
-        with open(save_folder_path + "gt_mash.npy", "wb") as f:
-            f.write(io.BytesIO(data_dict["mash_data"]).read())
-
-        image = data_dict["image"]
-        if image.ndim == 3:
-            image = image.unsqueeze(0)
-
-        image = image.to(self.device)
-
-        print("create image")
-        condition = self.dino_detector.detect(image)
-        print("finish dino")
+        condition = self.dino_detector.detectFile(condition_image_file_path)
 
         print("start diffuse", sample_num, "mashs....")
         sampled_array = self.sample(
@@ -297,16 +294,16 @@ class CFMSampler(object):
                 mash_params = sampled_array[j][i]
 
                 sh2d = 2 * self.mask_degree + 1
-                ortho_poses = mash_params[:, :6]
-                positions = mash_params[:, 6:9]
+                positions = mash_params[:, :3]
+                ortho_poses = mash_params[:, 3:9]
                 mask_params = mash_params[:, 9 : 9 + sh2d]
                 sh_params = mash_params[:, 9 + sh2d :]
 
                 mash_model.loadParams(
                     mask_params=mask_params,
                     sh_params=sh_params,
+                    ortho_poses=ortho_poses,
                     positions=positions,
-                    ortho6d_poses=ortho_poses,
                 )
 
                 translate = [
@@ -349,7 +346,10 @@ class CFMSampler(object):
                 )
 
                 mash_model.saveParamsFile(current_save_mash_file_path, True)
-                mash_model.saveAsPcdFile(current_save_pcd_file_path, True)
+                # FIXME: for faster running only, you can activate this if you need to render results
+                # it's the best way to save mash npy file only, and use follow script in ma-sh git package to visualize the result
+                # python view.py <mash-npy-file-path>
+                # mash_model.saveAsPcdFile(current_save_pcd_file_path, True)
 
                 if self.recon_wnnc:
                     if os.path.exists(current_save_pcd_file_path):

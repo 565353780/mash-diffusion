@@ -1,10 +1,10 @@
+import MFSClient
+
 import sys
 
 sys.path.append("../ma-sh/")
 sys.path.append("../base-trainer/")
 sys.path.append("../dino-v2-detect/")
-
-import MFSClient
 
 import os
 import torch
