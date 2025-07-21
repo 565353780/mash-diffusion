@@ -20,8 +20,8 @@ def demo(timestamp: str):
     occ_use_ema = True
     device = "cuda:0"
 
-    occ_batch_size = 1200000  # 24G GPU Memory required
-    # occ_batch_size = 500000 # 12G GPU Memory required
+    gpu_memory_Gb = 24
+    occ_batch_size = int((-2 + 7.0 * gpu_memory_Gb / 12.0) * 100000)  # 24G->12, 12G->5
 
     # timestamp = "20250718_14:06:54"
     sample_data_folder_path = "./output/sample/" + timestamp + "/"
