@@ -22,7 +22,7 @@ except ImportError as e:
 scaled_dot_product_attention = nn.functional.scaled_dot_product_attention
 
 
-def attention(q: Tensor, k: Tensor, v: Tensor, **kwargs) -> Tensor:
+def attention(q: Tensor, k: Tensor, v: Tensor) -> Tensor:
     x = scaled_dot_product_attention(q, k, v)
     x = rearrange(x, "B H L D -> B L (H D)")
     return x
@@ -114,11 +114,11 @@ class SelfAttention(nn.Module):
         self.norm = QKNorm(head_dim)
         self.proj = nn.Linear(dim, dim)
 
-    def forward(self, x: Tensor, pe: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         qkv = self.qkv(x)
         q, k, v = rearrange(qkv, "B L (K H D) -> K B H L D", K=3, H=self.num_heads)
         q, k = self.norm(q, k, v)
-        x = attention(q, k, v, pe=pe)
+        x = attention(q, k, v)
         x = self.proj(x)
         return x
 
@@ -185,9 +185,7 @@ class DoubleStreamBlock(nn.Module):
             nn.Linear(mlp_hidden_dim, hidden_size, bias=True),
         )
 
-    def forward(
-        self, img: Tensor, txt: Tensor, vec: Tensor, pe: Tensor
-    ) -> Tuple[Tensor, Tensor]:
+    def forward(self, img: Tensor, txt: Tensor, vec: Tensor) -> Tuple[Tensor, Tensor]:
         img_mod1, img_mod2 = self.img_mod(vec)
         txt_mod1, txt_mod2 = self.txt_mod(vec)
 
@@ -211,7 +209,7 @@ class DoubleStreamBlock(nn.Module):
         k = torch.cat((txt_k, img_k), dim=2)
         v = torch.cat((txt_v, img_v), dim=2)
 
-        attn = attention(q, k, v, pe=pe)
+        attn = attention(q, k, v)
         txt_attn, img_attn = attn[:, : txt.shape[1]], attn[:, txt.shape[1] :]
 
         img = img + img_mod1.gate * self.img_attn.proj(img_attn)
@@ -260,7 +258,7 @@ class SingleStreamBlock(nn.Module):
         self.mlp_act = GELU(approximate="tanh")
         self.modulation = Modulation(hidden_size, double=False)
 
-    def forward(self, x: Tensor, vec: Tensor, pe: Tensor) -> Tensor:
+    def forward(self, x: Tensor, vec: Tensor) -> Tensor:
         mod, _ = self.modulation(vec)
 
         x_mod = (1 + mod.scale) * self.pre_norm(x) + mod.shift
@@ -272,7 +270,7 @@ class SingleStreamBlock(nn.Module):
         q, k = self.norm(q, k, v)
 
         # compute attention
-        attn = attention(q, k, v, pe=pe)
+        attn = attention(q, k, v)
         # compute activation in mlp stream, cat again and run second linear layer
         output = self.linear2(torch.cat((attn, self.mlp_act(mlp)), 2))
         return x + mod.gate * output
@@ -310,9 +308,6 @@ class Hunyuan3DDiT(nn.Module):
         theta: int = 10_000,
         qkv_bias: bool = True,
         time_factor: float = 1000,
-        guidance_embed: bool = False,
-        ckpt_path: Optional[str] = None,
-        **kwargs,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -327,7 +322,6 @@ class Hunyuan3DDiT(nn.Module):
         self.qkv_bias = qkv_bias
         self.time_factor = time_factor
         self.out_channels = self.in_channels
-        self.guidance_embed = guidance_embed
 
         if hidden_size % num_heads != 0:
             raise ValueError(
@@ -341,11 +335,6 @@ class Hunyuan3DDiT(nn.Module):
         self.latent_in = nn.Linear(self.in_channels, self.hidden_size, bias=True)
         self.time_in = MLPEmbedder(in_dim=256, hidden_dim=self.hidden_size)
         self.cond_in = nn.Linear(context_in_dim, self.hidden_size)
-        self.guidance_in = (
-            MLPEmbedder(in_dim=256, hidden_dim=self.hidden_size)
-            if guidance_embed
-            else nn.Identity()
-        )
 
         self.double_blocks = nn.ModuleList(
             [
@@ -372,54 +361,23 @@ class Hunyuan3DDiT(nn.Module):
 
         self.final_layer = LastLayer(self.hidden_size, 1, self.out_channels)
 
-        if ckpt_path is not None:
-            print("restored denoiser ckpt", ckpt_path)
-
-            ckpt = torch.load(ckpt_path, map_location="cpu")
-            if "state_dict" not in ckpt:
-                # deepspeed ckpt
-                state_dict = {}
-                for k in ckpt.keys():
-                    new_k = k.replace("_forward_module.", "")
-                    state_dict[new_k] = ckpt[k]
-            else:
-                state_dict = ckpt["state_dict"]
-
-            final_state_dict = {}
-            for k, v in state_dict.items():
-                if k.startswith("model."):
-                    final_state_dict[k.replace("model.", "")] = v
-                else:
-                    final_state_dict[k] = v
-            missing, unexpected = self.load_state_dict(final_state_dict, strict=False)
-            print("unexpected keys:", unexpected)
-            print("missing keys:", missing)
-
-    def forward(self, x, t, cond, **kwargs) -> Tensor:
+    def forward(self, x, t, cond) -> Tensor:
         latent = self.latent_in(x)
 
         vec = self.time_in(
-            timestep_embedding(t, 256, self.time_factor).to(dtype=latent.dtype)
-        )
-        if self.guidance_embed:
-            guidance = kwargs.get("guidance", None)
-            if guidance is None:
-                raise ValueError(
-                    "Didn't get guidance strength for guidance distilled model."
-                )
-            vec = vec + self.guidance_in(
-                timestep_embedding(guidance, 256, self.time_factor)
+            timestep_embedding(t, 256, time_factor=self.time_factor).to(
+                dtype=latent.dtype
             )
+        )
 
         cond = self.cond_in(cond)
-        pe = None
 
         for block in self.double_blocks:
-            latent, cond = block(img=latent, txt=cond, vec=vec, pe=pe)
+            latent, cond = block(img=latent, txt=cond, vec=vec)
 
         latent = torch.cat((cond, latent), 1)
         for block in self.single_blocks:
-            latent = block(latent, vec=vec, pe=pe)
+            latent = block(latent, vec=vec)
 
         latent = latent[:, cond.shape[1] :, ...]
         latent = self.final_layer(latent, vec)
