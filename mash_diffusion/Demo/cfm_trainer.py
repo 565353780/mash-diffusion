@@ -20,22 +20,18 @@ def demo():
     batch_size = 1
     accum_iter = 6
     num_workers = 16
-    model_file_path = (
-        "../../output/cfm-Objaverse_82K-single_image-v10/model_last.pth".replace(
-            "../../", "./"
-        )
-    )
-    model_file_path = None
+    model_file_path = "./output/hy3d_160epoch/model_last.pth"
+    # model_file_path = None
     weights_only = False
     device = "auto"
     dtype = torch.float32
-    warm_step_num = 2000
+    warm_step_num = 6000
     finetune_step_num = -1
-    lr = 1e-5
+    lr = 1e-4
     lr_batch_size = 1024
     ema_start_step = 5000
     ema_decay_init = 0.99
-    ema_decay = 0.9999
+    ema_decay = 0.999
     save_result_folder_path = "auto"
     save_log_folder_path = "auto"
     best_model_metric_name = None

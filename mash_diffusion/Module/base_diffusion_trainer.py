@@ -56,7 +56,7 @@ class BaseDiffusionTrainer(BaseTrainer):
         self.depth_single_blocks = 16  # 32
 
         # FIXME: only for latent transformer
-        self.depth = 24
+        # self.depth = 24
 
         self.gt_sample_added_to_logger = False
 

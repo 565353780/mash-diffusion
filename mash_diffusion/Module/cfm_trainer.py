@@ -45,7 +45,7 @@ class CFMTrainer(BaseDiffusionTrainer):
         use_amp: bool = False,
         quick_test: bool = False,
     ) -> None:
-        fm_id = 1
+        fm_id = 3
         if fm_id == 1:
             self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
         elif fm_id == 2:
@@ -82,7 +82,7 @@ class CFMTrainer(BaseDiffusionTrainer):
         return
 
     def createModel(self) -> bool:
-        model_id = 1
+        model_id = 2
         if model_id == 1:
             self.model = CFMLatentTransformer(
                 n_latents=self.anchor_num,

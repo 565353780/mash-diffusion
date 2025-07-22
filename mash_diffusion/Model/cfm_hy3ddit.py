@@ -35,6 +35,5 @@ class CFMHunyuan3DDiT(BaseCFM):
             theta=10_000,
             qkv_bias=True,
             time_factor=1000,
-            guidance_embed=False,
         )
         return
