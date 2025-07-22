@@ -50,7 +50,7 @@ class CFMTrainer(BaseDiffusionTrainer):
             self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
         elif fm_id == 2:
             self.FM = BatchExactOptimalTransportConditionalFlowMatcher(
-                sigma=0.0, target_dim=None
+                sigma=0.0, target_dim=[0, 1, 2]
             )
         elif fm_id == 3:
             self.FM = AffineProbPath(scheduler=CondOTScheduler())
@@ -82,7 +82,7 @@ class CFMTrainer(BaseDiffusionTrainer):
         return
 
     def createModel(self) -> bool:
-        model_id = 2
+        model_id = 1
         if model_id == 1:
             self.model = CFMLatentTransformer(
                 n_latents=self.anchor_num,
