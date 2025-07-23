@@ -47,8 +47,10 @@ class CFMTrainer(BaseDiffusionTrainer):
     ) -> None:
         fm_id = 3
         if fm_id == 1:
+            # FIXME: this module will mismatch the condition and shapes! do not use it for now!
             self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
         elif fm_id == 2:
+            # TODO: this is the best one, but too slow for large data, need to speed up in the future
             self.FM = BatchExactOptimalTransportConditionalFlowMatcher(
                 sigma=0.0, target_dim=[0, 1, 2]
             )

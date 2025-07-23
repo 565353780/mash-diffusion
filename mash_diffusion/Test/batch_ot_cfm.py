@@ -30,5 +30,4 @@ def test():
     print(xt.shape)
     print(ut.shape)
 
-    exit()
     return True
