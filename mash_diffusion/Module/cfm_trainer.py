@@ -91,7 +91,7 @@ class CFMTrainer(BaseDiffusionTrainer):
                 context_dim=self.context_dim,
                 n_heads=self.n_heads,
                 d_head=self.d_head,
-                depth=self.depth,
+                depth=self.latent_transformer_depth,
             ).to(self.device, dtype=self.dtype)
         elif model_id == 2:
             self.model = CFMHunyuan3DDiT(
