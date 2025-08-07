@@ -16,7 +16,7 @@ def demo(timestamp: str):
     cfm_model_file_path = "/vepfs-cnbja62d5d769987/lichanghao/github/MASH/mash-diffusion/output/test/model_last.pth"
     dino_model_file_path = "./data/dinov2_vitl14_reg4_pretrain.pth"
     occ_model_file_path = None
-    cfm_use_ema = False
+    # cfm_use_ema = True
     occ_use_ema = True
     device = "cuda:0"
 
@@ -50,7 +50,25 @@ def demo(timestamp: str):
         cfm_model_file_path,
         dino_model_file_path,
         occ_model_file_path,
-        cfm_use_ema,
+        False,
+        occ_use_ema,
+        device,
+        occ_batch_size,
+        recon_wnnc,
+        recon_occ,
+        smooth_wnnc,
+        smooth_occ,
+        render_pcd,
+        render_wnnc,
+        render_wnnc_smooth,
+        render_occ,
+        render_occ_smooth,
+    )
+    ema_cfm_sampler = CFMSampler(
+        cfm_model_file_path,
+        dino_model_file_path,
+        occ_model_file_path,
+        True,
         occ_use_ema,
         device,
         occ_batch_size,
@@ -76,13 +94,21 @@ def demo(timestamp: str):
         condition_image_file_path = current_data_folder_path + "condition_image.jpg"
         cfm_sampler.samplePipeline(
             condition_image_file_path,
-            current_data_folder_path,
+            current_data_folder_path + "model/",
+            sample_mash_per_shape,
+            timestamp_num,
+            save_results_only,
+        )
+        ema_cfm_sampler.samplePipeline(
+            condition_image_file_path,
+            current_data_folder_path + "ema/",
             sample_mash_per_shape,
             timestamp_num,
             save_results_only,
         )
 
     cfm_sampler.waitRender()
+    ema_cfm_sampler.waitRender()
 
     torch.cuda.empty_cache()
     return True
