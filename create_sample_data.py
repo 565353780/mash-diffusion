@@ -8,14 +8,16 @@ import random
 from tqdm import tqdm
 
 from mash_diffusion.Dataset.tos_image import TOSImageDataset
+from mash_diffusion.Method.time import getCurrentTime
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python create_sample_data.py <timestamp>")
-        sys.exit(1)
-
-    timestamp = sys.argv[1]
+        # sys.exit(1)
+        timestamp = getCurrentTime()
+    else:
+        timestamp = sys.argv[1]
 
     save_folder_path = "./output/sample/" + timestamp + "/"
 
@@ -40,6 +42,16 @@ if __name__ == "__main__":
     else:
         random_shape_idxs = random.sample(range(all_shape_num), sample_shape_num)
 
+    """
+    random_shape_idxs = [
+        31155,
+        44634,
+        58284,
+        82679,
+        109260,
+    ]
+    """
+
     print("[INFO][create_sample_data::demo]")
     print("\t start sample condition data...")
     for shape_idx in tqdm(random_shape_idxs):
@@ -53,3 +65,8 @@ if __name__ == "__main__":
 
         with open(current_save_folder_path + "gt_mash.npy", "wb") as f:
             f.write(io.BytesIO(data_dict["mash_data"]).read())
+
+        with open(current_save_folder_path + "info.txt", "w") as f:
+            f.write("mash_file_key:" + data_dict["mash_file_key"] + "\n")
+            f.write("image_bucket:" + data_dict["image_bucket"] + "\n")
+            f.write("image_file_key:" + data_dict["image_file_key"] + "\n")

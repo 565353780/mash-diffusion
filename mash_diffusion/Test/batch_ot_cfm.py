@@ -13,7 +13,7 @@ def test():
     parallel = True
     dtype = torch.float32
 
-    x0 = torch.randn([6, 2048, 23], dtype=dtype)
+    x0 = torch.randn([6, 8192, 23], dtype=dtype)
 
     for _ in trange(10):
         permute_idxs = np.random.permutation(x0.shape[0])

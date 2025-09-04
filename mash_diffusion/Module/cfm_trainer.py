@@ -7,6 +7,7 @@ from flow_matching.path.scheduler import CondOTScheduler
 from flow_matching.path import AffineProbPath
 
 from torchcfm.conditional_flow_matching import (
+    ConditionalFlowMatcher,
     ExactOptimalTransportConditionalFlowMatcher,
 )
 
@@ -47,13 +48,17 @@ class CFMTrainer(BaseDiffusionTrainer):
     ) -> None:
         fm_id = 3
         if fm_id == 1:
-            self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
+            self.FM = ConditionalFlowMatcher(sigma=0.0)
         elif fm_id == 2:
+            # FIXME: this module will mismatch the condition and shapes! do not use it for now!
+            self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
+        elif fm_id == 3:
+            self.FM = AffineProbPath(scheduler=CondOTScheduler())
+        elif fm_id == 4:
+            # TODO: this is the best one, but too slow for large data, need to speed up in the future
             self.FM = BatchExactOptimalTransportConditionalFlowMatcher(
                 sigma=0.0, target_dim=[0, 1, 2]
             )
-        elif fm_id == 3:
-            self.FM = AffineProbPath(scheduler=CondOTScheduler())
 
         super().__init__(
             dataset_root_folder_path,
@@ -91,7 +96,7 @@ class CFMTrainer(BaseDiffusionTrainer):
                 context_dim=self.context_dim,
                 n_heads=self.n_heads,
                 d_head=self.d_head,
-                depth=self.depth,
+                depth=self.latent_transformer_depth,
             ).to(self.device, dtype=self.dtype)
         elif model_id == 2:
             self.model = CFMHunyuan3DDiT(
@@ -114,7 +119,11 @@ class CFMTrainer(BaseDiffusionTrainer):
 
         init_mash_params = torch.randn_like(mash_params)
 
-        if isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
+        if isinstance(self.FM, ConditionalFlowMatcher):
+            t, xt, ut = self.FM.sample_location_and_conditional_flow(
+                init_mash_params, mash_params
+            )
+        elif isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
             t, xt, ut = self.FM.sample_location_and_conditional_flow(
                 init_mash_params, mash_params
             )

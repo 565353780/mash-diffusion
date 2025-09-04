@@ -259,6 +259,9 @@ class TOSImageDataset(Dataset):
             data = {
                 "mash_data": mash_data,
                 "image_data": image_data,
+                "mash_file_key": mash_file_key,
+                "image_bucket": image_bucket,
+                "image_file_key": image_file_key,
             }
 
             return data
