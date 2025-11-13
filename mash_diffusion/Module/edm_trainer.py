@@ -10,7 +10,7 @@ from mash_diffusion.Model.edm_latent_transformer import EDMLatentTransformer
 from mash_diffusion.Module.common_func import CommonFunc
 
 
-class EDMTrainer(BaseEDMTrainer):
+class EDMTrainer(BaseEDMTrainer, CommonFunc):
     def __init__(
         self,
         dataset_root_folder_path: str,
@@ -40,7 +40,8 @@ class EDMTrainer(BaseEDMTrainer):
 
         CommonFunc.__init__(self, dataset_root_folder_path)
 
-        super().__init__(
+        BaseEDMTrainer.__init__(
+            self,
             dataset_root_folder_path,
             batch_size,
             accum_iter,

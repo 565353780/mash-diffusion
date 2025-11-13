@@ -9,7 +9,7 @@ from mash_diffusion.Model.cfm_hy3ddit import CFMHunyuan3DDiT
 from mash_diffusion.Module.common_func import CommonFunc
 
 
-class CFMTrainer(BaseCFMTrainer):
+class CFMTrainer(BaseCFMTrainer, CommonFunc):
     def __init__(
         self,
         dataset_root_folder_path: str,
@@ -37,7 +37,8 @@ class CFMTrainer(BaseCFMTrainer):
     ) -> None:
         CommonFunc.__init__(self, dataset_root_folder_path)
 
-        super().__init__(
+        BaseCFMTrainer.__init__(
+            self,
             batch_size,
             accum_iter,
             num_workers,
