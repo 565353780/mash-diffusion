@@ -4,7 +4,6 @@ import os
 import torch
 from torch import nn
 from tqdm import trange
-from abc import abstractmethod
 
 from ma_sh.Model.mash import Mash
 
