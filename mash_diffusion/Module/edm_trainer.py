@@ -2,15 +2,15 @@ import torch
 from torch import nn
 from typing import Union
 
+from base_diffusion_trainer.Module.base_edm_trainer import BaseEDMTrainer
+
 from mash_diffusion.Loss.edm import EDMLoss
 from mash_diffusion.Model.unet2d import MashUNet
 from mash_diffusion.Model.edm_latent_transformer import EDMLatentTransformer
-from mash_diffusion.Module.base_diffusion_trainer import BaseDiffusionTrainer
-from mash_diffusion.Module.stacked_random_generator import StackedRandomGenerator
-from mash_diffusion.Method.sample import edm_sampler
+from mash_diffusion.Module.common_func import CommonFunc
 
 
-class EDMTrainer(BaseDiffusionTrainer):
+class EDMTrainer(BaseEDMTrainer):
     def __init__(
         self,
         dataset_root_folder_path: str,
@@ -37,6 +37,8 @@ class EDMTrainer(BaseDiffusionTrainer):
         quick_test: bool = False,
     ) -> None:
         self.loss_func = EDMLoss()
+
+        CommonFunc.__init__(self, dataset_root_folder_path)
 
         super().__init__(
             dataset_root_folder_path,
@@ -79,30 +81,16 @@ class EDMTrainer(BaseDiffusionTrainer):
             ).to(self.device, dtype=self.dtype)
         return True
 
-    def preProcessDiffusionData(
-        self, data_dict: dict, is_training: bool = False
-    ) -> dict:
-        mash_params = data_dict["mash_params"]
-
-        noise, sigma, weight = self.loss_func(mash_params, not is_training)
-
-        data_dict["noise"] = noise
-        data_dict["sigma"] = sigma
-        data_dict["weight"] = weight
-
+    def preProcessData(self, data_dict: dict, is_training: bool = False) -> dict:
+        data_dict = CommonFunc.preProcessData(self, data_dict, is_training)
+        data_dict = self.preProcessDiffusionData(data_dict, 'mash_params', is_training)
         return data_dict
 
     def getLossDict(self, data_dict: dict, result_dict: dict) -> dict:
-        inputs = data_dict["mash_params"]
-        D_yn = result_dict["D_x"]
-        weight = data_dict["weight"]
-
-        loss = weight * ((D_yn - inputs) ** 2)
-
-        loss = loss.mean()
+        loss_diffusion = self.getDiffusionLossDict(data_dict, 'mash_params', result_dict)
 
         loss_dict = {
-            "Loss": loss,
+            "Loss": loss_diffusion,
         }
 
         return loss_dict
@@ -111,20 +99,16 @@ class EDMTrainer(BaseDiffusionTrainer):
     def sampleMashData(
         self, model: nn.Module, condition: torch.Tensor, sample_num: int
     ) -> torch.Tensor:
-        timestamp_num = 18
+        timestamp_num = 2
 
-        batch_seeds = torch.arange(sample_num)
-        rnd = StackedRandomGenerator(self.device, batch_seeds)
-        latents = rnd.randn(
-            [sample_num, self.anchor_num, self.anchor_channel], device=self.device
-        )
+        data_shape = [sample_num, self.anchor_num, self.anchor_channel]
 
-        sampled_array = edm_sampler(
+        sampled_array = self.sampleData(
             model,
-            latents,
             condition,
-            randn_like=rnd.randn_like,
-            num_steps=timestamp_num,
-        )[-1]
+            data_shape,
+            sample_num,
+            timestamp_num,
+        )
 
         return sampled_array

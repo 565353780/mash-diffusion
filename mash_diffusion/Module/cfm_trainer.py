@@ -1,26 +1,15 @@
 import torch
-import torchdiffeq
 from torch import nn
 from typing import Union
 
-from flow_matching.path.scheduler import CondOTScheduler
-from flow_matching.path import AffineProbPath
-
-from torchcfm.conditional_flow_matching import (
-    ConditionalFlowMatcher,
-    ExactOptimalTransportConditionalFlowMatcher,
-)
+from base_diffusion_trainer.Module.base_cfm_trainer import BaseCFMTrainer
 
 from mash_diffusion.Model.cfm_latent_transformer import CFMLatentTransformer
 from mash_diffusion.Model.cfm_hy3ddit import CFMHunyuan3DDiT
-from mash_diffusion.Module.base_diffusion_trainer import BaseDiffusionTrainer
-from mash_diffusion.Module.batch_ot_cfm import (
-    BatchExactOptimalTransportConditionalFlowMatcher,
-)
-from mash_diffusion.Module.stacked_random_generator import StackedRandomGenerator
+from mash_diffusion.Module.common_func import CommonFunc
 
 
-class CFMTrainer(BaseDiffusionTrainer):
+class CFMTrainer(BaseCFMTrainer):
     def __init__(
         self,
         dataset_root_folder_path: str,
@@ -46,22 +35,9 @@ class CFMTrainer(BaseDiffusionTrainer):
         use_amp: bool = False,
         quick_test: bool = False,
     ) -> None:
-        fm_id = 3
-        if fm_id == 1:
-            self.FM = ConditionalFlowMatcher(sigma=0.0)
-        elif fm_id == 2:
-            # FIXME: this module will mismatch the condition and shapes! do not use it for now!
-            self.FM = ExactOptimalTransportConditionalFlowMatcher(sigma=0.0)
-        elif fm_id == 3:
-            self.FM = AffineProbPath(scheduler=CondOTScheduler())
-        elif fm_id == 4:
-            # TODO: this is the best one, but too slow for large data, need to speed up in the future
-            self.FM = BatchExactOptimalTransportConditionalFlowMatcher(
-                sigma=0.0, target_dim=[0, 1, 2]
-            )
+        CommonFunc.__init__(self, dataset_root_folder_path)
 
         super().__init__(
-            dataset_root_folder_path,
             batch_size,
             accum_iter,
             num_workers,
@@ -112,53 +88,16 @@ class CFMTrainer(BaseDiffusionTrainer):
 
         return True
 
-    def preProcessDiffusionData(
-        self, data_dict: dict, is_training: bool = False
-    ) -> dict:
-        mash_params = data_dict["mash_params"]
-
-        init_mash_params = torch.randn_like(mash_params)
-
-        if isinstance(self.FM, ConditionalFlowMatcher):
-            t, xt, ut = self.FM.sample_location_and_conditional_flow(
-                init_mash_params, mash_params
-            )
-        elif isinstance(self.FM, ExactOptimalTransportConditionalFlowMatcher):
-            t, xt, ut = self.FM.sample_location_and_conditional_flow(
-                init_mash_params, mash_params
-            )
-        elif isinstance(self.FM, BatchExactOptimalTransportConditionalFlowMatcher):
-            t, xt, ut = self.FM.sample_location_and_conditional_flow(
-                init_mash_params, mash_params
-            )
-        elif isinstance(self.FM, AffineProbPath):
-            t = torch.rand(mash_params.shape[0]).to(
-                mash_params.device, dtype=mash_params.dtype
-            )
-            t = torch.pow(t, 0.5)
-            path_sample = self.FM.sample(t=t, x_0=init_mash_params, x_1=mash_params)
-            t = path_sample.t
-            xt = path_sample.x_t
-            ut = path_sample.dx_t
-        else:
-            print("[ERROR][CFMTrainer::preProcessDiffusionData]")
-            print("\t FM not valid!")
-            exit()
-
-        data_dict["ut"] = ut
-        data_dict["t"] = t
-        data_dict["xt"] = xt
-
+    def preProcessData(self, data_dict: dict, is_training: bool = False) -> dict:
+        data_dict = CommonFunc.preProcessData(self, data_dict, is_training)
+        data_dict = self.preProcessDiffusionData(data_dict, 'mash_params', is_training)
         return data_dict
 
     def getLossDict(self, data_dict: dict, result_dict: dict) -> dict:
-        ut = data_dict["ut"]
-        vt = result_dict["vt"]
-
-        loss = torch.pow(vt - ut, 2).mean()
+        loss_diffusion = self.getDiffusionLossDict(data_dict, result_dict)
 
         loss_dict = {
-            "Loss": loss,
+            "Loss": loss_diffusion,
         }
 
         return loss_dict
@@ -169,24 +108,14 @@ class CFMTrainer(BaseDiffusionTrainer):
     ) -> torch.Tensor:
         timestamp_num = 2
 
-        query_t = torch.linspace(0, 1, timestamp_num).to(self.device)
-        query_t = torch.pow(query_t, 0.5)
+        data_shape = [sample_num, self.anchor_num, self.anchor_channel]
 
-        batch_seeds = torch.arange(sample_num)
-        rnd = StackedRandomGenerator(self.device, batch_seeds)
-        x_init = rnd.randn(
-            [sample_num, self.anchor_num, self.anchor_channel], device=self.device
+        sampled_array = self.sampleData(
+            model,
+            condition,
+            data_shape,
+            sample_num,
+            timestamp_num,
         )
-
-        traj = torchdiffeq.odeint(
-            lambda t, x: model.forwardData(x, condition, t),
-            x_init,
-            query_t,
-            atol=1e-4,
-            rtol=1e-4,
-            method="dopri5",
-        )
-
-        sampled_array = traj.cpu()[-1]
 
         return sampled_array
