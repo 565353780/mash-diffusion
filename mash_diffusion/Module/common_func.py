@@ -45,7 +45,7 @@ class CommonFunc(object):
         dtype = "auto"
 
         if not os.path.exists(model_file_path):
-            print("[ERROR][BaseDiffusionTrainer::createDatasets]")
+            print("[ERROR][CommonFunc::createDatasets]")
             print("\t DINOv2 model not found!")
             print("\t model_file_path:", model_file_path)
             exit()
@@ -146,7 +146,7 @@ class CommonFunc(object):
 
             data_dict["condition"] = embedding.to(self.device)
         else:
-            print("[ERROR][BaseDiffusionTrainer::getCondition]")
+            print("[ERROR][CommonFunc::getCondition]")
             print("\t valid condition type not found!")
             exit()
 
@@ -186,7 +186,7 @@ class CommonFunc(object):
                 .repeat(*([sample_num] + [1] * (condition.ndim - 1)))
             )
 
-        print("[INFO][BaseDiffusionTrainer::sampleModelStep]")
+        print("[INFO][CommonFunc::sampleModelStep]")
         print("\t start sample", sample_num, "mashs....")
 
         sampled_array = self.sampleMashData(model, condition, sample_num)
